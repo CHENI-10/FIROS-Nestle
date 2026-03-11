@@ -15,10 +15,6 @@
 --
 -- SPRINT 2 → uncomment INSERT block under distributor_records
 -- SPRINT 3 → uncomment INSERT block under distributor_scorecards
---
--- HOW TO RUN:
---   Neon → paste into SQL editor → Run
---   psql → psql -d firos -f firos_database_setup.sql
 -- ============================================================
 
 
@@ -448,14 +444,7 @@ VALUES
 -- ============================================================
 -- SEED 3: DEMO USERS (4 accounts — one per role)
 -- ============================================================
--- !! REPLACE PLACEHOLDERS BEFORE RUNNING !!
---
---   const bcrypt = require('bcrypt');
---   console.log(await bcrypt.hash('admin123',   10));
---   console.log(await bcrypt.hash('manager123', 10));
---   console.log(await bcrypt.hash('staff123',   10));
---   console.log(await bcrypt.hash('sales123',   10));
--- ============================================================
+
 INSERT INTO users (full_name, email, password_hash, role) VALUES
 ('System Admin',    'admin@nestle.lk',   '$2a$10$gupZZu3IwT5.SLoVo.dkfe2I.GUP0kS0wEax6w0rsIZxV8G1o4WWK',   'admin'),
 ('Warehouse Manager',    'manager@nestle.lk', '$2a$10$XwLQC/x6wjx7JmXCkouFBu21clU8gBPfJ1Gr7QKPTLX2je.Nqiey2', 'manager'),
@@ -746,38 +735,3 @@ VALUES
      FALSE, NOW() - INTERVAL '5 days');
 
 
--- ============================================================
--- VERIFICATION
--- ============================================================
-SELECT table_name, row_count FROM (
-    SELECT 'users'                  AS table_name, COUNT(*) AS row_count FROM users
-    UNION ALL SELECT 'warehouse_zones',              COUNT(*) FROM warehouse_zones
-    UNION ALL SELECT 'products',                     COUNT(*) FROM products
-    UNION ALL SELECT 'batches',                      COUNT(*) FROM batches
-    UNION ALL SELECT 'batch_zone_history',           COUNT(*) FROM batch_zone_history
-    UNION ALL SELECT 'freshness_scores',             COUNT(*) FROM freshness_scores
-    UNION ALL SELECT 'environmental_logs',           COUNT(*) FROM environmental_logs
-    UNION ALL SELECT 'alert_records',                COUNT(*) FROM alert_records
-    UNION ALL SELECT 'distributor_records',          COUNT(*) FROM distributor_records
-    UNION ALL SELECT 'dispatch_records',             COUNT(*) FROM dispatch_records
-    UNION ALL SELECT 'clearance_records',            COUNT(*) FROM clearance_records
-    UNION ALL SELECT 'return_records',               COUNT(*) FROM return_records
-    UNION ALL SELECT 'distributor_scorecards',       COUNT(*) FROM distributor_scorecards
-    UNION ALL SELECT 'sales_rep_reports',            COUNT(*) FROM sales_rep_reports
-) counts;
-
--- EXPECTED:
---   users                →  4
---   warehouse_zones      →  4
---   products             → 27
---   batches              → 12
---   batch_zone_history   → 12
---   freshness_scores     → 12
---   environmental_logs   →  8
---   alert_records        →  6
---   distributor_records  →  0  (Sprint 2 — uncomment above)
---   dispatch_records     →  0
---   clearance_records    →  0
---   return_records       →  0
---   distributor_scorecards → 0  (Sprint 3 — uncomment above)
---   sales_rep_reports    →  0
