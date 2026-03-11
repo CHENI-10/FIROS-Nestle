@@ -1,0 +1,466 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  /* Rich Chocolate & Gold Theme */
+  --nestle-choco-dark: #2A1301;
+  --nestle-choco-main: #3D1C02;
+  --nestle-gold-main: #C8A96E;
+  --nestle-gold-light: #E0C797;
+  --nestle-cream: #F5F0E8;
+  --nestle-cream-hover: #EBE3D5;
+  
+  --error-color: #E5002C;
+  --error-bg: #FEECEF;
+  --text-dark: #2A1301;
+  --text-muted: #7A6355;
+  --border-color: #DBCDBA;
+  --bg-color: #FFFFFF;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-color);
+}
+
+.login-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Warm Gold Top Gradient Accent Bar */
+.gold-accent-bar {
+  width: 100%;
+  height: 6px;
+  background: linear-gradient(90deg, #C8A96E 0%, #E8D3A8 50%, #C8A96E 100%);
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+}
+
+/* Split Screen Layout */
+.login-split-container {
+  display: flex;
+  flex: 1;
+  min-height: 100vh;
+}
+
+/* LEFT SIDE: Brand Panel */
+.login-brand-panel {
+  flex: 1;
+  background-color: var(--nestle-choco-main);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4rem;
+  overflow: hidden;
+  color: white;
+}
+
+/* Subtle diagonal lines overlay */
+.brand-overlay-pattern {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.02) 0px,
+    rgba(255, 255, 255, 0.02) 2px,
+    transparent 2px,
+    transparent 12px
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+
+.brand-content {
+  position: relative;
+  z-index: 2;
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.brand-header {
+  margin-bottom: 4rem;
+  position: relative;
+}
+
+.brand-title-watermark {
+  font-size: 8rem;
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -2px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.05);
+  position: absolute;
+  top: -3rem;
+  left: -2rem;
+  user-select: none;
+}
+
+.brand-tagline {
+  font-size: 1.5rem;
+  font-weight: 300;
+  letter-spacing: 1px;
+  color: var(--nestle-gold-main);
+  margin: 0;
+  position: relative;
+  border-left: 3px solid var(--nestle-gold-main);
+  padding-left: 1rem;
+  animation: slideInRight 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Stat Floating Cards */
+.stat-cards-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-top: 5rem;
+}
+
+.stat-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(200, 169, 110, 0.2);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  animation: floatUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(200, 169, 110, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.stat-icon {
+  font-size: 1.8rem;
+  background: rgba(200, 169, 110, 0.15);
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--nestle-gold-light);
+}
+
+.stat-text {
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: #E6DACE;
+  line-height: 1.3;
+}
+
+/* RIGHT SIDE: Login Form Panel */
+.login-form-panel {
+  flex: 0 0 500px;
+  background-color: var(--bg-color);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3rem;
+  position: relative;
+  box-shadow: -20px 0 50px rgba(0, 0, 0, 0.05);
+  z-index: 5;
+}
+
+.login-card-inner {
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto;
+  animation: fadeIn 0.8s ease;
+}
+
+.login-header {
+  margin-bottom: 3rem;
+}
+
+.login-header .logo-text {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: var(--nestle-choco-main);
+  margin: 0;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+.login-header .logo-subtext {
+  font-size: 0.85rem;
+  color: var(--nestle-gold-main);
+  font-weight: 700;
+  margin: 0.5rem 0 1.5rem 0;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.login-header h2 {
+  font-size: 1.5rem;
+  color: var(--text-dark);
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Unified Error Message */
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: var(--error-bg);
+  color: var(--error-color);
+  padding: 1rem;
+  border-radius: 10px;
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.error-message svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Form Elements */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input-group label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--nestle-choco-main);
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 1.25rem;
+  width: 20px;
+  height: 20px;
+  color: var(--nestle-gold-main);
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.input-wrapper input {
+  width: 100%;
+  padding: 1rem 1rem 1rem 3.25rem;
+  font-size: 1rem;
+  font-family: inherit;
+  font-weight: 500;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background-color: var(--nestle-cream);
+  color: var(--text-dark);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+  outline: none;
+}
+
+.input-wrapper input::placeholder {
+  color: #B5A898;
+  font-weight: 400;
+}
+
+.input-wrapper input:hover {
+  background-color: var(--nestle-cream-hover);
+}
+
+.input-wrapper input:focus {
+  background-color: white;
+  border-color: var(--nestle-gold-main);
+  box-shadow: 0 4px 15px rgba(200, 169, 110, 0.15);
+}
+
+.input-wrapper input:focus + .input-icon,
+.input-wrapper input:not(:placeholder-shown) ~ .input-icon {
+  color: var(--nestle-choco-main);
+  transform: scale(1.1);
+}
+
+/* Submit Button */
+.submit-btn {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: none;
+  border-radius: 12px;
+  background: var(--nestle-choco-main);
+  color: white;
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 54px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 15px rgba(61, 28, 2, 0.2);
+  /* Pulse animation */
+  animation: subtlePulse 2.5s infinite;
+}
+
+/* Gold shimmer overlay */
+.submit-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgba(255,255,255,0) 0%,
+    rgba(200, 169, 110, 0.3) 50%,
+    rgba(255,255,255,0) 100%
+  );
+  transform: skewX(-25deg);
+  transition: all 0.7s ease;
+  z-index: 1;
+}
+
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: var(--nestle-choco-dark);
+  box-shadow: 0 8px 25px rgba(200, 169, 110, 0.4);
+}
+
+.submit-btn:hover:not(:disabled)::before {
+  left: 200%;
+}
+
+.submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.submit-btn:disabled {
+  opacity: 0.8;
+  cursor: not-allowed;
+  animation: none;
+  background: var(--text-muted);
+}
+
+/* Spinner */
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
+  z-index: 2;
+  position: relative;
+}
+
+/* Footer */
+.login-footer {
+  margin-top: 3rem;
+  text-align: center;
+}
+
+.login-footer p {
+  color: #A69585;
+  font-size: 0.8rem;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Keyframes */
+@keyframes slideInRight {
+  0% { opacity: 0; transform: translateX(-30px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes floatUpFade {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes subtlePulse {
+  0% { box-shadow: 0 4px 15px rgba(61, 28, 2, 0.2); }
+  50% { box-shadow: 0 4px 20px rgba(200, 169, 110, 0.4); }
+  100% { box-shadow: 0 4px 15px rgba(61, 28, 2, 0.2); }
+}
+
+/* Responsive */
+@media (max-width: 968px) {
+  .login-split-container {
+    flex-direction: column;
+  }
+  
+  .login-brand-panel {
+    padding: 3rem 2rem;
+    flex: none;
+    min-height: 400px;
+  }
+
+  .brand-title-watermark {
+    font-size: 5rem;
+    top: -2rem;
+    left: 0;
+  }
+  
+  .stat-cards-container {
+    margin-top: 3rem;
+  }
+
+  .login-form-panel {
+    flex: 1;
+    padding: 3rem 2rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .stat-cards-container {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}

@@ -1,0 +1,359 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Nestle Lanka Brown Brand Theme */
+  --nestle-brown-dark: #3a2218;
+  --nestle-brown-primary: #5c3a21;
+  --nestle-brown-medium: #8b5e3c;
+  --nestle-brown-light: #c49a6c;
+  --nestle-beige-light: #f5eedc;
+  
+  --success-color: #2F855A;
+  --success-bg: #F0FFF4;
+  --warn-color: #C05621;
+  --warn-bg: #FFFAF0;
+  --error-color: #E5002C;
+  --error-bg: #FEECEF;
+  
+  --text-dark: #2a1f1a;
+  --text-muted: #7a6355;
+  --border-color: #e6dace;
+  --bg-color: #fcfbfa;
+  --card-bg: white;
+}
+
+.registration-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: var(--bg-color);
+  font-family: 'Inter', sans-serif;
+  padding: 2rem 1rem;
+}
+
+.registration-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  animation: fadeInDown 0.5s ease;
+}
+
+.registration-header h1 {
+  font-size: 2rem;
+  color: var(--nestle-brown-primary);
+  margin: 0 0 0.5rem 0;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.registration-header p {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.registration-card {
+  width: 100%;
+  max-width: 600px;
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 2.5rem;
+  box-shadow: 0 10px 30px rgba(92, 58, 33, 0.08), 
+              0 1px 3px rgba(0, 0, 0, 0.05);
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Animations */
+@keyframes fadeInDown {
+  0% { opacity: 0; transform: translateY(-20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+/* Message Banners */
+.message-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 10px;
+  margin-bottom: 2rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.message-banner.error {
+  background-color: var(--error-bg);
+  color: var(--error-color);
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.message-banner.success {
+  background-color: var(--success-bg);
+  color: var(--success-color);
+  border-left: 4px solid var(--success-color);
+  animation: fadeInDown 0.4s ease;
+}
+
+.message-banner .icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Scanner Section */
+.scanner-section {
+  background-color: #f8f6f4;
+  border: 1px dashed var(--nestle-brown-light);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.input-with-button {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.barcode-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-family: monospace;
+  font-weight: 500;
+  border: 1.5px solid var(--border-color);
+  border-radius: 8px;
+  transition: all 0.2s;
+  outline: none;
+  letter-spacing: 1px;
+}
+
+.barcode-input:focus {
+  border-color: var(--nestle-brown-medium);
+  box-shadow: 0 0 0 3px var(--nestle-beige-light);
+}
+
+.fetch-btn {
+  padding: 0 1.5rem;
+  background-color: var(--nestle-brown-medium);
+  color: white;
+  border: none;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.fetch-btn:hover:not(:disabled) {
+  background-color: var(--nestle-brown-primary);
+}
+
+.fetch-btn:disabled {
+  background-color: var(--border-color);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.25rem 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.divider span {
+  padding: 0 10px;
+}
+
+.toggle-scanner-btn {
+  width: 100%;
+  padding: 0.875rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: white;
+  color: var(--nestle-brown-primary);
+  border: 1.5px solid var(--nestle-brown-medium);
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-scanner-btn:hover {
+  background-color: var(--nestle-beige-light);
+}
+
+.toggle-scanner-btn.active {
+  background-color: var(--nestle-brown-light);
+  color: white;
+  border-color: var(--nestle-brown-light);
+}
+
+/* Form Styles */
+.registration-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.form-row > .form-group {
+  flex: 1;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.form-group input, 
+.form-group select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  border: 1.5px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-dark);
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  outline: none;
+  background-color: white;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: var(--nestle-brown-primary);
+  box-shadow: 0 0 0 3px var(--nestle-beige-light);
+}
+
+/* Read Only states */
+.form-group.read-only input {
+  background-color: #f8f6f4;
+  color: var(--text-muted);
+  cursor: not-allowed;
+  border-color: #ece4db;
+  font-weight: 500;
+}
+
+.form-group.read-only input.filled {
+  color: var(--nestle-brown-primary);
+  font-weight: 600;
+  border-color: var(--nestle-brown-light);
+  background-color: var(--nestle-beige-light);
+}
+
+/* Select wrapper for custom arrow */
+.select-wrapper {
+  position: relative;
+}
+
+.select-wrapper select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.select-icon {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* Submit Button */
+.submit-btn {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--nestle-brown-primary);
+  color: white;
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 54px;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background-color: var(--nestle-brown-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(92, 58, 33, 0.25);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Spinner for submit */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .form-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .registration-card {
+    padding: 1.5rem;
+  }
+}

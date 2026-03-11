@@ -143,8 +143,30 @@ const updateBatchZone = async (req, res) => {
     }
 };
 
+const getProductByBarcode = async (req, res) => {
+    const { ean13 } = req.params;
+    try {
+        const query = `
+            SELECT product_id, product_name, pack_size, shelf_life_months, zone_id
+            FROM products
+            WHERE ean13_barcode = $1
+        `;
+        const { rows } = await db.query(query, [ean13]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        res.status(200).json(rows[0]);
+    } catch (error) {
+        console.error('Error fetching product by barcode:', error);
+        res.status(500).json({ message: 'Server error retrieving product' });
+    }
+};
+
 module.exports = {
     registerBatch,
     getAllBatches,
-    updateBatchZone
+    updateBatchZone,
+    getProductByBarcode
 };

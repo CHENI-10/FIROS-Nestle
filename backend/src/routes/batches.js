@@ -5,8 +5,12 @@ const verifyToken = require('../middleware/authMiddleware');
 const {
     registerBatch,
     getAllBatches,
-    updateBatchZone
+    updateBatchZone,
+    getProductByBarcode
 } = require('../controllers/batchController');
+
+// Public route - No auth required
+router.get('/products/barcode/:ean13', getProductByBarcode);
 
 router.post('/', verifyToken, registerBatch);
 router.get('/', verifyToken, getAllBatches);
