@@ -48,6 +48,7 @@ DROP TABLE IF EXISTS users                    CASCADE;
 -- ============================================================
 -- TABLE 1: users
 -- Introduced: Prerequisites | Seeded: Sprint 1
+-- Roles: admin, manager, staff, sales_rep
 -- ============================================================
 CREATE TABLE users (
     user_id        SERIAL        PRIMARY KEY,
@@ -110,7 +111,7 @@ CREATE TABLE products (
 -- batch_id PRIMARY KEY enforces UNIQUE — duplicate scan
 -- rejected at DB level, backend returns existing record.
 -- FRS engine runs only for status = 'in_storage'.
--- Introduced: Sprint 1 Feature 1 | Seeded: Sprint 1 (demo batches)
+-- Introduced: Sprint 1 PB-01 | Seeded: Sprint 1 (demo batches)
 -- ============================================================
 CREATE TABLE batches (
     batch_id           VARCHAR(50)   PRIMARY KEY,
@@ -130,7 +131,7 @@ CREATE TABLE batches (
 -- ============================================================
 -- TABLE 5: batch_zone_history
 -- exit_timestamp = NULL means batch is still in this zone.
--- Introduced: Sprint 1 Feature 1 | Seeded: Sprint 1
+-- Introduced: Sprint 1 PB-01 | Seeded: Sprint 1
 -- ============================================================
 CREATE TABLE batch_zone_history (
     history_id       SERIAL        PRIMARY KEY,
@@ -144,7 +145,7 @@ CREATE TABLE batch_zone_history (
 -- ============================================================
 -- TABLE 6: environmental_logs
 -- Simulator writes here every 30 min. Zone D humidity = NULL.
--- Introduced: Sprint 1 Feature 2 | Seeded: Sprint 1 (sample readings)
+-- Introduced: Sprint 1 PB-02 | Seeded: Sprint 1 (sample readings)
 -- ============================================================
 CREATE TABLE environmental_logs (
     log_id       SERIAL        PRIMARY KEY,
@@ -164,7 +165,7 @@ CREATE INDEX idx_env_logs_zone_time
 -- Always calculated from raw totals — never from previous score.
 -- FRS = Math.max(0, Math.round(SLR% - SDP - TBP - HBP - SA))
 -- SA read fresh from products table, not stored here.
--- Introduced: Sprint 1 Feature 3 | Seeded: Sprint 1 (pre-calculated)
+-- Introduced: Sprint 1 PB-03 | Seeded: Sprint 1 (pre-calculated)
 -- ============================================================
 CREATE TABLE freshness_scores (
     score_id                      SERIAL        PRIMARY KEY,
@@ -185,8 +186,7 @@ CREATE TABLE freshness_scores (
 -- TABLE 8: alert_records
 -- Display + deduplication. Same risk_band = SKIP.
 -- Zone C exception: zone_c_breach always inserts.
--- Created now (Sprint 1 simulator queries it).
--- Introduced: Sprint 2 Feature 8 | Seeded: Sprint 1 (6 demo alerts)
+-- Introduced: Sprint 1 PB-06 | Seeded: Sprint 1 (6 demo alerts)
 -- ============================================================
 CREATE TABLE alert_records (
     alert_id    SERIAL        PRIMARY KEY,
@@ -211,7 +211,7 @@ CREATE INDEX idx_alerts_batch_type
 
 -- ============================================================
 -- TABLE 9: distributor_records
--- Introduced: Sprint 2 Feature 7 | Seeded: Sprint 2 (below)
+-- Introduced: Sprint 3 PB-12/PB-13 | Seeded: Sprint 3 (below)
 -- ============================================================
 CREATE TABLE distributor_records (
     distributor_id    SERIAL        PRIMARY KEY,
@@ -223,7 +223,7 @@ CREATE TABLE distributor_records (
     created_at        TIMESTAMP     NOT NULL DEFAULT NOW()
 );
 
--- ── SPRINT 2 — uncomment when Sprint 2 begins ────────────────
+-- ── SPRINT 3 — uncomment when Sprint 3 begins ────────────────
 -- INSERT INTO distributor_records (distributor_name, region, contact_person, phone)
 -- VALUES
 --     ('Keells Food Products',    'Colombo',    'Roshan Fernando',    '0112345678'),
@@ -237,7 +237,7 @@ CREATE TABLE distributor_records (
 -- TABLE 10: dispatch_records
 -- frs_at_dispatch FROZEN at dispatch. collected_timestamp NULL
 -- until staff confirms pickup (feeds collection delay calc).
--- Introduced: Sprint 2 Feature 7 | Seeded: Runtime Sprint 2
+-- Introduced: Sprint 2 PB-08 | Seeded: Runtime Sprint 2
 -- ============================================================
 CREATE TABLE dispatch_records (
     dispatch_id           SERIAL        PRIMARY KEY,
@@ -257,7 +257,7 @@ CREATE TABLE dispatch_records (
 -- ============================================================
 -- TABLE 11: clearance_records
 -- Cleared = final status. Both clearance and write-off land here.
--- Introduced: Sprint 3 Feature 11 | Seeded: Runtime Sprint 3
+-- Introduced: Sprint 2 PB-10 | Seeded: Runtime Sprint 2
 -- ============================================================
 CREATE TABLE clearance_records (
     clearance_id  SERIAL        PRIMARY KEY,
@@ -273,7 +273,7 @@ CREATE TABLE clearance_records (
 -- TABLE 12: return_records
 -- frs_at_dispatch from certificate = evidence for decision.
 -- decision: accept / review / reject
--- Introduced: Sprint 3 Feature 10 | Seeded: Runtime Sprint 3
+-- Introduced: Sprint 2 PB-09 | Seeded: Runtime Sprint 2
 -- ============================================================
 CREATE TABLE return_records (
     return_id       SERIAL        PRIMARY KEY,
@@ -292,7 +292,7 @@ CREATE TABLE return_records (
 -- TABLE 13: distributor_scorecards
 -- Allocation formula: movement_score + (performance_score / 20)
 -- Pre-seeded with historical data before Sprint 3 demo.
--- Introduced: Sprint 3 | Seeded: Sprint 3 (below)
+-- Introduced: Sprint 3 PB-13 | Seeded: Sprint 3 (below)
 -- ============================================================
 CREATE TABLE distributor_scorecards (
     scorecard_id               SERIAL        PRIMARY KEY,
@@ -325,7 +325,7 @@ CREATE TABLE distributor_scorecards (
 -- TABLE 14: sales_rep_reports
 -- movement_score: fast=3, medium=2, slow=1
 -- urgency_bonus: +1 if out_of_stock
--- Introduced: Sprint 3 Feature 13 | Seeded: Runtime Sprint 3
+-- Introduced: Sprint 3 PB-11 | Seeded: Runtime Sprint 3
 -- ============================================================
 CREATE TABLE sales_rep_reports (
     report_id          SERIAL        PRIMARY KEY,
@@ -443,14 +443,17 @@ VALUES
 
 -- ============================================================
 -- SEED 3: DEMO USERS (4 accounts — one per role)
+-- Passwords are bcrypt hashed. Plain text for demo reference:
+--   admin@nestle.lk   → Admin123!
+--   manager@nestle.lk → Manager123!
+--   staff@nestle.lk   → Staff123!
+--   rep@nestle.lk     → Rep123!
 -- ============================================================
-
 INSERT INTO users (full_name, email, password_hash, role) VALUES
-('System Admin',    'admin@nestle.lk',   '$2a$10$gupZZu3IwT5.SLoVo.dkfe2I.GUP0kS0wEax6w0rsIZxV8G1o4WWK',   'admin'),
-('Warehouse Manager',    'manager@nestle.lk', '$2a$10$XwLQC/x6wjx7JmXCkouFBu21clU8gBPfJ1Gr7QKPTLX2je.Nqiey2', 'manager'),
-('Warehouse Staff',     'staff@nestle.lk',   '$2a$10$cHduwl1Om7BWCt5Iz61ZkuMLn25JZskP6UOWzOZFc/xtOllCeEv1W',   'staff'),
-('Nestle Sales Rep',  'rep@nestle.lk',     '$2a$10$rWlU/6JOITGQj3SzqCIgLuLgzVRHQPCaJBGcuU259lsYfhvrrYjEy',   'sales_rep');
-
+('Admin',             'admin@nestle.lk',   '$2a$10$gupZZu3IwT5.SLoVo.dkfe2I.GUP0kS0wEax6w0rsIZxV8G1o4WWK', 'admin'),
+('Warehouse Manager', 'manager@nestle.lk', '$2a$10$XwLQC/x6wjx7JmXCkouFBu21clU8gBPfJ1Gr7QKPTLX2je.Nqiey2', 'manager'),
+('Warehouse Staff',   'staff@nestle.lk',   '$2a$10$cHduwl1Om7BWCt5Iz61ZkuMLn25JZskP6UOWzOZFc/xtOllCeEv1W', 'staff'),
+('Sales Rep',         'rep@nestle.lk',     '$2a$10$rWlU/6JOITGQj3SzqCIgLuLgzVRHQPCaJBGcuU259lsYfhvrrYjEy', 'sales_rep');
 
 
 -- ============================================================
@@ -612,7 +615,7 @@ VALUES
 
 -- MILO-400-2026-0032 | MEDIUM | FRS=65
 -- max(0, round(82.267 - 11.25 - 0 - 3 - 3)) = 65
--- HBP = 1 window × |humidity_weight=3| = 3
+-- HBP = 1 window x |humidity_weight=3| = 3
 ('MILO-400-2026-0032',  65, 'medium', 82.267, 45,  0, 1, NOW()),
 
 -- MAGGI-CUR-2026-0007 | HIGH | FRS=41
@@ -625,13 +628,13 @@ VALUES
 
 -- MGCP-150-2026-0004 | MEDIUM | FRS=60
 -- max(0, round(79.304 - 13.75 - 0 - 3 - 3)) = 60
--- HBP = 1 window × |humidity_weight=3| = 3
+-- HBP = 1 window x |humidity_weight=3| = 3
 ('MGCP-150-2026-0004',  60, 'medium', 79.304, 55,  0, 1, NOW()),
 
 -- ZONE B
 -- NESP-400-2026-0003 | LOW | FRS=82
 -- max(0, round(95.205 - 7.5 - 3 - 0 - 3)) = 82
--- TBP = 1 window × |temp_weight=3| = 3
+-- TBP = 1 window x |temp_weight=3| = 3
 ('NESP-400-2026-0003',  82, 'low',    95.205, 30,  1, 0, NOW()),
 
 -- MLKM-400-2026-0008 | MEDIUM | FRS=63
@@ -640,7 +643,7 @@ VALUES
 
 -- NESP-800-2026-0001 | HIGH | FRS=39
 -- max(0, round(78.356 - 27.5 - 9 - 0 - 3)) = 39
--- TBP = 3 windows × |temp_weight=3| = 9
+-- TBP = 3 windows x |temp_weight=3| = 9
 ('NESP-800-2026-0001',  39, 'high',   78.356, 110, 3, 0, NOW()),
 
 -- ZONE C
@@ -650,12 +653,12 @@ VALUES
 
 -- NANG-400-2026-0011 | MEDIUM | FRS=68
 -- max(0, round(86.712 - 12.5 - 3 - 0 - 3)) = 68
--- TBP = 1 window × |temp_weight=3| = 3
+-- TBP = 1 window x |temp_weight=3| = 3
 ('NANG-400-2026-0011',  68, 'medium', 86.712, 50,  1, 0, NOW()),
 
 -- LACT-400-2025-0002 | HIGH | FRS=0
 -- max(0, round(40.959 - 70.0 - 12 - 9 - 3)) = max(0,-53) = 0
--- TBP = 4 windows × 3 = 12 | HBP = 3 windows × 3 = 9
+-- TBP = 4 windows x 3 = 12 | HBP = 3 windows x 3 = 9
 ('LACT-400-2025-0002',   0, 'high',   40.959, 280, 4, 3, NOW()),
 
 -- ZONE D
@@ -681,7 +684,7 @@ VALUES
 
     -- Zone B normal
     ('B', 25.1, 57.0, NOW() - INTERVAL '60 minutes'),
-    -- Zone B breach — Nespray temp limit is 27°C, this is 27.6°C
+    -- Zone B breach — Nespray temp limit is 27 degrees, this is 27.6
     ('B', 27.6, 58.0, NOW() - INTERVAL '30 minutes'),
 
     -- Zone C both normal (strictest zone, well controlled)
@@ -721,7 +724,7 @@ VALUES
 
     -- Nangrow Zone C breach — always fires regardless of FRS
     ('NANG-400-2026-0011', 'zone_c_breach', 'medium',
-     'Nangrow Growing Up Milk — NANG-400-2026-0011 (Zone C): Temperature breach 26.1°C. Infant product. Immediate review required.',
+     'Nangrow Growing Up Milk — NANG-400-2026-0011 (Zone C): Temperature breach 26.1 degrees. Infant product. Immediate review required.',
      FALSE, NOW() - INTERVAL '25 days'),
 
     -- Lactogrow crossed into High Risk
@@ -733,5 +736,3 @@ VALUES
     ('NICD-180-2026-0005', 'expiry_proximity', 'high',
      'Nescafe Iced Coffee RTD — NICD-180-2026-0005 (Zone D): Expiry 2026-05-15. FRS 27. Most urgent SKU in warehouse.',
      FALSE, NOW() - INTERVAL '5 days');
-
-
