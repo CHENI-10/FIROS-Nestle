@@ -450,10 +450,10 @@ VALUES
 --   rep@nestle.lk     → Rep123!
 -- ============================================================
 INSERT INTO users (full_name, email, password_hash, role) VALUES
-('Admin',             'admin@nestle.lk',   '$2a$10$gupZZu3IwT5.SLoVo.dkfe2I.GUP0kS0wEax6w0rsIZxV8G1o4WWK', 'admin'),
-('Warehouse Manager', 'manager@nestle.lk', '$2a$10$XwLQC/x6wjx7JmXCkouFBu21clU8gBPfJ1Gr7QKPTLX2je.Nqiey2', 'manager'),
-('Warehouse Staff',   'staff@nestle.lk',   '$2a$10$cHduwl1Om7BWCt5Iz61ZkuMLn25JZskP6UOWzOZFc/xtOllCeEv1W', 'staff'),
-('Sales Rep',         'rep@nestle.lk',     '$2a$10$rWlU/6JOITGQj3SzqCIgLuLgzVRHQPCaJBGcuU259lsYfhvrrYjEy', 'sales_rep');
+('Admin',             'admin@nestle.lk',   '$2a$12$y8PnbdahHUCQtlmSEwUweewwZZq3DZoZVRaAki5PUdMtXi2dq2pwi', 'admin'),     
+('Warehouse Manager', 'manager@nestle.lk', '$2a$12$rMrURR.VipYAT8iCdSekk.bKW0z.P5/xIDcIZTDxonDawvxML/54u', 'manager'),
+('Warehouse Staff',   'staff@nestle.lk',   '$2a$12$4Qyk4QW5LCigkmSK5ei2beRk9VfTyN/TG8ZoNK8YQNz.DNu4RWFH.', 'staff'),
+('Sales Rep',         'rep@nestle.lk',     '$2a$12$.Nog/05unLF5MIM6KAZ8M.VuOf.xlrEG12rG5CqfstC60nHAGvx52', 'sales_rep');
 
 
 -- ============================================================

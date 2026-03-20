@@ -1,0 +1,174 @@
+const express = require('express');
+const router = express.Router();
+const pool = require('../config/db');
+const verifyToken = require('../middleware/authMiddleware');
+
+// Apply auth middleware to all routes
+router.use(verifyToken);
+
+// ROUTE 1: GET /
+// Returns complete dashboard data in one call
+router.get('/', async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                b.batch_id,
+                b.zone_id,
+                b.quantity,
+                b.manufacturing_date,
+                b.expiry_date,
+                b.arrival_timestamp,
+                b.status,
+                p.product_name,
+                p.pack_size,
+                p.temp_sensitivity_weight,
+                p.humidity_sensitivity_weight,
+                fs.frs_score,
+                fs.risk_band,
+                fs.days_in_warehouse,
+                fs.slr_percent_raw,
+                fs.total_temp_breach_windows,
+                fs.total_humidity_breach_windows,
+                fs.last_calculated_at
+            FROM batches b
+            JOIN products p ON b.product_id = p.product_id
+            LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
+            WHERE b.status = 'in_storage'
+            ORDER BY fs.frs_score ASC
+        `;
+        
+        const result = await pool.query(query);
+        const batches = result.rows;
+
+        let totalFrs = 0;
+        let frsCount = 0;
+        let high_risk_count = 0;
+        let medium_risk_count = 0;
+        let low_risk_count = 0;
+
+        batches.forEach(batch => {
+            if (batch.frs_score !== null && batch.frs_score !== undefined) {
+                totalFrs += Number(batch.frs_score);
+                frsCount++;
+            }
+            if (batch.risk_band === 'high') high_risk_count++;
+            if (batch.risk_band === 'medium') medium_risk_count++;
+            if (batch.risk_band === 'low') low_risk_count++;
+        });
+
+        const overall_freshness_percent = frsCount > 0 ? Math.round(totalFrs / frsCount) : 0;
+        const total_batches = batches.length;
+
+        // Return complete dashboard data
+        res.json({
+            batches,
+            overall_freshness_percent,
+            total_batches,
+            high_risk_count,
+            medium_risk_count,
+            low_risk_count
+        });
+    } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        res.status(500).json({ error: 'Server error fetching dashboard data' });
+    }
+});
+
+// ROUTE 2: GET /zones
+// Returns staleness status for all 4 zones
+router.get('/zones', async (req, res) => {
+    try {
+        const query = `
+            SELECT zone_id, zone_name, last_reading_at
+            FROM warehouse_zones
+            ORDER BY zone_id
+        `;
+        const result = await pool.query(query);
+        
+        const zones = result.rows.map(zone => {
+            let minutes_since_reading = null;
+            let is_stale = true;
+            
+            if (zone.last_reading_at) {
+                const lastReadingDate = new Date(zone.last_reading_at);
+                const diffMs = Date.now() - lastReadingDate.getTime();
+                minutes_since_reading = Math.floor(diffMs / (1000 * 60));
+                
+                // Stale if reading is more than 60 minutes ago
+                is_stale = minutes_since_reading > 60;
+            }
+            
+            return {
+                ...zone,
+                is_stale,
+                minutes_since_reading
+            };
+        });
+
+        res.json(zones);
+    } catch (err) {
+        console.error('Error fetching zones data:', err);
+        res.status(500).json({ error: 'Server error fetching zones data' });
+    }
+});
+
+// ROUTE 3: GET /alerts
+// Returns all unread alerts ordered by newest first
+router.get('/alerts', async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                a.alert_id,
+                a.batch_id,
+                a.alert_type,
+                a.risk_band,
+                a.message,
+                a.is_read,
+                a.created_at,
+                p.product_name,
+                b.zone_id
+            FROM alert_records a
+            JOIN batches b ON a.batch_id = b.batch_id
+            JOIN products p ON b.product_id = p.product_id
+            WHERE a.is_read = false
+            ORDER BY a.created_at DESC
+            LIMIT 20
+        `;
+        const result = await pool.query(query);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching alerts:', err);
+        res.status(500).json({ error: 'Server error fetching alerts' });
+    }
+});
+
+// ROUTE 4: GET /expiry-timeline
+// Returns batches expiring within 30 days
+router.get('/expiry-timeline', async (req, res) => {
+    try {
+        const query = `
+            SELECT
+                b.batch_id,
+                b.expiry_date,
+                b.zone_id,
+                p.product_name,
+                p.pack_size,
+                fs.frs_score,
+                fs.risk_band,
+                EXTRACT(DAY FROM (b.expiry_date - CURRENT_DATE)) as days_until_expiry
+            FROM batches b
+            JOIN products p ON b.product_id = p.product_id
+            LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
+            WHERE b.status = 'in_storage'
+            AND b.expiry_date <= CURRENT_DATE + INTERVAL '30 days'
+            ORDER BY b.expiry_date ASC
+        `;
+        const result = await pool.query(query);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching expiry timeline:', err);
+        res.status(500).json({ error: 'Server error fetching expiry timeline' });
+    }
+});
+
+module.exports = router;

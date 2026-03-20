@@ -4,6 +4,7 @@ const cors = require('cors');
 
 const authRoutes = require('./routes/auth');
 const batchRoutes = require('./routes/batches');
+const dashboardRoutes = require('./routes/dashboard');
 const { startFRSJob } = require('./jobs/recalculateFRSJob');
 const { recalculateAllBatches } = require('./services/frsService');
 const pool = require('./config/db');
@@ -15,6 +16,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/batches', batchRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 const PORT = process.env.PORT || 5000;
 

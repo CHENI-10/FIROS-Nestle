@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import BatchRegistration from './pages/BatchRegistration';
+import Dashboard from './pages/Dashboard';
 
 // A simple Protected Route component wrapper
 const ProtectedRoute = ({ children }) => {
@@ -44,7 +45,7 @@ const App = () => {
           path="/dashboard" 
           element={
             <ProtectedRoute>
-              <DashboardPlaceholder />
+              <Dashboard />
             </ProtectedRoute>
           } 
         />
