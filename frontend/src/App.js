@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import BatchRegistration from './pages/BatchRegistration';
 import Dashboard from './pages/Dashboard';
+import ActionRecommendations from './pages/ActionRecommendations';
 
 // A simple Protected Route component wrapper
 const ProtectedRoute = ({ children }) => {
@@ -46,6 +47,14 @@ const App = () => {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/recommendations" 
+          element={
+            <ProtectedRoute>
+              <ActionRecommendations />
             </ProtectedRoute>
           } 
         />

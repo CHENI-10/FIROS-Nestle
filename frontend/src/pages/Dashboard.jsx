@@ -243,6 +243,42 @@ const Dashboard = () => {
                     </div>
                 </section>
 
+                <div style={{ padding: '0 20px', marginBottom: '25px', marginTop: '10px' }}>
+                    <button 
+                        onClick={() => navigate('/recommendations')}
+                        style={{
+                            width: '100%',
+                            background: 'linear-gradient(135deg, #C8A96E 0%, #3D1C02 100%)',
+                            color: 'white',
+                            padding: '16px 24px',
+                            border: 'none',
+                            borderRadius: '12px',
+                            fontSize: '18px',
+                            fontWeight: 'bold',
+                            letterSpacing: '0.5px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            boxShadow: '0 4px 15px rgba(61, 28, 2, 0.2)',
+                            transition: 'all 0.3s ease'
+                        }}
+                        onMouseOver={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-3px)';
+                            e.currentTarget.style.boxShadow = '0 8px 25px rgba(61, 28, 2, 0.3)';
+                        }}
+                        onMouseOut={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 4px 15px rgba(61, 28, 2, 0.2)';
+                        }}
+                    >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{fontSize:'20px'}}>📋</span> View Action Recommendations
+                        </span>
+                        <span style={{ fontSize: '24px' }}>→</span>
+                    </button>
+                </div>
+
                 <h2 className="section-title">Warehouse Zones Status</h2>
                 <section className="zones-row">
                     {(Array.isArray(zones) ? zones : []).map(zone => {

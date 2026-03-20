@@ -171,4 +171,87 @@ router.get('/expiry-timeline', async (req, res) => {
     }
 });
 
+// ROUTE 5: GET /recommendations
+// Returns intelligent dispatch recommendations based on FRS risk bands
+router.get('/recommendations', async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                b.batch_id,
+                b.zone_id,
+                b.expiry_date,
+                b.arrival_timestamp,
+                b.quantity,
+                p.product_name,
+                p.pack_size,
+                fs.frs_score,
+                fs.risk_band,
+                fs.days_in_warehouse,
+                fs.total_temp_breach_windows,
+                fs.total_humidity_breach_windows
+            FROM batches b
+            JOIN products p ON b.product_id = p.product_id
+            LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
+            WHERE b.status = 'in_storage'
+            ORDER BY fs.frs_score ASC
+        `;
+        
+        const result = await pool.query(query);
+        const batches = result.rows;
+
+        const high_risk = [];
+        const medium_risk = [];
+        const low_risk = [];
+
+        batches.forEach(batch => {
+            const risk_band = batch.risk_band;
+            let recommendationObj = { ...batch };
+
+            if (risk_band === 'high') {
+                recommendationObj.action = 'CLEARANCE';
+                recommendationObj.priority = 1;
+                recommendationObj.recommendation = 'Remove from dispatch queue. Recommend 20% trade discount to fastest distributor or bundle with healthy-FRS product. Manager must approve clearance.';
+                recommendationObj.badge_color = 'red';
+                recommendationObj.badge_text = 'HIGH RISK — CLEARANCE';
+                high_risk.push(recommendationObj);
+            } else if (risk_band === 'medium') {
+                recommendationObj.action = 'PRIORITY_DISPATCH';
+                recommendationObj.priority = 2;
+                recommendationObj.recommendation = 'Priority dispatch recommended. Move to top of dispatch queue. Assign to fastest available distributor. Manager must approve dispatch.';
+                recommendationObj.badge_color = 'amber';
+                recommendationObj.badge_text = 'MEDIUM RISK — PRIORITY DISPATCH';
+                medium_risk.push(recommendationObj);
+            } else if (risk_band === 'low') {
+                recommendationObj.action = 'NORMAL_DISPATCH';
+                recommendationObj.priority = 3;
+                recommendationObj.recommendation = 'Normal FEFO dispatch. Batch is in good condition. Include in standard dispatch queue ordered by expiry date.';
+                recommendationObj.badge_color = 'green';
+                recommendationObj.badge_text = 'LOW RISK — NORMAL DISPATCH';
+                low_risk.push(recommendationObj);
+            }
+        });
+
+        // Sort Medium Risk batches by expiry_date ASC first
+        medium_risk.sort((a, b) => new Date(a.expiry_date) - new Date(b.expiry_date));
+        
+        // Then Low Risk batches by expiry_date ASC
+        low_risk.sort((a, b) => new Date(a.expiry_date) - new Date(b.expiry_date));
+
+        // dispatch_queue: medium risk + low risk combined, medium first then low
+        const dispatch_queue = [...medium_risk, ...low_risk];
+
+        res.json({
+            high_risk,
+            medium_risk,
+            low_risk,
+            dispatch_queue,
+            total_in_queue: dispatch_queue.length,
+            total_clearance: high_risk.length
+        });
+    } catch (err) {
+        console.error('Error fetching recommendations:', err);
+        res.status(500).json({ error: 'Server error fetching recommendations' });
+    }
+});
+
 module.exports = router;
