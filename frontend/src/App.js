@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import BatchRegistration from './pages/BatchRegistration';
 import Dashboard from './pages/Dashboard';
 import ActionRecommendations from './pages/ActionRecommendations';
+import Alerts from './pages/Alerts';
 
 // A simple Protected Route component wrapper
 const ProtectedRoute = ({ children }) => {
@@ -55,6 +56,14 @@ const App = () => {
           element={
             <ProtectedRoute>
               <ActionRecommendations />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/alerts" 
+          element={
+            <ProtectedRoute>
+              <Alerts />
             </ProtectedRoute>
           } 
         />

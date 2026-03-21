@@ -171,8 +171,16 @@ const Dashboard = () => {
                         Last Updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : ''}
                     </div>
                     
-                    <div ref={dropdownRef} style={{position: 'relative'}}>
-                        <div className="alert-bell-wrapper" style={{cursor: 'pointer'}} onClick={() => setShowAlerts(!showAlerts)}>
+                    <div ref={dropdownRef} style={{position: 'relative', display: 'flex', alignItems: 'center', gap: '12px'}}>
+                        <span 
+                            onClick={() => navigate('/alerts')}
+                            style={{cursor: 'pointer', color: 'var(--amber)', fontWeight: 'bold', fontSize: '14px', textDecoration: 'none'}}
+                            onMouseOver={(e) => e.target.style.textDecoration = 'underline'}
+                            onMouseOut={(e) => e.target.style.textDecoration = 'none'}
+                        >
+                            View All Alerts →
+                        </span>
+                        <div className="alert-bell-wrapper" style={{cursor: 'pointer'}} onClick={() => navigate('/alerts')}>
                             <svg className="bell-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>

@@ -254,4 +254,89 @@ router.get('/recommendations', async (req, res) => {
     }
 });
 
+// ROUTE 6: GET /alerts/all
+// Returns all alerts with specific stats
+router.get('/alerts/all', async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                a.alert_id,
+                a.batch_id,
+                a.alert_type,
+                a.risk_band,
+                a.message,
+                a.is_read,
+                a.created_at,
+                p.product_name,
+                p.pack_size,
+                b.zone_id,
+                b.expiry_date,
+                b.status,
+                fs.frs_score
+            FROM alert_records a
+            JOIN batches b ON a.batch_id = b.batch_id
+            JOIN products p ON b.product_id = p.product_id
+            LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
+            ORDER BY a.created_at DESC
+        `;
+        const result = await pool.query(query);
+        const alerts = result.rows;
+
+        // Calculate summary counts
+        let total_alerts = alerts.length;
+        let unread_count = 0;
+        let high_risk_count = 0;
+        let medium_risk_count = 0;
+        let zone_c_count = 0;
+        let expiry_count = 0;
+
+        alerts.forEach(alert => {
+            if (alert.is_read === false) unread_count++;
+            if (alert.risk_band === 'high') high_risk_count++;
+            if (alert.risk_band === 'medium') medium_risk_count++;
+            if (alert.alert_type === 'zone_c_breach') zone_c_count++;
+            if (alert.alert_type === 'expiry_proximity') expiry_count++;
+        });
+
+        res.json({
+            alerts,
+            summary: {
+                total_alerts,
+                unread_count,
+                high_risk_count,
+                medium_risk_count,
+                zone_c_count,
+                expiry_count
+            }
+        });
+    } catch (err) {
+        console.error('Error fetching all alerts:', err);
+        res.status(500).json({ error: 'Server error fetching all alerts' });
+    }
+});
+
+// ROUTE 7: PATCH /alerts/:alert_id/read
+// Updates alert is_read = true
+router.patch('/alerts/:alert_id/read', async (req, res) => {
+    try {
+        const { alert_id } = req.params;
+        const query = `
+            UPDATE alert_records 
+            SET is_read = true 
+            WHERE alert_id = $1
+            RETURNING *
+        `;
+        const result = await pool.query(query, [alert_id]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Alert not found' });
+        }
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error marking alert as read:', err);
+        res.status(500).json({ error: 'Server error marking alert as read' });
+    }
+});
+
 module.exports = router;
