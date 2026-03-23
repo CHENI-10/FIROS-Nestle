@@ -6,41 +6,50 @@ import './Login.css';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
+
+    if (!email || !password) {
+      alert('Please enter your email and password.');
+      setIsLoading(false);
+      return;
+    }
 
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
-        email,
-        password
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
       });
-
-      const { token, role } = response.data;
+      const data = await response.json();
       
-      // Store in sessionStorage
-      sessionStorage.setItem('token', token);
-      sessionStorage.setItem('role', role);
-
-      // Redirect based on role
-      if (role === 'staff') {
-        navigate('/batch-registration');
-      } else if (['manager', 'admin', 'sales_rep'].includes(role)) {
+      if (!response.ok) {
+        // Wrong email or password
+        alert('Invalid email or password! Please try again.');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Login successful - now check role
+      const role = data.user?.role || data.role;
+      
+      if (role === 'manager' || role === 'admin') {
+        sessionStorage.setItem('token', data.token);
+        sessionStorage.setItem('role', role);
         navigate('/dashboard');
+      } else if (role === 'staff') {
+        alert('Access Restricted! Contact your Warehouse Manager for portal access.');
+      } else if (role === 'sales_rep') {
+        alert('Access Restricted! Contact your Warehouse Manager for portal access.');
       } else {
-        navigate('/dashboard'); // fallback
+        alert('Access denied. Invalid role.');
       }
     } catch (err) {
-      setError(
-        err.response && err.response.data && err.response.data.message
-          ? err.response.data.message
-          : 'Failed to login. Please check your credentials.'
-      );
+      alert('Server error. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -53,7 +62,7 @@ const Login = () => {
       <div className="login-split-container">
         
         {/* Left Side: Branding / Info */}
-        <div className="login-brand-panel">
+        <div className="login-brand-panel" style={{ position: 'relative' }}>
           <div className="brand-overlay-pattern"></div>
           <div className="brand-content">
             <div className="brand-header">
@@ -61,6 +70,16 @@ const Login = () => {
               <p className="brand-tagline">Good Food, Good Life</p>
             </div>
             
+            <style>
+              {`
+                .stat-card {
+                  background-color: #E8DDD0;
+                }
+                .stat-text {
+                  color: #8B5E3C !important;
+                }
+              `}
+            </style>
             <div className="stat-cards-container">
               <div className="stat-card">
                 <div className="stat-icon">📦</div>
@@ -79,6 +98,7 @@ const Login = () => {
                 <div className="stat-text">Nestlé Lanka Kurunegala</div>
               </div>
             </div>
+            
           </div>
         </div>
 
@@ -90,15 +110,6 @@ const Login = () => {
               <p className="logo-subtext">NESTLÉ LANKA FRESHNESS SYSTEM</p>
               <h2>Enterprise Portal</h2>
             </div>
-
-            {error && (
-              <div className="error-message">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20ZM11 15H13V17H11V15ZM11 7H13V13H11V7Z" fill="currentColor"/>
-                </svg>
-                <span>{error}</span>
-              </div>
-            )}
 
             <form onSubmit={handleLogin} className="login-form">
               <div className="input-group">
@@ -142,13 +153,34 @@ const Login = () => {
                   'Sign In to Dashboard'
                 )}
               </button>
+
+              <p style={{textAlign:'center', marginTop:'16px', fontSize:'13px'}}>
+                Forgot your password?{' '}
+                <span 
+                  style={{color:'#C8A96E', cursor:'pointer', textDecoration:'underline'}}
+                  onClick={() => alert('To reset your password:\n\n• Managers → Contact admin@nestle.lk\n• Admin account → Contact your technical team.\n\nYour password will be reset within 24 hours.')}
+                >
+                  Click here
+                </span>
+              </p>
             </form>
-            
-            <div className="login-footer">
-              <p>Freshness Intelligence & Risk Optimization System</p>
-            </div>
           </div>
         </div>
+      </div>
+
+      <div style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        fontSize: '11px',
+        color: 'rgba(255,255,255,0.7)',
+        padding: '10px 16px',
+        backgroundColor: 'rgba(42, 19, 1, 0.95)',
+        zIndex: 10
+      }}>
+        © 2026 FIROS — Freshness Intelligence & Risk Optimization System | Nestlé Lanka | All Rights Reserved
       </div>
     </div>
   );
