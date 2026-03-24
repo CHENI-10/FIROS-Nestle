@@ -79,7 +79,7 @@ router.get('/', async (req, res) => {
 router.get('/zones', async (req, res) => {
     try {
         const query = `
-            SELECT zone_id, zone_name, last_reading_at
+            SELECT zone_id, zone_name, last_reading_at AT TIME ZONE 'UTC' as last_reading_at
             FROM warehouse_zones
             ORDER BY zone_id
         `;
