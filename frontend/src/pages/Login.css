@@ -327,14 +327,14 @@ body, html {
 }
 
 .password-toggle-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   stroke-width: 2px;
 }
 
 .password-toggle-btn:hover {
   color: #000000;
-  transform: translateY(-50%) scale(1.15);
+  transform: translateY(-50%) scale(1.1);
 }
 
 /* Submit Button */

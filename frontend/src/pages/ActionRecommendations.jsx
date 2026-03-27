@@ -13,7 +13,22 @@ const ActionRecommendations = () => {
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [acknowledgedBatches, setAcknowledgedBatches] = useState(() => {
+        const saved = localStorage.getItem('firos_acknowledged_batches');
+        return saved ? JSON.parse(saved) : {};
+    });
     const navigate = useNavigate();
+
+    const handleAcknowledge = (batchId) => {
+        const now = new Date();
+        const timestamp = now.toLocaleString();
+        const updated = {
+            ...acknowledgedBatches,
+            [batchId]: timestamp
+        };
+        setAcknowledgedBatches(updated);
+        localStorage.setItem('firos_acknowledged_batches', JSON.stringify(updated));
+    };
 
     useEffect(() => {
         const fetchRecommendations = async () => {
@@ -118,8 +133,8 @@ const ActionRecommendations = () => {
                     <button onClick={toggleTheme} style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>
                         {isDark ? <span>☀️</span> : <span>🌙</span>}
                     </button>
-                    <button onClick={handleLogout} style={{ background: 'rgba(0,0,0,0.2)', border: 'none', color: 'white', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>🚪</span> Logout
+                    <button onClick={handleLogout} style={{ background: 'rgba(0,0,0,0.2)', border: 'none', color: 'white', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                        Logout
                     </button>
                 </div>
             </nav>
@@ -127,7 +142,7 @@ const ActionRecommendations = () => {
             <div style={{ maxWidth: '1200px', margin: '0 auto', paddingTop: '32px' }}>
                 {/* Back Link & Header */}
                 <div style={{ padding: '0 24px', marginBottom: '32px' }}>
-                    <button 
+                    <button
                         onClick={() => navigate('/dashboard')}
                         style={{ background: 'transparent', border: 'none', color: isDark ? '#60a5fa' : '#2563eb', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}
                     >
@@ -146,21 +161,21 @@ const ActionRecommendations = () => {
                 {/* Summary Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', padding: '0 24px 32px 24px' }}>
                     <div style={{ backgroundColor: cardBgColor, borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', textAlign: 'center' }}>
-                        <div style={{ color: '#3b82f6', marginBottom: '8px' }}><span style={{fontSize:'20px'}}>📋</span></div>
+                        <div style={{ color: '#3b82f6', marginBottom: '8px' }}><span style={{ fontSize: '20px' }}>📋</span></div>
                         <div style={{ fontSize: '48px', fontWeight: 'bold', color: '#3b82f6', margin: '8px 0' }}>{recommendations.total_in_queue}</div>
                         <div style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '14px' }}>Dispatch Queue</div>
                         <div style={{ fontSize: '12px', color: textMuted, marginTop: '4px' }}>Batches Ready To Dispatch</div>
                     </div>
 
                     <div style={{ backgroundColor: cardBgColor, borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', textAlign: 'center' }}>
-                        <div style={{ color: '#f59e0b', marginBottom: '8px' }}><span style={{fontSize:'20px'}}>🚚</span></div>
+                        <div style={{ color: '#f59e0b', marginBottom: '8px' }}><span style={{ fontSize: '20px' }}>🚚</span></div>
                         <div style={{ fontSize: '48px', fontWeight: 'bold', color: '#f59e0b', margin: '8px 0' }}>{recommendations.medium_risk.length || 0}</div>
                         <div style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '14px' }}>Priority Dispatch</div>
                         <div style={{ fontSize: '12px', color: textMuted, marginTop: '4px' }}>Need Urgent Dispatch</div>
                     </div>
 
                     <div style={{ backgroundColor: cardBgColor, borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', textAlign: 'center' }}>
-                        <div style={{ color: '#ef4444', marginBottom: '8px' }}><span style={{fontSize:'20px'}}>⚠️</span></div>
+                        <div style={{ color: '#ef4444', marginBottom: '8px' }}><span style={{ fontSize: '20px' }}>⚠️</span></div>
                         <div style={{ fontSize: '48px', fontWeight: 'bold', color: '#ef4444', margin: '8px 0' }}>{recommendations.total_clearance}</div>
                         <div style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '14px' }}>Clearance Required</div>
                         <div style={{ fontSize: '12px', color: textMuted, marginTop: '4px' }}>High Risk — Action Required</div>
@@ -170,7 +185,7 @@ const ActionRecommendations = () => {
                 {/* SECTION 1: HIGH RISK CLEARANCE */}
                 <div style={{ marginBottom: '48px' }}>
                     <div style={{ fontSize: '20px', fontWeight: 'bold', padding: '0 24px 16px 24px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444', borderBottom: '1px solid #ef4444', margin: '0 24px 24px 24px' }}>
-                        <span style={{fontSize:'20px'}}>⚠️</span> High Risk Batches — Clearance Required
+                        <span style={{ fontSize: '20px' }}>⚠️</span> High Risk Batches — Clearance Required
                     </div>
 
                     {recommendations.high_risk?.length === 0 ? (
@@ -207,14 +222,38 @@ const ActionRecommendations = () => {
                                         </div>
                                     </div>
 
-                                    <div style={{ fontStyle: 'italic', fontSize: '14px', backgroundColor: 'rgba(239, 68, 68, 0.15)', borderLeft: '3px solid #ef4444', color: '#fca5a5', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px' }}>
+                                    <div style={{
+                                        fontStyle: 'italic',
+                                        fontSize: '14px',
+                                        backgroundColor: acknowledgedBatches[batch.batch_id] ? 'rgba(148, 163, 184, 0.1)' : 'rgba(239, 68, 68, 0.15)',
+                                        borderLeft: `3px solid ${acknowledgedBatches[batch.batch_id] ? '#94a3b8' : '#ef4444'}`,
+                                        color: acknowledgedBatches[batch.batch_id] ? textMuted : (isDark ? '#fca5a5' : '#991b1b'), 
+                                        padding: '12px 16px',
+                                        borderRadius: '8px',
+                                        marginBottom: '16px'
+                                    }}>
                                         "{batch.recommendation}"
                                     </div>
 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: isDark ? '1px solid #334155' : '1px solid #f1f5f9', paddingTop: '16px' }}>
-                                        <div style={{ fontSize: '14px', color: textMuted, fontWeight: 'bold' }}>Approval coming in Sprint 2</div>
-                                        <button disabled style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'not-allowed', opacity: 0.5, backgroundColor: '#ef4444', color: 'white', fontWeight: 'bold' }}>
-                                            Approve Clearance
+                                        <div style={{ fontSize: '14px', color: textMuted, fontWeight: 'bold' }}>
+                                            {acknowledgedBatches[batch.batch_id] ? `Acknowledged at ${acknowledgedBatches[batch.batch_id]}` : ''}
+                                        </div>
+                                        <button 
+                                            onClick={() => handleAcknowledge(batch.batch_id)}
+                                            disabled={!!acknowledgedBatches[batch.batch_id]}
+                                            style={{ 
+                                                padding: '8px 16px', 
+                                                borderRadius: '8px', 
+                                                border: 'none', 
+                                                cursor: acknowledgedBatches[batch.batch_id] ? 'default' : 'pointer', 
+                                                opacity: acknowledgedBatches[batch.batch_id] ? 0.7 : 1, 
+                                                backgroundColor: '#ef4444', 
+                                                color: 'white', 
+                                                fontWeight: 'bold' 
+                                            }}
+                                        >
+                                            {acknowledgedBatches[batch.batch_id] ? 'Acknowledged' : 'Acknowledge Recommendation'}
                                         </button>
                                     </div>
                                 </div>
@@ -226,7 +265,7 @@ const ActionRecommendations = () => {
                 {/* SECTION 2: MEDIUM RISK PRIORITY DISPATCH */}
                 <div style={{ marginBottom: '48px' }}>
                     <div style={{ fontSize: '20px', fontWeight: 'bold', padding: '0 24px 16px 24px', display: 'flex', alignItems: 'center', gap: '8px', color: '#f59e0b', borderBottom: '1px solid #f59e0b', margin: '0 24px 24px 24px' }}>
-                        <span style={{fontSize:'20px'}}>🚚</span> Medium Risk — Priority Dispatch
+                        <span style={{ fontSize: '20px' }}>🚚</span> Medium Risk — Priority Dispatch
                     </div>
 
                     {recommendations.medium_risk?.length === 0 ? (
@@ -263,14 +302,38 @@ const ActionRecommendations = () => {
                                         </div>
                                     </div>
 
-                                    <div style={{ fontStyle: 'italic', fontSize: '14px', backgroundColor: 'rgba(245, 158, 11, 0.15)', borderLeft: '3px solid #f59e0b', color: '#fcd34d', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px' }}>
+                                    <div style={{
+                                        fontStyle: 'italic',
+                                        fontSize: '14px',
+                                        backgroundColor: acknowledgedBatches[batch.batch_id] ? 'rgba(148, 163, 184, 0.1)' : 'rgba(245, 158, 11, 0.15)',
+                                        borderLeft: `3px solid ${acknowledgedBatches[batch.batch_id] ? '#94a3b8' : '#f59e0b'}`,
+                                        color: acknowledgedBatches[batch.batch_id] ? textMuted : (isDark ? '#fcd34d' : '#854d0e'), 
+                                        padding: '12px 16px',
+                                        borderRadius: '8px',
+                                        marginBottom: '16px'
+                                    }}>
                                         "{batch.recommendation}"
                                     </div>
 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: isDark ? '1px solid #334155' : '1px solid #f1f5f9', paddingTop: '16px' }}>
-                                        <div style={{ fontSize: '14px', color: textMuted, fontWeight: 'bold' }}>Approval coming in Sprint 2</div>
-                                        <button disabled style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'not-allowed', opacity: 0.5, backgroundColor: '#22c55e', color: 'white', fontWeight: 'bold' }}>
-                                            Approve Dispatch
+                                        <div style={{ fontSize: '14px', color: textMuted, fontWeight: 'bold' }}>
+                                            {acknowledgedBatches[batch.batch_id] ? `Acknowledged at ${acknowledgedBatches[batch.batch_id]}` : ''}
+                                        </div>
+                                        <button 
+                                            onClick={() => handleAcknowledge(batch.batch_id)}
+                                            disabled={!!acknowledgedBatches[batch.batch_id]}
+                                            style={{ 
+                                                padding: '8px 16px', 
+                                                borderRadius: '8px', 
+                                                border: 'none', 
+                                                cursor: acknowledgedBatches[batch.batch_id] ? 'default' : 'pointer', 
+                                                opacity: acknowledgedBatches[batch.batch_id] ? 0.7 : 1, 
+                                                backgroundColor: '#22c55e', 
+                                                color: 'white', 
+                                                fontWeight: 'bold' 
+                                            }}
+                                        >
+                                            {acknowledgedBatches[batch.batch_id] ? 'Acknowledged' : 'Acknowledge Recommendation'}
                                         </button>
                                     </div>
                                 </div>
@@ -282,7 +345,7 @@ const ActionRecommendations = () => {
                 {/* SECTION 3: FULL DISPATCH QUEUE */}
                 <div style={{ marginBottom: '48px' }}>
                     <div style={{ fontSize: '20px', fontWeight: 'bold', padding: '0 24px 16px 24px', display: 'flex', alignItems: 'center', gap: '8px', color: '#3b82f6', borderBottom: '1px solid #3b82f6', margin: '0 24px 24px 24px' }}>
-                        <span style={{fontSize:'20px'}}>📋</span> Full Dispatch Queue — FEFO Order
+                        <span style={{ fontSize: '20px' }}>📋</span> Full Dispatch Queue — FEFO Order
                     </div>
 
                     {recommendations.dispatch_queue?.length === 0 ? (
@@ -296,7 +359,7 @@ const ActionRecommendations = () => {
                                 const leftBorderColor = isMedium ? '#f59e0b' : '#22c55e';
                                 const badgeBg = isMedium ? '#fffbeb' : '#f0fdf4';
                                 const badgeColor = isMedium ? '#f59e0b' : '#22c55e';
-                                
+
                                 return (
                                     <div key={batch.batch_id} style={{ display: 'flex', gap: '16px', margin: '0 24px 16px 24px', position: 'relative' }}>
                                         <div style={{ flex: 1, backgroundColor: cardBgColor, borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', borderLeft: `4px solid ${leftBorderColor}` }}>
@@ -308,7 +371,7 @@ const ActionRecommendations = () => {
                                                 </span>
                                                 <span style={{ padding: '4px 8px', borderRadius: '4px', backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#e0e7ff', color: isDark ? '#818cf8' : '#4338ca', fontSize: '12px', fontWeight: 'bold' }}>Zone {batch.zone_id}</span>
                                             </div>
-                                            
+
                                             <div style={{ display: 'flex', gap: '24px', fontSize: '14px', marginBottom: '16px' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                     <span style={{ color: textMuted, fontWeight: 'bold' }}>FRS:</span>
@@ -330,14 +393,38 @@ const ActionRecommendations = () => {
                                                 </div>
                                             </div>
 
-                                            <div style={{ fontStyle: 'italic', fontSize: '14px', backgroundColor: isMedium ? 'rgba(245, 158, 11, 0.15)' : 'rgba(34, 197, 94, 0.15)', borderLeft: `3px solid ${isMedium ? '#f59e0b' : '#22c55e'}`, color: isMedium ? '#fcd34d' : '#86efac', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px' }}>
+                                            <div style={{
+                                                fontStyle: 'italic',
+                                                fontSize: '14px',
+                                                backgroundColor: acknowledgedBatches[batch.batch_id] ? 'rgba(148, 163, 184, 0.1)' : (isMedium ? 'rgba(245, 158, 11, 0.15)' : 'rgba(34, 197, 94, 0.15)'),
+                                                borderLeft: `3px solid ${acknowledgedBatches[batch.batch_id] ? '#94a3b8' : (isMedium ? '#f59e0b' : '#22c55e')}`,
+                                                color: acknowledgedBatches[batch.batch_id] ? textMuted : (isDark ? (isMedium ? '#fcd34d' : '#86efac') : (isMedium ? '#854d0e' : '#166534')), 
+                                                padding: '12px 16px',
+                                                borderRadius: '8px',
+                                                marginBottom: '16px'
+                                            }}>
                                                 "{batch.recommendation}"
                                             </div>
 
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: isDark ? '1px solid #334155' : '1px solid #f1f5f9', paddingTop: '16px' }}>
-                                                <div style={{ fontSize: '14px', color: textMuted, fontWeight: 'bold' }}>Approval coming in Sprint 2</div>
-                                                <button disabled style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'not-allowed', opacity: 0.5, backgroundColor: '#22c55e', color: 'white', fontWeight: 'bold' }}>
-                                                    Approve Dispatch
+                                                <div style={{ fontSize: '14px', color: textMuted, fontWeight: 'bold' }}>
+                                                    {acknowledgedBatches[batch.batch_id] ? `Acknowledged at ${acknowledgedBatches[batch.batch_id]}` : ''}
+                                                </div>
+                                                <button 
+                                                    onClick={() => handleAcknowledge(batch.batch_id)}
+                                                    disabled={!!acknowledgedBatches[batch.batch_id]}
+                                                    style={{ 
+                                                        padding: '8px 16px', 
+                                                        borderRadius: '8px', 
+                                                        border: 'none', 
+                                                        cursor: acknowledgedBatches[batch.batch_id] ? 'default' : 'pointer', 
+                                                        opacity: acknowledgedBatches[batch.batch_id] ? 0.7 : 1, 
+                                                        backgroundColor: '#22c55e', 
+                                                        color: 'white', 
+                                                        fontWeight: 'bold' 
+                                                    }}
+                                                >
+                                                    {acknowledgedBatches[batch.batch_id] ? 'Acknowledged' : 'Acknowledge Recommendation'}
                                                 </button>
                                             </div>
                                         </div>

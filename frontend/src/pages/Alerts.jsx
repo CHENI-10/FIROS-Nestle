@@ -42,7 +42,7 @@ const Alerts = () => {
       });
       setAlerts(res.data.alerts || []);
       setSummary(res.data.summary || {
-        total_alerts: 0, unread_count: 0, high_risk_count: 0, 
+        total_alerts: 0, unread_count: 0, high_risk_count: 0,
         medium_risk_count: 0, zone_c_count: 0, expiry_count: 0
       });
       setLoading(false);
@@ -89,7 +89,7 @@ const Alerts = () => {
     let matchSearch = true;
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
-      matchSearch = 
+      matchSearch =
         (alert.product_name && alert.product_name.toLowerCase().includes(lowerSearch)) ||
         (alert.batch_id && String(alert.batch_id).toLowerCase().includes(lowerSearch));
     }
@@ -145,14 +145,14 @@ const Alerts = () => {
     const diffMs = new Date(expiryDate).getTime() - Date.now();
     return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   };
-  
+
   const getZoneLetter = (zoneId) => {
     const id = String(zoneId).toUpperCase();
     if (['A', 'B', 'C', 'D'].includes(id)) return id;
     const map = { '1': 'A', '2': 'B', '3': 'C', '4': 'D' };
     return map[id] || id;
   };
-  
+
   const getZoneStyles = (zoneId, isDark) => {
     const letter = getZoneLetter(zoneId);
     const colors = {
@@ -161,17 +161,17 @@ const Alerts = () => {
       'C': { bg: '#f59e0b', text: '#ffffff' }, // Orange
       'D': { bg: '#06b6d4', text: '#ffffff' }  // Cyan
     };
-    
+
     if (colors[letter]) {
-      return { 
-        backgroundColor: colors[letter].bg, 
-        color: colors[letter].text 
+      return {
+        backgroundColor: colors[letter].bg,
+        color: colors[letter].text
       };
     }
-    
-    return { 
-      backgroundColor: isDark ? '#334155' : '#f1f5f9', 
-      color: isDark ? '#f8f9fa' : '#1e293b' 
+
+    return {
+      backgroundColor: isDark ? '#334155' : '#f1f5f9',
+      color: isDark ? '#f8f9fa' : '#1e293b'
     };
   };
 
@@ -240,14 +240,14 @@ const Alerts = () => {
   };
 
   const logoutBtnStyle = {
-    backgroundColor: '#ef4444',
-    color: 'white',
+    background: 'rgba(0,0,0,0.2)',
     border: 'none',
-    padding: '6px 12px',
-    borderRadius: '4px',
+    color: 'white',
+    padding: '8px 16px',
+    borderRadius: '8px',
     cursor: 'pointer',
     fontWeight: 'bold',
-    fontSize: '14px'
+    transition: 'all 0.2s'
   };
 
   const backLinkContainerStyle = {
@@ -433,24 +433,24 @@ const Alerts = () => {
   return (
     <div style={pageContainerStyle}>
       <nav style={navbarStyle}>
-        <div style={{display: 'flex', alignItems: 'center'}}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
           <div style={logoStyle}>FIROS</div>
-          <div style={{display: 'flex', flexDirection: 'column'}}>
-            <span style={{fontWeight: 'bold', fontSize: '16px'}}>Nestlé Lanka</span>
-            <span style={{fontSize: '10px', opacity: 0.8}}>FRESHNESS SYSTEM</span>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontWeight: 'bold', fontSize: '16px' }}>Nestlé Lanka</span>
+            <span style={{ fontSize: '10px', opacity: 0.8 }}>FRESHNESS SYSTEM</span>
           </div>
         </div>
-        
+
         <div style={navCenterStyle}>
           🔔 Alert Centre
         </div>
-        
+
         <div style={navRightStyle}>
           <button style={navBtnStyle} onClick={toggleTheme}>
             {isDark ? '☀️' : '🌙'}
           </button>
           <button style={logoutBtnStyle} onClick={handleLogout}>
-            🚪 Logout
+            Logout
           </button>
         </div>
       </nav>
@@ -465,26 +465,26 @@ const Alerts = () => {
         {/* SUMMARY CARDS */}
         <div style={summaryGridStyle}>
           <div style={summaryCardStyle}>
-            <div style={{...summaryLabelStyle, color: 'grey'}}>Total Alerts</div>
+            <div style={{ ...summaryLabelStyle, color: 'grey' }}>Total Alerts</div>
             <div style={summaryNumberStyle}>{summary.total_alerts}</div>
             <div style={summarySubStyle}>All Time</div>
           </div>
-          
+
           <div style={summaryCardStyle}>
-            <div style={{...summaryLabelStyle, color: '#ef4444'}}>Unread Alerts</div>
-            <div style={{...summaryNumberStyle, color: '#ef4444'}}>{summary.unread_count}</div>
+            <div style={{ ...summaryLabelStyle, color: '#ef4444' }}>Unread Alerts</div>
+            <div style={{ ...summaryNumberStyle, color: '#ef4444' }}>{summary.unread_count}</div>
             <div style={summarySubStyle}>Need Attention</div>
           </div>
 
           <div style={summaryCardStyle}>
-            <div style={{...summaryLabelStyle, color: '#f97316'}}>Zone C Breaches</div>
-            <div style={{...summaryNumberStyle, color: '#f97316'}}>{summary.zone_c_count}</div>
+            <div style={{ ...summaryLabelStyle, color: '#f97316' }}>Zone C Breaches</div>
+            <div style={{ ...summaryNumberStyle, color: '#f97316' }}>{summary.zone_c_count}</div>
             <div style={summarySubStyle}>Infant Product Alerts</div>
           </div>
 
           <div style={summaryCardStyle}>
-            <div style={{...summaryLabelStyle, color: '#f97316'}}>Expiry Proximity</div>
-            <div style={{...summaryNumberStyle, color: '#f97316'}}>{summary.expiry_count}</div>
+            <div style={{ ...summaryLabelStyle, color: '#f97316' }}>Expiry Proximity</div>
+            <div style={{ ...summaryNumberStyle, color: '#f97316' }}>{summary.expiry_count}</div>
             <div style={summarySubStyle}>Expiring Within 60 Days</div>
           </div>
         </div>
@@ -492,7 +492,7 @@ const Alerts = () => {
         {/* FILTER BAR */}
         <div style={filterBarStyle}>
           {['All', 'Unread', 'High Risk', 'Medium Risk', 'Zone C Breach', 'Expiry'].map(f => (
-            <button 
+            <button
               key={f}
               onClick={() => setFilter(f)}
               style={filterBtnStyle(filter === f)}
@@ -500,14 +500,14 @@ const Alerts = () => {
               {f}
             </button>
           ))}
-          <div style={{display: 'flex', alignItems: 'center', marginLeft: 'auto', position: 'relative'}}>
-            <span style={{position: 'absolute', left: '10px', fontSize: '14px'}}>🔍</span>
-            <input 
-              type="text" 
-              placeholder="Search product or batch..." 
+          <div style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto', position: 'relative' }}>
+            <span style={{ position: 'absolute', left: '10px', fontSize: '14px' }}>🔍</span>
+            <input
+              type="text"
+              placeholder="Search product or batch..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{...searchBoxStyle, paddingLeft: '32px'}}
+              style={{ ...searchBoxStyle, paddingLeft: '32px' }}
             />
           </div>
         </div>
@@ -515,9 +515,9 @@ const Alerts = () => {
         {/* ALERTS LIST */}
         <div style={listContainerStyle}>
           {filteredAlerts.length === 0 ? (
-            <div style={{...summaryCardStyle, padding: '40px', color: 'grey'}}>
-              <div style={{fontSize: '32px', marginBottom: '10px'}}>✅</div>
-              <p style={{fontSize: '16px', fontWeight: 'bold', margin: '0'}}>No alerts found for the selected filter.</p>
+            <div style={{ ...summaryCardStyle, padding: '40px', color: 'grey' }}>
+              <div style={{ fontSize: '32px', marginBottom: '10px' }}>✅</div>
+              <p style={{ fontSize: '16px', fontWeight: 'bold', margin: '0' }}>No alerts found for the selected filter.</p>
             </div>
           ) : (
             filteredAlerts.map(alert => {
@@ -529,7 +529,7 @@ const Alerts = () => {
               return (
                 <div key={alert.alert_id} style={alertCardStyle(config.color)}>
                   <div style={cardTopStyle}>
-                    <div style={{display: 'flex', alignItems: 'center'}}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
                       <span style={alertTypeBadgeStyle(bdg.bg, bdg.color)}>
                         {config.icon} {label}
                       </span>
@@ -546,7 +546,7 @@ const Alerts = () => {
                   <div style={midRowStyle}>
                     <p style={productNameStyle}>{alert.product_name}</p>
                     <span style={infoBadgeStyle()}>Batch: {alert.batch_id}</span>
-                    <span style={{...infoBadgeStyle(), ...getZoneStyles(alert.zone_id, isDark)}}>
+                    <span style={{ ...infoBadgeStyle(), ...getZoneStyles(alert.zone_id, isDark) }}>
                       Zone {getZoneLetter(alert.zone_id)}
                     </span>
                     {alert.frs_score !== null && (
@@ -557,7 +557,7 @@ const Alerts = () => {
                   <div style={msgBoxStyle(getAlertBgColor(alert.alert_type, alert.risk_band), config.color)}>
                     {alert.message}
                   </div>
-                  
+
                   <div style={bottomRowStyle}>
                     <div>
                       <strong>Expiry Date:</strong> {alert.expiry_date ? new Date(alert.expiry_date).toLocaleDateString() : 'N/A'}

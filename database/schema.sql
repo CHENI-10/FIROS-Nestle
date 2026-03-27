@@ -388,14 +388,14 @@ INSERT INTO products
      temp_sensitivity_weight, humidity_sensitivity_weight,
      max_safe_temp, max_safe_humidity, zone_id, ean13_barcode)
 VALUES
-    ('Milo',                            '400g tin',   18, 'medium', 'high',   -2, -3, 30.0, 70.0, 'A', '4790361128906'),
+    ('Milo',                            '400g tin',   18, 'medium', 'high',   -2, -3, 30.0, 70.0, 'A', '4792024021777'),
     ('Milo',                            '200g pouch', 18, 'medium', 'high',   -2, -3, 30.0, 70.0, 'A', '4790361128913'),
     ('Nestomalt',                       '400g tin',   18, 'medium', 'high',   -2, -3, 30.0, 70.0, 'A', '4790361128920'),
     ('Nestomalt',                       '200g pouch', 18, 'medium', 'high',   -2, -3, 30.0, 70.0, 'A', '4790361128937'),
     ('Nescafe Classic',                 '100g jar',   24, 'medium', 'high',   -2, -3, 28.0, 65.0, 'A', '4790361128944'),
     ('Nescafe Classic',                 '50g jar',    24, 'medium', 'high',   -2, -3, 28.0, 65.0, 'A', '4790361128951'),
     ('Nescafe Gold Blend',              '100g jar',   24, 'medium', 'high',   -2, -3, 28.0, 65.0, 'A', '4790361128968'),
-    ('Maggi Chicken Noodles',           '73g pack',   12, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361128975'),
+    ('Maggi Chicken Noodles',           '73g pack',   12, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4792024020190'),
     ('Maggi Curry Noodles',             '77g pack',   12, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361128982'),
     ('Maggi Devilled Noodles',          '77g pack',   12, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361128999'),
     ('Maggi Papare Kottu Noodles',      '77g pack',   12, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361129001'),
@@ -416,7 +416,7 @@ VALUES
     ('Nespray Full Cream Milk Powder',  '400g pack',  24, 'high',   'high',   -3, -3, 27.0, 60.0, 'B', '4790361129070'),
     ('Nespray Full Cream Milk Powder',  '800g pack',  24, 'high',   'high',   -3, -3, 27.0, 60.0, 'B', '4790361129087'),
     ('Nespray Instant Full Cream',      '180g pack',  24, 'high',   'high',   -3, -3, 27.0, 60.0, 'B', '4790361129094'),
-    ('Milkmaid Condensed Milk',         '400g can',   24, 'medium', 'low',    -2, -1, 32.0, 80.0, 'B', '4790361129100'),
+    ('Milkmaid Condensed Milk',         '400g can',   24, 'medium', 'low',    -2, -1, 32.0, 80.0, 'B', '4792024011792'),
     ('Milkmaid Condensed Milk',         '200g can',   24, 'medium', 'low',    -2, -1, 32.0, 80.0, 'B', '4790361129117');
 
 -- Zone C — 4 SKUs (strictest — any breach fires immediate alert)
@@ -438,7 +438,7 @@ INSERT INTO products
      temp_sensitivity_weight, humidity_sensitivity_weight,
      max_safe_temp, max_safe_humidity, zone_id, ean13_barcode)
 VALUES
-    ('Nescafe Iced Coffee RTD', '180ml bottle', 6, 'high', 'none', -3, 0, 10.0, NULL, 'D', '4790361129162');
+    ('Nescafe Iced Coffee RTD', '180ml bottle', 6, 'high', 'none', -3, 0, 10.0, NULL, 'D', '4792024014601');
 
 
 -- ============================================================
