@@ -388,23 +388,23 @@ INSERT INTO products
      temp_sensitivity_weight, humidity_sensitivity_weight,
      max_safe_temp, max_safe_humidity, zone_id, ean13_barcode)
 VALUES
-    ('Milo',                            '400g tin',   18, 'medium', 'high',   -2, -3, 30.0, 70.0, 'A', '4800361128906'),
-    ('Milo',                            '200g pouch', 18, 'medium', 'high',   -2, -3, 30.0, 70.0, 'A', '4800361128913'),
-    ('Nestomalt',                       '400g tin',   18, 'medium', 'high',   -2, -3, 30.0, 70.0, 'A', '4800361128920'),
-    ('Nestomalt',                       '200g pouch', 18, 'medium', 'high',   -2, -3, 30.0, 70.0, 'A', '4800361128937'),
-    ('Nescafe Classic',                 '100g jar',   24, 'medium', 'high',   -2, -3, 28.0, 65.0, 'A', '4800361128944'),
-    ('Nescafe Classic',                 '50g jar',    24, 'medium', 'high',   -2, -3, 28.0, 65.0, 'A', '4800361128951'),
-    ('Nescafe Gold Blend',              '100g jar',   24, 'medium', 'high',   -2, -3, 28.0, 65.0, 'A', '4800361128968'),
-    ('Maggi Chicken Noodles',           '73g pack',   12, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4800361128975'),
-    ('Maggi Curry Noodles',             '77g pack',   12, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4800361128982'),
-    ('Maggi Devilled Noodles',          '77g pack',   12, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4800361128999'),
-    ('Maggi Papare Kottu Noodles',      '77g pack',   12, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4800361129001'),
-    ('Maggi Coconut Milk Powder',       '150g pack',  18, 'low',    'high',   -1, -3, 32.0, 65.0, 'A', '4800361129018'),
-    ('Maggi Coconut Milk Powder',       '300g pack',  18, 'low',    'high',   -1, -3, 32.0, 65.0, 'A', '4800361129025'),
-    ('Maggi Chicken Seasoning Cubes',   '80g box',    24, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4800361129032'),
-    ('Maggi Vegetable Seasoning Cubes', '80g box',    24, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4800361129049'),
-    ('Maggi Seasoning Soup Cubes',      '80g box',    24, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4800361129056'),
-    ('Maggi Rasamusu Seasoning',        '85g pack',   24, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4800361129063');
+    ('Milo',                            '400g tin',   18, 'medium', 'high',   -2, -3, 30.0, 70.0, 'A', '4790361128906'),
+    ('Milo',                            '200g pouch', 18, 'medium', 'high',   -2, -3, 30.0, 70.0, 'A', '4790361128913'),
+    ('Nestomalt',                       '400g tin',   18, 'medium', 'high',   -2, -3, 30.0, 70.0, 'A', '4790361128920'),
+    ('Nestomalt',                       '200g pouch', 18, 'medium', 'high',   -2, -3, 30.0, 70.0, 'A', '4790361128937'),
+    ('Nescafe Classic',                 '100g jar',   24, 'medium', 'high',   -2, -3, 28.0, 65.0, 'A', '4790361128944'),
+    ('Nescafe Classic',                 '50g jar',    24, 'medium', 'high',   -2, -3, 28.0, 65.0, 'A', '4790361128951'),
+    ('Nescafe Gold Blend',              '100g jar',   24, 'medium', 'high',   -2, -3, 28.0, 65.0, 'A', '4790361128968'),
+    ('Maggi Chicken Noodles',           '73g pack',   12, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361128975'),
+    ('Maggi Curry Noodles',             '77g pack',   12, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361128982'),
+    ('Maggi Devilled Noodles',          '77g pack',   12, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361128999'),
+    ('Maggi Papare Kottu Noodles',      '77g pack',   12, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361129001'),
+    ('Maggi Coconut Milk Powder',       '150g pack',  18, 'low',    'high',   -1, -3, 32.0, 65.0, 'A', '4790361129018'),
+    ('Maggi Coconut Milk Powder',       '300g pack',  18, 'low',    'high',   -1, -3, 32.0, 65.0, 'A', '4790361129025'),
+    ('Maggi Chicken Seasoning Cubes',   '80g box',    24, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361129032'),
+    ('Maggi Vegetable Seasoning Cubes', '80g box',    24, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361129049'),
+    ('Maggi Seasoning Soup Cubes',      '80g box',    24, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361129056'),
+    ('Maggi Rasamusu Seasoning',        '85g pack',   24, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361129063');
 
 -- Zone B — 5 SKUs
 INSERT INTO products
@@ -413,11 +413,11 @@ INSERT INTO products
      temp_sensitivity_weight, humidity_sensitivity_weight,
      max_safe_temp, max_safe_humidity, zone_id, ean13_barcode)
 VALUES
-    ('Nespray Full Cream Milk Powder',  '400g pack',  24, 'high',   'high',   -3, -3, 27.0, 60.0, 'B', '4800361129070'),
-    ('Nespray Full Cream Milk Powder',  '800g pack',  24, 'high',   'high',   -3, -3, 27.0, 60.0, 'B', '4800361129087'),
-    ('Nespray Instant Full Cream',      '180g pack',  24, 'high',   'high',   -3, -3, 27.0, 60.0, 'B', '4800361129094'),
-    ('Milkmaid Condensed Milk',         '400g can',   24, 'medium', 'low',    -2, -1, 32.0, 80.0, 'B', '4800361129100'),
-    ('Milkmaid Condensed Milk',         '200g can',   24, 'medium', 'low',    -2, -1, 32.0, 80.0, 'B', '4800361129117');
+    ('Nespray Full Cream Milk Powder',  '400g pack',  24, 'high',   'high',   -3, -3, 27.0, 60.0, 'B', '4790361129070'),
+    ('Nespray Full Cream Milk Powder',  '800g pack',  24, 'high',   'high',   -3, -3, 27.0, 60.0, 'B', '4790361129087'),
+    ('Nespray Instant Full Cream',      '180g pack',  24, 'high',   'high',   -3, -3, 27.0, 60.0, 'B', '4790361129094'),
+    ('Milkmaid Condensed Milk',         '400g can',   24, 'medium', 'low',    -2, -1, 32.0, 80.0, 'B', '4790361129100'),
+    ('Milkmaid Condensed Milk',         '200g can',   24, 'medium', 'low',    -2, -1, 32.0, 80.0, 'B', '4790361129117');
 
 -- Zone C — 4 SKUs (strictest — any breach fires immediate alert)
 INSERT INTO products
@@ -426,10 +426,10 @@ INSERT INTO products
      temp_sensitivity_weight, humidity_sensitivity_weight,
      max_safe_temp, max_safe_humidity, zone_id, ean13_barcode)
 VALUES
-    ('Cerelac Wheat',                    '400g tin',  18, 'high', 'high', -3, -3, 25.0, 55.0, 'C', '4800361129124'),
-    ('Cerelac Multi-Grain',              '400g tin',  18, 'high', 'high', -3, -3, 25.0, 55.0, 'C', '4800361129131'),
-    ('Nangrow Growing Up Milk 1-3yrs',   '400g tin',  24, 'high', 'high', -3, -3, 25.0, 55.0, 'C', '4800361129148'),
-    ('Lactogrow Growing Up Milk 3-5yrs', '400g tin',  24, 'high', 'high', -3, -3, 25.0, 55.0, 'C', '4800361129155');
+    ('Cerelac Wheat',                    '400g tin',  18, 'high', 'high', -3, -3, 25.0, 55.0, 'C', '4790361129124'),
+    ('Cerelac Multi-Grain',              '400g tin',  18, 'high', 'high', -3, -3, 25.0, 55.0, 'C', '4790361129131'),
+    ('Nangrow Growing Up Milk 1-3yrs',   '400g tin',  24, 'high', 'high', -3, -3, 25.0, 55.0, 'C', '4790361129148'),
+    ('Lactogrow Growing Up Milk 3-5yrs', '400g tin',  24, 'high', 'high', -3, -3, 25.0, 55.0, 'C', '4790361129155');
 
 -- Zone D — 1 SKU (humidity_weight=0, SA=temp_weight only=-3)
 INSERT INTO products
@@ -438,7 +438,7 @@ INSERT INTO products
      temp_sensitivity_weight, humidity_sensitivity_weight,
      max_safe_temp, max_safe_humidity, zone_id, ean13_barcode)
 VALUES
-    ('Nescafe Iced Coffee RTD', '180ml bottle', 6, 'high', 'none', -3, 0, 10.0, NULL, 'D', '4800361129162');
+    ('Nescafe Iced Coffee RTD', '180ml bottle', 6, 'high', 'none', -3, 0, 10.0, NULL, 'D', '4790361129162');
 
 
 -- ============================================================

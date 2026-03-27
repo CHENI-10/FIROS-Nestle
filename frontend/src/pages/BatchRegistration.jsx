@@ -1,13 +1,31 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import BarcodeScanner from '../components/BarcodeScanner';
 import './BatchRegistration.css';
 
 const BatchRegistration = () => {
+  const navigate = useNavigate();
   const [showScanner, setShowScanner] = useState(false);
   const [isLoadingProduct, setIsLoadingProduct] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+
+  // Auth guard + role detection
+  const token = sessionStorage.getItem('token');
+  const role = sessionStorage.getItem('role');
+  const userName = sessionStorage.getItem('name') || sessionStorage.getItem('email') || '';
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/login');
+    }
+  }, [token, navigate]);
+
+  const handleLogout = () => {
+    sessionStorage.clear();
+    navigate('/login');
+  };
   
   // Form State
   const [formData, setFormData] = useState({
@@ -57,14 +75,14 @@ const BatchRegistration = () => {
     
     try {
       const token = sessionStorage.getItem('token');
-      const response = await axios.get(`http://localhost:5000/api/products/barcode/${barcode}`, {
+      const response = await axios.get(`http://localhost:5000/api/batches/products/barcode/${barcode}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       setFormData(prev => ({
         ...prev,
-        productName: response.data.name,
-        packSize: response.data.packSize
+        productName: response.data.product_name,
+        packSize: response.data.pack_size
       }));
     } catch (error) {
       console.error('Error fetching product:', error);
@@ -101,11 +119,11 @@ const BatchRegistration = () => {
       const response = await axios.post(
         'http://localhost:5000/api/batches',
         {
-          ean13: formData.ean13,
-          batchId: formData.batchId,
+          ean13_barcode: formData.ean13,
+          batch_id: formData.batchId,
           quantity: Number(formData.quantity),
-          mfgDate: formData.mfgDate,
-          zone: formData.zone
+          manufacturing_date: formData.mfgDate,
+          zone_id: formData.zone
         },
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -113,12 +131,16 @@ const BatchRegistration = () => {
       );
 
       // On Success
-      const { batchId, expiryDate } = response.data;
+      const { batch_id: batchId, expiry_date: expiryDate } = response.data;
       const formattedExpiry = new Date(expiryDate).toLocaleDateString();
+      
+      const isNew = response.status === 201;
       
       setMessage({
         type: 'success',
-        text: `Batch ${batchId} registered successfully! Expiry Date: ${formattedExpiry}`
+        text: isNew 
+          ? `Batch ${batchId} registered successfully! Expiry Date: ${formattedExpiry}`
+          : `Batch ${batchId} already exists. Loaded existing record. Expiry Date: ${formattedExpiry}`
       });
 
       // Reset form but optionally keep zone/date for faster next entry
@@ -145,6 +167,70 @@ const BatchRegistration = () => {
 
   return (
     <div className="registration-container">
+
+      {/* Navbar — staff only */}
+      {role === 'staff' && (
+        <nav style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 40px',
+          backgroundColor: '#1a0a00',
+          borderBottom: '2px solid #C8A96E',
+          marginBottom: '0'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '22px', fontWeight: '800', color: '#C8A96E', letterSpacing: '2px' }}>FIROS</span>
+            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '18px' }}>|</span>
+            <span style={{ fontSize: '15px', fontWeight: '600', color: '#ffffff' }}>Batch Registration</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <button
+              onClick={handleLogout}
+              style={{
+                padding: '7px 16px',
+                marginLeft: '32px',
+                backgroundColor: 'transparent',
+                border: '1px solid #C8A96E',
+                borderRadius: '6px',
+                color: '#C8A96E',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => { e.target.style.backgroundColor = '#C8A96E'; e.target.style.color = '#1a0a00'; }}
+              onMouseLeave={e => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#C8A96E'; }}
+            >
+              Logout
+            </button>
+          </div>
+        </nav>
+      )}
+
+      {/* Back link — manager / admin */}
+      {(role === 'manager' || role === 'admin') && (
+        <div style={{ padding: '14px 24px', borderBottom: '1px solid rgba(200,169,110,0.2)' }}>
+          <button
+            onClick={() => navigate('/dashboard')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#C8A96E',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: 0
+            }}
+          >
+            ← Back to Dashboard
+          </button>
+        </div>
+      )}
+
       <div className="registration-header">
         <h1>Batch Registration</h1>
         <p>Scan or enter product details to register a new batch.</p>

@@ -308,6 +308,35 @@ body, html {
   transform: scale(1.1);
 }
 
+/* Password Toggle Eye Button */
+.password-toggle-btn {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1a1a1a;
+  transition: color 0.2s ease, transform 0.2s ease;
+  z-index: 2;
+}
+
+.password-toggle-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2px;
+}
+
+.password-toggle-btn:hover {
+  color: #000000;
+  transform: translateY(-50%) scale(1.15);
+}
+
 /* Submit Button */
 .submit-btn {
   margin-top: 1rem;

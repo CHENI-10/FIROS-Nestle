@@ -30,15 +30,15 @@ const registerBatch = async (req, res) => {
         const mfgDate = new Date(manufacturing_date);
         const expiryDate = new Date(mfgDate.setMonth(mfgDate.getMonth() + product.shelf_life_months));
 
-        // Insert into batches table
+        // Insert into batches table using product_id (FK), not ean13_barcode
         const insertBatchQuery = `
-            INSERT INTO batches (batch_id, ean13_barcode, quantity, manufacturing_date, expiry_date, zone_id, status)
+            INSERT INTO batches (batch_id, product_id, quantity, manufacturing_date, expiry_date, zone_id, status)
             VALUES ($1, $2, $3, $4, $5, $6, 'in_storage')
             RETURNING *
         `;
         const { rows: insertedBatches } = await db.query(insertBatchQuery, [
             batch_id,
-            ean13_barcode,
+            product.product_id,
             quantity,
             manufacturing_date,
             expiryDate,
@@ -53,10 +53,13 @@ const registerBatch = async (req, res) => {
         `;
         await db.query(insertHistoryQuery, [batch_id, zone_id]);
 
-        // Insert initial freshness_scores row
+        // Insert initial freshness_scores row — all NOT NULL columns required by schema
         const insertFreshnessQuery = `
-            INSERT INTO freshness_scores (batch_id, frs_score, risk_band, last_updated)
-            VALUES ($1, 100, 'low', NOW())
+            INSERT INTO freshness_scores
+                (batch_id, frs_score, risk_band, slr_percent_raw,
+                 days_in_warehouse, total_temp_breach_windows,
+                 total_humidity_breach_windows, last_calculated_at)
+            VALUES ($1, 100, 'low', 100.000, 0, 0, 0, NOW())
         `;
         await db.query(insertFreshnessQuery, [batch_id]);
 

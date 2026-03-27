@@ -97,10 +97,11 @@ const Alerts = () => {
   });
 
   const getAlertConfig = (type, riskBand) => {
-    if (type === 'zone_c_breach') return { icon: '🍼', color: '#ef4444' };
-    if (type === 'expiry_proximity') return { icon: '⏰', color: '#f97316' };
-    if (riskBand === 'high') return { icon: '🔴', color: '#ef4444' };
-    if (riskBand === 'medium') return { icon: '🟡', color: '#f59e0b' };
+    if (type === 'zone_c_breach') return { icon: '🍼', color: '#f97316' }; // Orange
+    if (type === 'expiry_proximity') return { icon: '⏰', color: '#f97316' }; // Orange
+    if (riskBand === 'high') return { icon: '🔴', color: '#ef4444' }; // Red
+    if (riskBand === 'medium') return { icon: '🟡', color: '#f59e0b' }; // Yellow/Amber
+    if (riskBand === 'low') return { icon: '🟢', color: '#22c55e' }; // Green
     return { icon: '🔔', color: '#6b7280' };
   };
 
@@ -109,19 +110,23 @@ const Alerts = () => {
     if (type === 'expiry_proximity') return 'EXPIRY ALERT';
     if (riskBand === 'high') return 'HIGH RISK';
     if (riskBand === 'medium') return 'MEDIUM RISK';
+    if (riskBand === 'low') return 'LOW RISK';
     return 'ALERT';
   };
 
   const getAlertBgColor = (type, riskBand) => {
-    if (type === 'zone_c_breach' || riskBand === 'high') return 'rgba(239,68,68,0.1)';
-    if (riskBand === 'medium') return 'rgba(245,158,11,0.1)';
-    if (type === 'expiry_proximity') return 'rgba(249,115,22,0.1)';
-    return 'rgba(107,114,128,0.1)';
+    if (riskBand === 'high') return 'rgba(239, 68, 68, 0.1)'; // Subtle Red
+    if (riskBand === 'medium') return 'rgba(245, 158, 11, 0.1)'; // Subtle Amber
+    if (riskBand === 'low') return 'rgba(34, 197, 94, 0.1)'; // Subtle Green
+    if (type === 'expiry_proximity') return 'rgba(249, 115, 22, 0.1)'; // Subtle Orange
+    return 'rgba(107, 114, 128, 0.1)';
   };
 
   const getBadgeColors = (type, riskBand) => {
-    if (type === 'zone_c_breach' || riskBand === 'high') return { bg: '#fef2f2', color: '#ef4444' };
-    if (riskBand === 'medium') return { bg: '#fffbeb', color: '#f59e0b' };
+    if (type === 'zone_c_breach') return { bg: '#fff7ed', color: '#f97316' }; // Orange
+    if (riskBand === 'high') return { bg: '#fef2f2', color: '#ef4444' }; // Red
+    if (riskBand === 'medium') return { bg: '#fffbeb', color: '#f59e0b' }; // Amber
+    if (riskBand === 'low') return { bg: '#f0fdf4', color: '#22c55e' }; // Green
     if (type === 'expiry_proximity') return { bg: '#fff7ed', color: '#f97316' };
     return { bg: '#f3f4f6', color: '#6b7280' };
   };
@@ -139,6 +144,35 @@ const Alerts = () => {
     if (!expiryDate) return null;
     const diffMs = new Date(expiryDate).getTime() - Date.now();
     return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  };
+  
+  const getZoneLetter = (zoneId) => {
+    const id = String(zoneId).toUpperCase();
+    if (['A', 'B', 'C', 'D'].includes(id)) return id;
+    const map = { '1': 'A', '2': 'B', '3': 'C', '4': 'D' };
+    return map[id] || id;
+  };
+  
+  const getZoneStyles = (zoneId, isDark) => {
+    const letter = getZoneLetter(zoneId);
+    const colors = {
+      'A': { bg: '#3b82f6', text: '#ffffff' }, // Blue
+      'B': { bg: '#8b5cf6', text: '#ffffff' }, // Purple
+      'C': { bg: '#f59e0b', text: '#ffffff' }, // Orange
+      'D': { bg: '#06b6d4', text: '#ffffff' }  // Cyan
+    };
+    
+    if (colors[letter]) {
+      return { 
+        backgroundColor: colors[letter].bg, 
+        color: colors[letter].text 
+      };
+    }
+    
+    return { 
+      backgroundColor: isDark ? '#334155' : '#f1f5f9', 
+      color: isDark ? '#f8f9fa' : '#1e293b' 
+    };
   };
 
   const isDark = theme === 'dark';
@@ -449,8 +483,8 @@ const Alerts = () => {
           </div>
 
           <div style={summaryCardStyle}>
-            <div style={{...summaryLabelStyle, color: '#f59e0b'}}>Expiry Proximity</div>
-            <div style={{...summaryNumberStyle, color: '#f59e0b'}}>{summary.expiry_count}</div>
+            <div style={{...summaryLabelStyle, color: '#f97316'}}>Expiry Proximity</div>
+            <div style={{...summaryNumberStyle, color: '#f97316'}}>{summary.expiry_count}</div>
             <div style={summarySubStyle}>Expiring Within 60 Days</div>
           </div>
         </div>
@@ -491,10 +525,6 @@ const Alerts = () => {
               const label = getAlertLabel(alert.alert_type, alert.risk_band);
               const bdg = getBadgeColors(alert.alert_type, alert.risk_band);
               const daysUntilExpiry = getDaysUntilExpiry(alert.expiry_date);
-              
-              let zoneColor = null;
-              if (alert.zone_id === 'C') zoneColor = isDark ? '#991b1b' : '#fecaca';
-              if (alert.zone_id === 'A') zoneColor = isDark ? '#1e3a8a' : '#bfdbfe';
 
               return (
                 <div key={alert.alert_id} style={alertCardStyle(config.color)}>
@@ -516,7 +546,9 @@ const Alerts = () => {
                   <div style={midRowStyle}>
                     <p style={productNameStyle}>{alert.product_name}</p>
                     <span style={infoBadgeStyle()}>Batch: {alert.batch_id}</span>
-                    <span style={infoBadgeStyle(zoneColor)}>Zone {alert.zone_id}</span>
+                    <span style={{...infoBadgeStyle(), ...getZoneStyles(alert.zone_id, isDark)}}>
+                      Zone {getZoneLetter(alert.zone_id)}
+                    </span>
                     {alert.frs_score !== null && (
                       <span style={infoBadgeStyle()}>FRS: {alert.frs_score}%</span>
                     )}
