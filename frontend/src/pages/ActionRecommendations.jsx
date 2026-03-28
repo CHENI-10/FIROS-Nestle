@@ -90,22 +90,7 @@ const ActionRecommendations = () => {
         navigate('/login');
     };
 
-    const formatDays = (days) => {
-        if (days === 0) return 'Today';
-        if (days === 1) return 'Tomorrow';
-        if (days === -1) return 'Yesterday';
-        if (days > 1) return `In ${days} days`;
-        return `${Math.abs(days)} days ago`;
-    };
 
-    const getDaysUntilExpiry = (expiryDate) => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const expiry = new Date(expiryDate);
-        expiry.setHours(0, 0, 0, 0);
-        const diffTime = expiry - today;
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    };
 
     const isDark = theme === 'dark';
     const bgColor = isDark ? '#0f172a' : '#faf7f2';

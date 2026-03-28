@@ -19,13 +19,7 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// Temp placeholder component
-const DashboardPlaceholder = () => (
-  <div style={{ padding: '2rem', textAlign: 'center', fontFamily: 'Inter, sans-serif' }}>
-    <h1 style={{ color: '#5c3a21' }}>Dashboard</h1>
-    <p>Dashboard coming soon</p>
-  </div>
-);
+
 
 const App = () => {
   return (

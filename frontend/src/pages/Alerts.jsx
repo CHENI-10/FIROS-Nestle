@@ -18,23 +18,7 @@ const Alerts = () => {
   const [filter, setFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    const token = sessionStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-
-    fetchAlerts();
-    const interval = setInterval(fetchAlerts, 60000);
-    return () => clearInterval(interval);
-  }, [navigate]);
-
-  useEffect(() => {
-    sessionStorage.setItem('theme', theme);
-  }, [theme]);
-
-  const fetchAlerts = async () => {
+  const fetchAlerts = React.useCallback(async () => {
     try {
       const token = sessionStorage.getItem('token');
       const res = await axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/dashboard/alerts/all`, {
@@ -54,7 +38,23 @@ const Alerts = () => {
       }
       setLoading(false);
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    const token = sessionStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    fetchAlerts();
+    const interval = setInterval(fetchAlerts, 60000);
+    return () => clearInterval(interval);
+  }, [navigate, fetchAlerts]);
+
+  useEffect(() => {
+    sessionStorage.setItem('theme', theme);
+  }, [theme]);
 
   const markAsRead = async (alertId) => {
     try {

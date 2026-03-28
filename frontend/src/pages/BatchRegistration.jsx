@@ -14,7 +14,6 @@ const BatchRegistration = () => {
   // Auth guard + role detection
   const token = sessionStorage.getItem('token');
   const role = sessionStorage.getItem('role');
-  const userName = sessionStorage.getItem('name') || sessionStorage.getItem('email') || '';
 
   useEffect(() => {
     if (!token) {

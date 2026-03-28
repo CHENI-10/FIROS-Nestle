@@ -1,0 +1,16 @@
+﻿
+> frontend@0.1.0 build
+> react-scripts build
+
+Creating an optimized production build...
+
+Treating warnings as errors because process.env.CI = true.
+Most CI servers set it automatically.
+
+Failed to compile.
+
+[eslint] 
+src\pages\Alerts.jsx
+  Line 31:17:  'fetchAlerts' was used before it was defined  no-use-before-define
+
+

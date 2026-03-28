@@ -35,7 +35,7 @@ const Dashboard = () => {
         document.body.className = theme;
     }, [theme]);
 
-    const fetchAllData = async () => {
+    const fetchAllData = React.useCallback(async () => {
         const token = sessionStorage.getItem('token');
         if (!token) {
             navigate('/login');
@@ -79,13 +79,13 @@ const Dashboard = () => {
         } finally {
             if (loading) setLoading(false);
         }
-    };
+    }, [navigate, loading]);
 
     useEffect(() => {
         fetchAllData();
         const interval = setInterval(fetchAllData, 60000); 
         return () => clearInterval(interval);
-    }, []);
+    }, [fetchAllData]);
 
     const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
