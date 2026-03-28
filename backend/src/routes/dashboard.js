@@ -339,4 +339,56 @@ router.patch('/alerts/:alert_id/read', async (req, res) => {
     }
 });
 
+// ROUTE 8: GET /batches/:batch_id
+// Returns detailed info for a single batch including history
+router.get('/batches/:batch_id', async (req, res) => {
+    console.log(`[Backend] Received request for batch detail: ${req.params.batch_id}`);
+    try {
+        const { batch_id } = req.params;
+
+        // 1. Get Batch & Product & Score summary
+        const batchQuery = `
+            SELECT 
+                b.batch_id, b.zone_id, b.quantity, b.manufacturing_date, b.expiry_date, 
+                b.arrival_timestamp, b.status,
+                p.product_name, p.pack_size, p.shelf_life_months,
+                p.max_safe_temp, p.max_safe_humidity,
+                p.temp_sensitivity_label, p.humidity_sensitivity_label,
+                p.temp_sensitivity_weight, p.humidity_sensitivity_weight,
+                fs.frs_score, fs.risk_band, fs.days_in_warehouse, fs.slr_percent_raw,
+                fs.total_temp_breach_windows, fs.total_humidity_breach_windows,
+                fs.last_calculated_at
+            FROM batches b
+            JOIN products p ON b.product_id = p.product_id
+            LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
+            WHERE b.batch_id = $1
+        `;
+        const batchRes = await pool.query(batchQuery, [batch_id]);
+
+        if (batchRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Batch not found' });
+        }
+
+        const batch = batchRes.rows[0];
+
+        // 2. Get Historical Environmental Logs for this zone since batch arrival
+        const logsQuery = `
+            SELECT log_id, temperature, humidity, logged_at
+            FROM environmental_logs
+            WHERE zone_id = $1 AND logged_at >= $2
+            ORDER BY logged_at DESC
+            LIMIT 50
+        `;
+        const logsRes = await pool.query(logsQuery, [batch.zone_id, batch.arrival_timestamp]);
+
+        res.json({
+            batch,
+            logs: logsRes.rows
+        });
+    } catch (err) {
+        console.error('Error fetching batch details:', err);
+        res.status(500).json({ error: 'Server error fetching batch details' });
+    }
+});
+
 module.exports = router;

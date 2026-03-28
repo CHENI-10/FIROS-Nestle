@@ -23,7 +23,10 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     startFRSJob();
+    // 3. Initial Recalculation (Non-blocking)
     recalculateAllBatches(pool).then(() => {
         console.log('[Server] Initial FRS recalculation complete');
+    }).catch(err => {
+        console.error('[Server] Initial FRS recalculation failed (will retry on next cron):', err.message);
     });
 });

@@ -5,6 +5,7 @@ import BatchRegistration from './pages/BatchRegistration';
 import Dashboard from './pages/Dashboard';
 import ActionRecommendations from './pages/ActionRecommendations';
 import Alerts from './pages/Alerts';
+import BatchDetail from './pages/BatchDetail';
 
 // A simple Protected Route component wrapper
 const ProtectedRoute = ({ children }) => {
@@ -64,6 +65,14 @@ const App = () => {
           element={
             <ProtectedRoute>
               <Alerts />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/batch-detail/:batchId" 
+          element={
+            <ProtectedRoute>
+              <BatchDetail />
             </ProtectedRoute>
           } 
         />

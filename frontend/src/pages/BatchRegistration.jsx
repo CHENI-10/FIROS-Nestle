@@ -208,8 +208,8 @@ const BatchRegistration = () => {
         </nav>
       )}
 
-      {/* Back link — manager / admin */}
-      {(role === 'manager' || role === 'admin') && (
+      {/* Back link — admin only */}
+      {role === 'admin' && (
         <div style={{ padding: '14px 24px', borderBottom: '1px solid rgba(200,169,110,0.2)' }}>
           <button
             onClick={() => navigate('/dashboard')}

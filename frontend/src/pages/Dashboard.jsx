@@ -14,6 +14,7 @@ const Dashboard = () => {
     const [error, setError] = useState(null);
     const [lastUpdated, setLastUpdated] = useState(null);
     const [showAlerts, setShowAlerts] = useState(false);
+    const role = sessionStorage.getItem('role');
     const dropdownRef = useRef(null);
 
     const [riskFilter, setRiskFilter] = useState('All');
@@ -170,6 +171,37 @@ const Dashboard = () => {
                     <div className="last-updated">
                         Last Updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : ''}
                     </div>
+
+                    {role === 'admin' && (
+                        <button 
+                            onClick={() => navigate('/batch-registration')}
+                            className="nav-btn-secondary"
+                            style={{
+                                padding: '8px 16px',
+                                backgroundColor: 'transparent',
+                                border: '1px solid var(--nestle-gold-main)',
+                                borderRadius: '8px',
+                                color: 'var(--nestle-gold-main)',
+                                cursor: 'pointer',
+                                fontWeight: 'bold',
+                                fontSize: '13px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                transition: 'all 0.2s ease'
+                            }}
+                            onMouseOver={(e) => {
+                                e.currentTarget.style.backgroundColor = 'var(--nestle-gold-main)';
+                                e.currentTarget.style.color = '#3D1C02';
+                            }}
+                            onMouseOut={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                                e.currentTarget.style.color = 'var(--nestle-gold-main)';
+                            }}
+                        >
+                            <span style={{fontSize: '16px'}}>📦</span> Register Batches
+                        </button>
+                    )}
                     
                     <div ref={dropdownRef} style={{position: 'relative', display: 'flex', alignItems: 'center', gap: '12px'}}>
                         <span 
@@ -362,6 +394,7 @@ const Dashboard = () => {
                                         <th>Risk</th>
                                         <th>Expiry</th>
                                         <th>Status</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -383,6 +416,23 @@ const Dashboard = () => {
                                             </td>
                                             <td>{new Date(b.expiry_date).toLocaleDateString()}</td>
                                             <td>{b.status.replace('_', ' ').toUpperCase()}</td>
+                                            <td>
+                                                <button 
+                                                    onClick={() => navigate(`/batch-detail/${b.batch_id}`)}
+                                                    style={{
+                                                        background: 'none',
+                                                        border: '1px solid var(--nestle-gold-main)',
+                                                        color: 'var(--nestle-gold-main)',
+                                                        padding: '4px 8px',
+                                                        borderRadius: '4px',
+                                                        fontSize: '11px',
+                                                        cursor: 'pointer',
+                                                        fontWeight: 'bold'
+                                                    }}
+                                                >
+                                                    View Details
+                                                </button>
+                                            </td>
                                         </tr>
                                     ))}
                                     {filteredBatches.length === 0 && (
