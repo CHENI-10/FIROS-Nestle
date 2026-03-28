@@ -45,10 +45,10 @@ const Dashboard = () => {
         try {
             const headers = { 'Authorization': `Bearer ${token}` };
             const [dashRes, zonesRes, alertsRes, expiryRes] = await Promise.all([
-                fetch('http://localhost:5000/api/dashboard', { headers }),
-                fetch('http://localhost:5000/api/dashboard/zones', { headers }),
-                fetch('http://localhost:5000/api/dashboard/alerts', { headers }),
-                fetch('http://localhost:5000/api/dashboard/expiry-timeline', { headers })
+                fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/dashboard`, { headers }),
+                fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/dashboard/zones`, { headers }),
+                fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/dashboard/alerts`, { headers }),
+                fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/dashboard/expiry-timeline`, { headers })
             ]);
 
             if (dashRes.status === 401 || dashRes.status === 403) {

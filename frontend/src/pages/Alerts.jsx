@@ -37,7 +37,7 @@ const Alerts = () => {
   const fetchAlerts = async () => {
     try {
       const token = sessionStorage.getItem('token');
-      const res = await axios.get('http://localhost:5000/api/dashboard/alerts/all', {
+      const res = await axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/dashboard/alerts/all`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setAlerts(res.data.alerts || []);
@@ -59,7 +59,7 @@ const Alerts = () => {
   const markAsRead = async (alertId) => {
     try {
       const token = sessionStorage.getItem('token');
-      await axios.patch(`http://localhost:5000/api/dashboard/alerts/${alertId}/read`, {}, {
+      await axios.patch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/dashboard/alerts/${alertId}/read`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchAlerts();
