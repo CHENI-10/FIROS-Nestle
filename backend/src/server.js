@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const authRoutes = require('./routes/auth');
 const batchRoutes = require('./routes/batches');
@@ -34,6 +35,17 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/batches', batchRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+
+// Serve React frontend in production
+if (process.env.NODE_ENV === 'production') {
+  // Serve static files from React build
+  app.use(express.static(path.join(__dirname, '../../frontend/build')))
+  
+  // For any route not matched by API, serve React app
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../frontend/build', 'index.html'))
+  })
+}
 
 const PORT = process.env.PORT || 5000;
 

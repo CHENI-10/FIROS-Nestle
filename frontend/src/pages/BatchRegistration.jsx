@@ -74,7 +74,7 @@ const BatchRegistration = () => {
     
     try {
       const token = sessionStorage.getItem('token');
-      const response = await axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/batches/products/barcode/${barcode}`, {
+      const response = await axios.get(`/api/batches/products/barcode/${barcode}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -122,7 +122,7 @@ const BatchRegistration = () => {
     try {
       const token = sessionStorage.getItem('token');
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/batches`,
+        '/api/batches',
         {
           ean13_barcode: formData.ean13,
           batch_id: formData.batchId,
