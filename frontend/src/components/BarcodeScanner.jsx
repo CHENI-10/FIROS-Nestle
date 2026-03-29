@@ -3,10 +3,12 @@ import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
 const BarcodeScanner = ({ onScan }) => {
   const [isScanning, setIsScanning] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const scannerRef = useRef(null);
 
   const startScanner = async () => {
     if (isScanning) return;
+    setErrorMsg('');
     
     try {
       if (!scannerRef.current) {
@@ -36,6 +38,14 @@ const BarcodeScanner = ({ onScan }) => {
       setIsScanning(true);
     } catch (err) {
       console.error("Error starting barcode scanner:", err);
+      const errMsg = String(err).toLowerCase();
+      if (errMsg.includes("notallowederror") || errMsg.includes("permission denied")) {
+        setErrorMsg("Camera access was denied. Please allow camera permissions in your browser settings to scan barcodes.");
+      } else if (errMsg.includes("notfounderror")) {
+        setErrorMsg("No camera device found on this device.");
+      } else {
+        setErrorMsg("Could not start camera. Please check your permissions and try again.");
+      }
     }
   };
 
@@ -66,6 +76,11 @@ const BarcodeScanner = ({ onScan }) => {
 
   return (
     <div className="barcode-scanner-wrapper">
+      {errorMsg && (
+        <div style={{ padding: '12px', marginBottom: '16px', backgroundColor: '#fee2e2', color: '#b91c1c', borderRadius: '8px', borderLeft: '4px solid #ef4444', textAlign: 'center', fontSize: '14px', fontWeight: 'bold' }}>
+          {errorMsg}
+        </div>
+      )}
       <div 
         id="reader" 
         style={{ 

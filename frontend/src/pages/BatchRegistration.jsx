@@ -109,6 +109,12 @@ const BatchRegistration = () => {
       setMessage({ type: 'error', text: 'Please scan or enter a valid product barcode first.' });
       return;
     }
+
+    // Check for special characters in Batch ID
+    if (/[^a-zA-Z0-9\s-]/.test(formData.batchId)) {
+      setMessage({ type: 'error', text: "Batch ID cannot contain special characters (e.g. !@#$%&*)." });
+      return;
+    }
     
     setIsSubmitting(true);
     setMessage({ type: '', text: '' });

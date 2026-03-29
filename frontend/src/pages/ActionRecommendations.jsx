@@ -90,6 +90,13 @@ const ActionRecommendations = () => {
         navigate('/login');
     };
 
+    const scrollToSection = (id) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
+
 
 
     const isDark = theme === 'dark';
@@ -145,21 +152,21 @@ const ActionRecommendations = () => {
 
                 {/* Summary Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', padding: '0 24px 32px 24px' }}>
-                    <div style={{ backgroundColor: cardBgColor, borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+                    <div onClick={() => scrollToSection('dispatch-queue')} style={{ backgroundColor: cardBgColor, borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', textAlign: 'center', cursor: 'pointer' }}>
                         <div style={{ color: '#3b82f6', marginBottom: '8px' }}><span style={{ fontSize: '20px' }}>📋</span></div>
                         <div style={{ fontSize: '48px', fontWeight: 'bold', color: '#3b82f6', margin: '8px 0' }}>{recommendations.total_in_queue}</div>
                         <div style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '14px' }}>Dispatch Queue</div>
                         <div style={{ fontSize: '12px', color: textMuted, marginTop: '4px' }}>Batches Ready To Dispatch</div>
                     </div>
 
-                    <div style={{ backgroundColor: cardBgColor, borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+                    <div onClick={() => scrollToSection('priority-dispatch')} style={{ backgroundColor: cardBgColor, borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', textAlign: 'center', cursor: 'pointer' }}>
                         <div style={{ color: '#f59e0b', marginBottom: '8px' }}><span style={{ fontSize: '20px' }}>🚚</span></div>
                         <div style={{ fontSize: '48px', fontWeight: 'bold', color: '#f59e0b', margin: '8px 0' }}>{recommendations.medium_risk.length || 0}</div>
                         <div style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '14px' }}>Priority Dispatch</div>
                         <div style={{ fontSize: '12px', color: textMuted, marginTop: '4px' }}>Need Urgent Dispatch</div>
                     </div>
 
-                    <div style={{ backgroundColor: cardBgColor, borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+                    <div onClick={() => scrollToSection('clearance-required')} style={{ backgroundColor: cardBgColor, borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', textAlign: 'center', cursor: 'pointer' }}>
                         <div style={{ color: '#ef4444', marginBottom: '8px' }}><span style={{ fontSize: '20px' }}>⚠️</span></div>
                         <div style={{ fontSize: '48px', fontWeight: 'bold', color: '#ef4444', margin: '8px 0' }}>{recommendations.total_clearance}</div>
                         <div style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '14px' }}>Clearance Required</div>
@@ -168,7 +175,7 @@ const ActionRecommendations = () => {
                 </div>
 
                 {/* SECTION 1: HIGH RISK CLEARANCE */}
-                <div style={{ marginBottom: '48px' }}>
+                <div id="clearance-required" style={{ marginBottom: '48px', scrollMarginTop: '80px' }}>
                     <div style={{ fontSize: '20px', fontWeight: 'bold', padding: '0 24px 16px 24px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444', borderBottom: '1px solid #ef4444', margin: '0 24px 24px 24px' }}>
                         <span style={{ fontSize: '20px' }}>⚠️</span> High Risk Batches — Clearance Required
                     </div>
@@ -248,7 +255,7 @@ const ActionRecommendations = () => {
                 </div>
 
                 {/* SECTION 2: MEDIUM RISK PRIORITY DISPATCH */}
-                <div style={{ marginBottom: '48px' }}>
+                <div id="priority-dispatch" style={{ marginBottom: '48px', scrollMarginTop: '80px' }}>
                     <div style={{ fontSize: '20px', fontWeight: 'bold', padding: '0 24px 16px 24px', display: 'flex', alignItems: 'center', gap: '8px', color: '#f59e0b', borderBottom: '1px solid #f59e0b', margin: '0 24px 24px 24px' }}>
                         <span style={{ fontSize: '20px' }}>🚚</span> Medium Risk — Priority Dispatch
                     </div>
@@ -328,7 +335,7 @@ const ActionRecommendations = () => {
                 </div>
 
                 {/* SECTION 3: FULL DISPATCH QUEUE */}
-                <div style={{ marginBottom: '48px' }}>
+                <div id="dispatch-queue" style={{ marginBottom: '48px', scrollMarginTop: '80px' }}>
                     <div style={{ fontSize: '20px', fontWeight: 'bold', padding: '0 24px 16px 24px', display: 'flex', alignItems: 'center', gap: '8px', color: '#3b82f6', borderBottom: '1px solid #3b82f6', margin: '0 24px 24px 24px' }}>
                         <span style={{ fontSize: '20px' }}>📋</span> Full Dispatch Queue — FEFO Order
                     </div>
