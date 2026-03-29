@@ -18,11 +18,17 @@ const BarcodeScanner = ({ onScan }) => {
       await scannerRef.current.start(
         { facingMode: 'environment' },
         { 
-          fps: 10, 
-          // Setting up typical scanning box size for 1D barcodes
-          qrbox: { width: 300, height: 150 },
+          fps: 20, 
+          // Dynamic qrbox that scales with the screen size
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            return {
+              width: viewfinderWidth * 0.8,
+              height: viewfinderHeight * 0.4
+            };
+          },
           // Only process EAN-13 barcodes as requested
-          formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13 ]
+          formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13 ],
+          aspectRatio: 1.0
         },
         (decodedText, decodedResult) => {
           // On successful scan
