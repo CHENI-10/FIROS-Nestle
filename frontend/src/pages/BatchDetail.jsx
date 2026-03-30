@@ -76,9 +76,9 @@ const BatchDetail = () => {
     };
 
     const getZoneName = (zoneId) => {
-        const map = { 1: 'Beverages & Noodles', 2: 'Dairy & Condensed', 3: 'Infant & Nutrition', 4: 'Cold Storage' };
+        const map = { 1: 'Powdered Beverages, Noodles & Seasonings', 2: 'Dairy & Condensed', 3: 'Infant & Nutrition', 4: 'Cold Storage' };
         // Handle both '1' and 'A' formats
-        const letterMap = { 'A': 'Beverages & Noodles', 'B': 'Dairy & Condensed', 'C': 'Infant & Nutrition', 'D': 'Cold Storage' };
+        const letterMap = { 'A': 'Powdered Beverages, Noodles & Seasonings', 'B': 'Dairy & Condensed', 'C': 'Infant & Nutrition', 'D': 'Cold Storage' };
         return map[zoneId] || letterMap[zoneId] || `Zone ${zoneId}`;
     };
 
@@ -128,7 +128,15 @@ const BatchDetail = () => {
                             </div>
                             <div className="info-item">
                                 <label>Storage Environment</label>
-                                <span>Zone {batch.zone_id} Status: Optimal</span>
+                                <span>
+                                    Zone {batch.zone_id} Status:{' '}
+                                    <span style={{ 
+                                        color: (batch.total_temp_breach_windows > 0 || batch.total_humidity_breach_windows > 0) ? '#ef4444' : '#22c55e', 
+                                        fontWeight: 700 
+                                    }}>
+                                        {(batch.total_temp_breach_windows > 0 || batch.total_humidity_breach_windows > 0) ? 'Threshold Breach' : 'Optimal'}
+                                    </span>
+                                </span>
                             </div>
                             <div className="info-item">
                                 <label>Current Quantity</label>

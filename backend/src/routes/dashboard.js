@@ -377,7 +377,7 @@ router.get('/batches/:batch_id', async (req, res) => {
             FROM environmental_logs
             WHERE zone_id = $1 AND logged_at >= $2
             ORDER BY logged_at DESC
-            LIMIT 50
+            LIMIT 1000 -- Increased from 50 to show more comprehensive history
         `;
         const logsRes = await pool.query(logsQuery, [batch.zone_id, batch.arrival_timestamp]);
 
