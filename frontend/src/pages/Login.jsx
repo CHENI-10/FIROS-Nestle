@@ -44,7 +44,9 @@ const Login = () => {
         sessionStorage.setItem('role', role);
         sessionStorage.setItem('name', userName);
         sessionStorage.setItem('email', userEmail);
-        navigate('/dashboard');
+        const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        const isMobile = window.innerWidth <= 768;
+        navigate(role === 'admin' && (isPWA || isMobile) ? '/batch-registration' : '/dashboard');
       } else if (role === 'staff') {
         sessionStorage.setItem('token', data.token);
         sessionStorage.setItem('role', role);

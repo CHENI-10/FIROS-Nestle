@@ -7,14 +7,14 @@
   --nestle-brown-medium: #8b5e3c;
   --nestle-brown-light: #c49a6c;
   --nestle-beige-light: #f5eedc;
-  
+
   --success-color: #2F855A;
   --success-bg: #F0FFF4;
   --warn-color: #C05621;
   --warn-bg: #FFFAF0;
   --error-color: #E5002C;
   --error-bg: #FEECEF;
-  
+
   --text-dark: #2a1f1a;
   --text-muted: #7a6355;
   --border-color: #e6dace;
@@ -57,27 +57,58 @@
   background: var(--card-bg);
   border-radius: 16px;
   padding: 2.5rem;
-  box-shadow: 0 10px 30px rgba(92, 58, 33, 0.08), 
-              0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 30px rgba(92, 58, 33, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.05);
   animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Animations */
 @keyframes fadeInDown {
-  0% { opacity: 0; transform: translateY(-20px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slideUp {
-  0% { opacity: 0; transform: translateY(20px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes shake {
-  10%, 90% { transform: translate3d(-1px, 0, 0); }
-  20%, 80% { transform: translate3d(2px, 0, 0); }
-  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-  40%, 60% { transform: translate3d(4px, 0, 0); }
+
+  10%,
+  90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+
+  20%,
+  80% {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  30%,
+  50%,
+  70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+
+  40%,
+  60% {
+    transform: translate3d(4px, 0, 0);
+  }
 }
 
 /* Message Banners */
@@ -129,6 +160,7 @@
 
 .barcode-input {
   flex: 1;
+  min-width: 0;
   padding: 0.75rem 1rem;
   font-size: 1rem;
   font-family: monospace;
@@ -138,6 +170,7 @@
   transition: all 0.2s;
   outline: none;
   letter-spacing: 1px;
+  box-sizing: border-box;
 }
 
 .barcode-input:focus {
@@ -176,7 +209,8 @@
   font-weight: 600;
 }
 
-.divider::before, .divider::after {
+.divider::before,
+.divider::after {
   content: '';
   flex: 1;
   border-bottom: 1px solid var(--border-color);
@@ -225,7 +259,7 @@
   gap: 1.25rem;
 }
 
-.form-row > .form-group {
+.form-row>.form-group {
   flex: 1;
 }
 
@@ -241,7 +275,7 @@
   color: var(--text-dark);
 }
 
-.form-group input, 
+.form-group input,
 .form-group select {
   width: 100%;
   padding: 0.75rem 1rem;
@@ -343,7 +377,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive */
@@ -352,7 +388,7 @@
     flex-direction: column;
     gap: 1rem;
   }
-  
+
   .registration-card {
     padding: 1.5rem;
   }
