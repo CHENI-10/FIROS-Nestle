@@ -220,17 +220,25 @@ CREATE TABLE distributor_records (
                       CHECK (region IN ('Colombo', 'Kandy', 'Galle', 'Jaffna', 'Kurunegala')),
     contact_person    VARCHAR(100),
     phone             VARCHAR(20),
+    next_visit_date   DATE,
     created_at        TIMESTAMP     NOT NULL DEFAULT NOW()
 );
 
--- ── SPRINT 3 — uncomment when Sprint 3 begins ────────────────
--- INSERT INTO distributor_records (distributor_name, region, contact_person, phone)
--- VALUES
---     ('Keells Food Products',    'Colombo',    'Roshan Fernando',    '0112345678'),
---     ('Central Depot Lanka',     'Kurunegala', 'Nimal Perera',       '0372345678'),
---     ('Lanka Canneries Ltd',     'Kandy',      'Suresh Silva',       '0812345678'),
---     ('Southern Traders',        'Galle',      'Pradeep Rathnayake', '0912345678'),
---     ('Jaffna Distributors Ltd', 'Jaffna',     'Arjun Nadarajah',    '0212345678');
+ALTER TABLE distributor_records ADD COLUMN visit_frequency_days INTEGER DEFAULT 30;
+
+INSERT INTO distributor_records 
+    (distributor_name, region, contact_person, phone, next_visit_date, visit_frequency_days)
+VALUES
+    ('Keells Food Products',         'Colombo',    'Roshan Fernando',    '0112345678', '2026-04-10', 14),
+    ('Central Depot Lanka',          'Kurunegala', 'Nimal Perera',       '0372345678', '2026-04-14', 30),
+    ('Lanka Canneries Ltd',          'Kandy',      'Suresh Silva',       '0812345678', '2026-04-08', 21),
+    ('Southern Traders',             'Galle',      'Pradeep Rathnayake', '0912345678', '2026-04-20', 30),
+    ('Jaffna Distributors Ltd',      'Jaffna',     'Arjun Nadarajah',    '0212345678', '2026-04-17', 30),
+    ('Cargills Ceylon PLC',          'Colombo',    'Dinesh Jayawardena', '0117654321', '2026-04-12', 14),
+    ('Advantis Logistics',           'Kandy',      'Chaminda Rathnayake','0819876543', '2026-04-22', 21),
+    ('Aitken Spence Logistics',      'Colombo',    'Ravi Wijesekara',    '0115432100', '2026-04-09', 7),
+    ('Galle Wholesale Traders',      'Galle',      'Sanjeewa Perera',    '0914321098', '2026-04-25', 30),
+    ('Kurunegala Agencies Ltd',      'Kurunegala', 'Thilak Bandara',     '0372109876', '2026-04-16', 21);
 
 
 -- ============================================================

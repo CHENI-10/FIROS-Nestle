@@ -64,11 +64,11 @@ const Dashboard = () => {
 
             setData(dashData);
             setBatches(Array.isArray(dashData?.batches) ? dashData.batches : []);
-            
+
             const finalZones = Array.isArray(zonesData) ? zonesData : [];
             setZones(finalZones);
             console.log('Zone data:', finalZones);
-            
+
             setAlerts(Array.isArray(alertsData) ? alertsData : []);
             setExpiryTimeline(Array.isArray(expiryData) ? expiryData : []);
             setLastUpdated(new Date());
@@ -83,7 +83,7 @@ const Dashboard = () => {
 
     useEffect(() => {
         fetchAllData();
-        const interval = setInterval(fetchAllData, 60000); 
+        const interval = setInterval(fetchAllData, 60000);
         return () => clearInterval(interval);
     }, [fetchAllData]);
 
@@ -99,7 +99,7 @@ const Dashboard = () => {
         return (
             <div className={`dashboard-container ${theme} flex-center fullscreen`}>
                 <div className="spinner"></div>
-                <h2 style={{marginTop: '20px'}}>Loading FIROS Dashboard...</h2>
+                <h2 style={{ marginTop: '20px' }}>Loading FIROS Dashboard...</h2>
             </div>
         );
     }
@@ -121,11 +121,11 @@ const Dashboard = () => {
         const bdRisk = b.risk_band ? b.risk_band.toLowerCase() : 'unknown';
         const fltRisk = riskFilter.toLowerCase().replace(' risk', '');
         if (riskFilter !== 'All' && bdRisk !== fltRisk) return false;
-        
+
         const zoneMap = { 1: 'Zone A', 2: 'Zone B', 3: 'Zone C', 4: 'Zone D' };
         const bZone = zoneMap[b.zone_id] || `Zone ${b.zone_id}`;
         if (zoneFilter !== 'All Zones' && bZone !== zoneFilter) return false;
-        
+
         return true;
     });
 
@@ -147,9 +147,14 @@ const Dashboard = () => {
         return map[zoneId] || `Zone ${zoneId}`;
     };
 
-    const getNewZoneName = (zoneId) => {
-        const map = { 1: 'Beverages & Noodles', 2: 'Dairy & Condensed', 3: 'Infant & Nutrition', 4: 'Cold Storage' };
-        return map[zoneId] || `Zone ${zoneId}`;
+    const getZoneMeta = (zoneLetter) => {
+        const map = {
+            'A': { name: 'Powdered Beverages, Noodles & Seasonings', icon: '🍜' },
+            'B': { name: 'Dairy & Condensed Products', icon: '🥛' },
+            'C': { name: 'Infant & Nutrition Products', icon: '🍼' },
+            'D': { name: 'Cold Storage Products', icon: '❄️' }
+        };
+        return map[zoneLetter] || { name: `Products`, icon: '📦' };
     };
 
     const getZoneLetter = (zoneId) => {
@@ -166,14 +171,14 @@ const Dashboard = () => {
                     <h1 className="logo-text">FIROS</h1>
                     <span className="subtitle">Nestlé Lanka Warehouse</span>
                 </div>
-                
+
                 <div className="nav-actions">
                     <div className="last-updated">
                         Last Updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : ''}
                     </div>
 
                     {role === 'admin' && (
-                        <button 
+                        <button
                             onClick={() => navigate('/batch-registration')}
                             className="nav-btn-secondary"
                             style={{
@@ -199,20 +204,20 @@ const Dashboard = () => {
                                 e.currentTarget.style.color = 'var(--nestle-gold-main)';
                             }}
                         >
-                            <span style={{fontSize: '16px'}}>📦</span> Register Batches
+                            <span style={{ fontSize: '16px' }}>📦</span> Register Batches
                         </button>
                     )}
-                    
-                    <div ref={dropdownRef} style={{position: 'relative', display: 'flex', alignItems: 'center', gap: '12px'}}>
-                        <span 
+
+                    <div ref={dropdownRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span
                             onClick={() => navigate('/alerts')}
-                            style={{cursor: 'pointer', color: 'var(--amber)', fontWeight: 'bold', fontSize: '14px', textDecoration: 'none'}}
+                            style={{ cursor: 'pointer', color: 'var(--amber)', fontWeight: 'bold', fontSize: '14px', textDecoration: 'none' }}
                             onMouseOver={(e) => e.target.style.textDecoration = 'underline'}
                             onMouseOut={(e) => e.target.style.textDecoration = 'none'}
                         >
                             View All Alerts →
                         </span>
-                        <div className="alert-bell-wrapper" style={{cursor: 'pointer'}} onClick={() => navigate('/alerts')}>
+                        <div className="alert-bell-wrapper" style={{ cursor: 'pointer' }} onClick={() => navigate('/alerts')}>
                             <svg className="bell-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -226,13 +231,13 @@ const Dashboard = () => {
                                     <button onClick={() => setShowAlerts(false)}>×</button>
                                 </div>
                                 <div className="alerts-dropdown-body">
-                                    {alerts.length === 0 && <p style={{padding: '15px', margin: 0, color: 'var(--text-muted)'}}>No active alerts.</p>}
+                                    {alerts.length === 0 && <p style={{ padding: '15px', margin: 0, color: 'var(--text-muted)' }}>No active alerts.</p>}
                                     {alerts.map(al => {
                                         let alClass = 'ad-blue';
                                         if (al.alert_type === 'high_risk_crossing' || al.alert_type === 'zone_c_breach') alClass = 'ad-red';
                                         else if (al.alert_type === 'medium_risk_crossing') alClass = 'ad-amber';
                                         else if (al.alert_type === 'expiry_proximity') alClass = 'ad-orange';
-                                        
+
                                         const timeAgo = Math.floor((new Date() - new Date(al.created_at)) / 60000);
                                         let timeStr = 'Just now';
                                         if (timeAgo >= 60) timeStr = `${Math.floor(timeAgo / 60)}h ${timeAgo % 60}m ago`;
@@ -253,7 +258,7 @@ const Dashboard = () => {
                     <button className="theme-toggle" onClick={toggleTheme}>
                         {theme === 'light' ? '🌙' : '☀️'}
                     </button>
-                    
+
                     <button className="logout-btn" onClick={handleLogout}>Logout</button>
                 </div>
             </nav>
@@ -261,30 +266,30 @@ const Dashboard = () => {
             <main className="dashboard-main">
                 <section className="stats-row">
                     <div className="stat-card pulse-card">
-                        <div className="stat-value" style={{color: getFreshnessColor(overall_freshness_percent)}}>
+                        <div className="stat-value" style={{ color: getFreshnessColor(overall_freshness_percent) }}>
                             {overall_freshness_percent}%
                         </div>
                         <div className="stat-title">Overall Freshness Score</div>
                     </div>
-                    
+
                     <div className="stat-card">
-                        <div className="stat-value" style={{color: 'var(--blue)'}}>{total_batches}</div>
+                        <div className="stat-value" style={{ color: 'var(--blue)' }}>{total_batches}</div>
                         <div className="stat-title">Batches In Storage</div>
                     </div>
 
                     <div className={`stat-card ${high_risk_count > 0 ? 'flash-card' : ''}`}>
-                        <div className="stat-value" style={{color: 'var(--red)'}}>{high_risk_count}</div>
+                        <div className="stat-value" style={{ color: 'var(--red)' }}>{high_risk_count}</div>
                         <div className="stat-title">Urgent Action Required</div>
                     </div>
 
                     <div className="stat-card">
-                        <div className="stat-value" style={{color: 'var(--amber)'}}>{alerts.length}</div>
+                        <div className="stat-value" style={{ color: 'var(--amber)' }}>{alerts.length}</div>
                         <div className="stat-title">Active Alerts</div>
                     </div>
                 </section>
 
                 <div style={{ padding: '0 20px', marginBottom: '25px', marginTop: '10px' }}>
-                    <button 
+                    <button
                         onClick={() => navigate('/recommendations')}
                         style={{
                             width: '100%',
@@ -313,7 +318,7 @@ const Dashboard = () => {
                         }}
                     >
                         <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{fontSize:'20px'}}>📋</span> View Action Recommendations
+                            <span style={{ fontSize: '20px' }}>📋</span> View Action Recommendations
                         </span>
                         <span style={{ fontSize: '24px' }}>→</span>
                     </button>
@@ -323,27 +328,35 @@ const Dashboard = () => {
                 <section className="zones-row">
                     {(Array.isArray(zones) ? zones : []).map(zone => {
                         const zoneLetter = getZoneLetter(zone.zone_id);
-                        const newName = getNewZoneName(zone.zone_id);
+                        const zoneMeta = getZoneMeta(zoneLetter);
 
                         const now = new Date();
                         const lastReading = zone.last_reading_at ? new Date(zone.last_reading_at) : null;
                         const minutesAgo = lastReading ? Math.floor((now - lastReading) / (1000 * 60)) : null;
                         const isStale = !lastReading || minutesAgo > 60;
-                        
+
                         let timeText = "No readings yet";
                         if (minutesAgo !== null) {
                             if (minutesAgo < 1) timeText = "Just now";
                             else if (minutesAgo < 60) timeText = `${minutesAgo} mins ago`;
                             else timeText = `${Math.floor(minutesAgo / 60)} hours ago`;
                         }
-                        
+
                         return (
                             <div key={zone.zone_id} className="zone-card">
-                                <div className="zone-card-top">
-                                    <div className={`zone-badge badge-${zoneLetter.toLowerCase()}`}>
+                                <div className="zone-card-top" style={{ alignItems: 'flex-start' }}>
+                                    <div className={`zone-badge badge-${zoneLetter.toLowerCase()}`} style={{ width: '42px', height: '42px', fontSize: '18px' }}>
                                         {zoneLetter}
                                     </div>
-                                    <div className="zone-new-name">{newName}</div>
+                                    <div className="zone-new-name" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '0' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span style={{ fontSize: '14px', background: 'var(--hover-bg)', padding: '4px', borderRadius: '6px', display: 'flex' }}>{zoneMeta.icon}</span>
+                                            <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                Zone {zoneLetter}
+                                            </span>
+                                        </div>
+                                        <span style={{ fontSize: '12.5px', lineHeight: '1.3', color: 'var(--text-main)', paddingRight: '5px' }}>{zoneMeta.name}</span>
+                                    </div>
                                 </div>
                                 <div className="zone-card-reading">
                                     <div className="time-ago-new">{timeText}</div>
@@ -381,7 +394,7 @@ const Dashboard = () => {
                                 </select>
                             </div>
                         </div>
-                        
+
                         <div className="table-responsive">
                             <table className="batch-table">
                                 <thead>
@@ -405,7 +418,7 @@ const Dashboard = () => {
                                             <td>{getZoneName(b.zone_id)}</td>
                                             <td>{b.days_in_warehouse}</td>
                                             <td>
-                                                <span className="frs-badge" style={{backgroundColor: getRiskColor(b.risk_band), color: '#fff'}}>
+                                                <span className="frs-badge" style={{ backgroundColor: getRiskColor(b.risk_band), color: '#fff' }}>
                                                     {b.frs_score ?? 'N/A'}
                                                 </span>
                                             </td>
@@ -417,7 +430,7 @@ const Dashboard = () => {
                                             <td>{new Date(b.expiry_date).toLocaleDateString()}</td>
                                             <td>{b.status.replace('_', ' ').toUpperCase()}</td>
                                             <td>
-                                                <button 
+                                                <button
                                                     onClick={() => navigate(`/batch-detail/${b.batch_id}`)}
                                                     style={{
                                                         background: 'none',
@@ -452,7 +465,7 @@ const Dashboard = () => {
                                     let expClass = 'exp-yellow';
                                     if (exp.days_until_expiry <= 7) expClass = 'exp-red';
                                     else if (exp.days_until_expiry <= 15) expClass = 'exp-amber';
-                                    
+
                                     return (
                                         <div key={exp.batch_id} className={`timeline-item ${expClass}`}>
                                             <div className="tl-head">
