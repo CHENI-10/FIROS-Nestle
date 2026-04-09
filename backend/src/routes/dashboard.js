@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
             WHERE b.status = 'in_storage'
             ORDER BY fs.frs_score ASC
         `;
-        
+
         const result = await pool.query(query);
         const batches = result.rows;
 
@@ -84,20 +84,20 @@ router.get('/zones', async (req, res) => {
             ORDER BY zone_id
         `;
         const result = await pool.query(query);
-        
+
         const zones = result.rows.map(zone => {
             let minutes_since_reading = null;
             let is_stale = true;
-            
+
             if (zone.last_reading_at) {
                 const lastReadingDate = new Date(zone.last_reading_at);
                 const diffMs = Date.now() - lastReadingDate.getTime();
                 minutes_since_reading = Math.floor(diffMs / (1000 * 60));
-                
+
                 // Stale if reading is more than 60 minutes ago
                 is_stale = minutes_since_reading > 60;
             }
-            
+
             return {
                 ...zone,
                 is_stale,
@@ -175,29 +175,47 @@ router.get('/expiry-timeline', async (req, res) => {
 // Returns intelligent dispatch recommendations based on FRS risk bands
 router.get('/recommendations', async (req, res) => {
     try {
-        const query = `
+        const queryBatches = `
             SELECT 
-                b.batch_id,
-                b.zone_id,
-                b.expiry_date,
-                b.arrival_timestamp,
-                b.quantity,
-                p.product_name,
-                p.pack_size,
-                fs.frs_score,
-                fs.risk_band,
-                fs.days_in_warehouse,
-                fs.total_temp_breach_windows,
-                fs.total_humidity_breach_windows
+                b.batch_id, b.zone_id, b.expiry_date, b.arrival_timestamp, b.quantity,
+                p.product_name, p.pack_size,
+                fs.frs_score, fs.risk_band, fs.days_in_warehouse,
+                fs.total_temp_breach_windows, fs.total_humidity_breach_windows
             FROM batches b
             JOIN products p ON b.product_id = p.product_id
             LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
             WHERE b.status = 'in_storage'
             ORDER BY fs.frs_score ASC
         `;
-        
-        const result = await pool.query(query);
-        const batches = result.rows;
+        const resultBatches = await pool.query(queryBatches);
+        const batches = resultBatches.rows;
+
+        const queryDistributors = `
+            SELECT distributor_id, distributor_name, next_visit_date
+            FROM distributor_records
+            WHERE next_visit_date IS NOT NULL
+            ORDER BY next_visit_date ASC
+        `;
+        const resultDistributors = await pool.query(queryDistributors);
+        const distributors = resultDistributors.rows;
+
+        // Fetch last assigned distributor for persistent round-robin
+        const queryLastDispatch = `
+            SELECT distributor_id 
+            FROM dispatch_records 
+            ORDER BY dispatch_timestamp DESC 
+            LIMIT 1
+        `;
+        const resultLastDispatch = await pool.query(queryLastDispatch);
+        let distIndex = 0;
+
+        if (resultLastDispatch.rows.length > 0 && distributors.length > 0) {
+            const lastDistId = resultLastDispatch.rows[0].distributor_id;
+            const lastIndex = distributors.findIndex(d => d.distributor_id === lastDistId);
+            if (lastIndex !== -1) {
+                distIndex = (lastIndex + 1) % distributors.length;
+            }
+        }
 
         const high_risk = [];
         const medium_risk = [];
@@ -205,7 +223,27 @@ router.get('/recommendations', async (req, res) => {
 
         batches.forEach(batch => {
             const risk_band = batch.risk_band;
-            let recommendationObj = { ...batch };
+            let urgency_score = Math.min((batch.days_in_warehouse || 0) / 30, 5);
+            
+            let suggested_distributor_id = null;
+            let suggested_distributor_name = null;
+            let suggested_next_visit_date = null;
+
+            if (distributors.length > 0) {
+                const dist = distributors[distIndex % distributors.length];
+                suggested_distributor_id = dist.distributor_id;
+                suggested_distributor_name = dist.distributor_name;
+                suggested_next_visit_date = dist.next_visit_date;
+                distIndex++;
+            }
+
+            let recommendationObj = {
+                ...batch,
+                urgency_score,
+                suggested_distributor_id,
+                suggested_distributor_name,
+                suggested_next_visit_date
+            };
 
             if (risk_band === 'high') {
                 recommendationObj.action = 'CLEARANCE';
@@ -231,11 +269,24 @@ router.get('/recommendations', async (req, res) => {
             }
         });
 
-        // Sort Medium Risk batches by expiry_date ASC first
-        medium_risk.sort((a, b) => new Date(a.expiry_date) - new Date(b.expiry_date));
-        
-        // Then Low Risk batches by expiry_date ASC
-        low_risk.sort((a, b) => new Date(a.expiry_date) - new Date(b.expiry_date));
+        // High risk: sort by urgency_score DESC (most urgent clearance first)
+        high_risk.sort((a, b) => b.urgency_score - a.urgency_score);
+
+        // Sort Medium Risk batches by expiry_date ASC first, then urgency_score DESC
+        medium_risk.sort((a, b) => {
+            const dateA = new Date(a.expiry_date).getTime();
+            const dateB = new Date(b.expiry_date).getTime();
+            if (dateA !== dateB) return dateA - dateB;
+            return b.urgency_score - a.urgency_score;
+        });
+
+        // Then Low Risk batches by expiry_date ASC, then urgency_score DESC
+        low_risk.sort((a, b) => {
+            const dateA = new Date(a.expiry_date).getTime();
+            const dateB = new Date(b.expiry_date).getTime();
+            if (dateA !== dateB) return dateA - dateB;
+            return b.urgency_score - a.urgency_score;
+        });
 
         // dispatch_queue: medium risk + low risk combined, medium first then low
         const dispatch_queue = [...medium_risk, ...low_risk];
@@ -246,11 +297,97 @@ router.get('/recommendations', async (req, res) => {
             low_risk,
             dispatch_queue,
             total_in_queue: dispatch_queue.length,
-            total_clearance: high_risk.length
+            total_clearance: high_risk.length,
+            distributors // Raw list mapped to the frontend
         });
     } catch (err) {
         console.error('Error fetching recommendations:', err);
         res.status(500).json({ error: 'Server error fetching recommendations' });
+    }
+});
+
+// ROUTE 5.5: POST /recommendations/action
+// Processes dispatch or clearance action, saving to DB and updating batch status
+router.post('/recommendations/action', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { batch_id, action_type, distributor_id, reason } = req.body;
+        const user_id = req.user.user_id || req.user.id || 1; // Using token validation
+
+        if (!batch_id || !action_type) {
+            return res.status(400).json({ error: 'Missing batch_id or action_type' });
+        }
+
+        await client.query('BEGIN');
+
+        // Fetch current batch details
+        const batchQuery = `
+            SELECT b.zone_id, b.status, fs.frs_score, fs.risk_band
+            FROM batches b
+            LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
+            WHERE b.batch_id = $1
+        `;
+        const batchRes = await client.query(batchQuery, [batch_id]);
+        
+        if (batchRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Batch not found' });
+        }
+
+        const batch = batchRes.rows[0];
+        
+        if (batch.status !== 'in_storage') {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Batch is already processed' });
+        }
+
+        if (action_type === 'dispatch') {
+            if (!distributor_id) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: 'distributor_id is required for dispatch' });
+            }
+
+            // Insert into dispatch_records
+            await client.query(`
+                INSERT INTO dispatch_records 
+                (batch_id, distributor_id, frs_at_dispatch, risk_band_at_dispatch, zone_at_dispatch, approved_by, dispatch_timestamp)
+                VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            `, [batch_id, distributor_id, batch.frs_score || 0, batch.risk_band || 'low', batch.zone_id, user_id]);
+
+            // Update batch status
+            await client.query(`UPDATE batches SET status = 'dispatched' WHERE batch_id = $1`, [batch_id]);
+
+        } else if (action_type === 'clearance') {
+            // Insert into clearance_records
+            const finalReason = reason || 'System Promoted Clearance';
+            await client.query(`
+                INSERT INTO clearance_records (batch_id, reason, approved_by, cleared_at)
+                VALUES ($1, $2, $3, NOW())
+            `, [batch_id, finalReason, user_id]);
+
+            // Update batch status
+            await client.query(`UPDATE batches SET status = 'cleared' WHERE batch_id = $1`, [batch_id]);
+        } else {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Invalid action_type. Must be dispatch or clearance.' });
+        }
+
+        // Close out the batch_zone_history
+        await client.query(`
+            UPDATE batch_zone_history
+            SET exit_timestamp = NOW()
+            WHERE batch_id = $1 AND exit_timestamp IS NULL
+        `, [batch_id]);
+
+        await client.query('COMMIT');
+        
+        res.json({ success: true, message: `Batch successfully processed as ${action_type}` });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Error processing recommendation action:', err);
+        res.status(500).json({ error: 'Server error processing action' });
+    } finally {
+        client.release();
     }
 });
 
@@ -327,11 +464,11 @@ router.patch('/alerts/:alert_id/read', async (req, res) => {
             RETURNING *
         `;
         const result = await pool.query(query, [alert_id]);
-        
+
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Alert not found' });
         }
-        
+
         res.json({ success: true });
     } catch (err) {
         console.error('Error marking alert as read:', err);
