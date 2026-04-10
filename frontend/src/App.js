@@ -6,7 +6,7 @@ import Dashboard from './pages/Dashboard';
 import ActionRecommendations from './pages/ActionRecommendations';
 import Alerts from './pages/Alerts';
 import BatchDetail from './pages/BatchDetail';
-
+import DispatchCertificates from './pages/DispatchCertificates';
 // A simple Protected Route component wrapper
 const ProtectedRoute = ({ children }) => {
   const token = sessionStorage.getItem('token');
@@ -67,6 +67,14 @@ const App = () => {
           element={
             <ProtectedRoute>
               <BatchDetail />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/certificates" 
+          element={
+            <ProtectedRoute>
+              <DispatchCertificates />
             </ProtectedRoute>
           } 
         />

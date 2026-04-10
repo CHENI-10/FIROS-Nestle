@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const ActionRecommendations = () => {
     const [theme, setTheme] = useState(sessionStorage.getItem('theme') || 'light');
@@ -24,8 +24,9 @@ const ActionRecommendations = () => {
     // New states for real API flow
     const [isProcessing, setIsProcessing] = useState(false);
     const [clearanceReason, setClearanceReason] = useState('');
-
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
 
     const fetchRecommendations = async () => {
         const token = sessionStorage.getItem('token');
@@ -74,6 +75,31 @@ const ActionRecommendations = () => {
         const interval = setInterval(fetchRecommendations, 60000);
         return () => clearInterval(interval);
     }, [navigate]);
+
+    useEffect(() => {
+        if (!loading && recommendations && location.state?.autoSelectBatchId && !selectedBatch) {
+            const targetId = location.state.autoSelectBatchId;
+            const allBatches = [
+                ...(recommendations.high_risk || []),
+                ...(recommendations.medium_risk || []),
+                ...(recommendations.dispatch_queue || []),
+                ...(recommendations.low_risk || [])
+            ];
+            const found = allBatches.find(b => String(b.batch_id) === String(targetId));
+            if (found) {
+                setSelectedBatch(found);
+                if (found.risk_band === 'high') {
+                    setActiveTab('clearance');
+                } else if (found.risk_band === 'medium') {
+                    setActiveTab('priority');
+                } else {
+                    setActiveTab('all');
+                }
+                // Clear the state so it doesn't re-trigger
+                window.history.replaceState({}, document.title);
+            }
+        }
+    }, [loading, recommendations, location.state, selectedBatch]);
 
     const toggleTheme = () => {
         const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -161,9 +187,11 @@ const ActionRecommendations = () => {
             // Re-fetch to clear this batch organically from the UI queue
             await fetchRecommendations();
 
+            setShowSuccessModal(true);
+
         } catch (err) {
             console.error('Error confirming action:', err);
-            alert('Error: ' + err.message);
+            setError('Error: ' + err.message);
         } finally {
             setIsProcessing(false);
         }
@@ -460,9 +488,15 @@ const ActionRecommendations = () => {
                             </label>
                         </div>
 
+                        {error && (
+                            <div style={{ padding: '12px 16px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '8px', marginBottom: '24px', fontSize: '14px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                                {error}
+                            </div>
+                        )}
+
                         <div style={{ padding: '20px 24px', backgroundColor: isDark ? '#0f172a' : '#f8fafc', display: 'flex', gap: '12px', borderTop: `1px solid ${isDark ? '#334155' : '#e2e8f0'}` }}>
                             <button 
-                                onClick={() => setShowDispatchModal(false)}
+                                onClick={() => { setShowDispatchModal(false); setError(null); }}
                                 style={{ flex: 1, padding: '12px 20px', borderRadius: '8px', border: `1px solid ${isDark ? '#475569' : '#cbd5e1'}`, backgroundColor: 'transparent', color: textColor, fontWeight: 'bold', cursor: 'pointer' }}
                                 disabled={isProcessing}
                             >
@@ -481,6 +515,36 @@ const ActionRecommendations = () => {
                                 }}
                             >
                                 {isProcessing ? 'Processing...' : (selectedBatch.risk_band === 'high' ? 'Approve Clearance' : 'Confirm Dispatch')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
+            {/* Success Modal */}
+            {showSuccessModal && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ backgroundColor: cardBgColor, padding: '40px', borderRadius: '16px', width: '100%', maxWidth: '440px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+                        <div style={{ width: '64px', height: '64px', margin: '0 auto 24px', borderRadius: '50%', border: '4px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: '18px', height: '32px', borderBottom: '4px solid #10b981', borderRight: '4px solid #10b981', transform: 'rotate(45deg)', marginTop: '-8px' }} />
+                        </div>
+                        <h2 style={{ margin: '0 0 16px 0', fontSize: '28px' }}>Action Confirmed</h2>
+                        <p style={{ color: textMuted, marginBottom: '32px', fontSize: '15px' }}>The batch has been successfully removed from the active queue and officially logged in the system ledger.</p>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <button 
+                                onClick={() => { setShowSuccessModal(false); navigate('/certificates'); }}
+                                style={{ background: isDark ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : '#ffffff', color: isDark ? '#C8A96E' : '#3D1C02', border: isDark ? '2px solid #C8A96E' : '2px solid #3D1C02', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}
+                                onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
+                                onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
+                            >
+                                <span style={{ marginRight: '8px', fontSize: '14px' }}>[ LEDGER ]</span> View Certificate Vault
+                            </button>
+                            <button 
+                                onClick={() => setShowSuccessModal(false)}
+                                style={{ background: 'transparent', border: `1px solid ${isDark ? '#475569' : '#cbd5e1'}`, color: textColor, padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}
+                            >
+                                Continue Recommending
                             </button>
                         </div>
                     </div>

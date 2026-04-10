@@ -528,4 +528,65 @@ router.get('/batches/:batch_id', async (req, res) => {
     }
 });
 
+// ROUTE 9: GET /dispatches
+// Returns all dispatch records mapped to product and distributor
+router.get('/dispatches', async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                dr.dispatch_id, dr.batch_id, dr.distributor_id, 
+                dr.frs_at_dispatch, dr.risk_band_at_dispatch, dr.zone_at_dispatch,
+                dr.dispatch_timestamp, dr.collected_timestamp,
+                b.quantity, b.expiry_date,
+                p.product_name, p.pack_size,
+                d.distributor_name,
+                u.full_name as approved_by_name
+            FROM dispatch_records dr
+            JOIN batches b ON dr.batch_id = b.batch_id
+            JOIN products p ON b.product_id = p.product_id
+            JOIN distributor_records d ON dr.distributor_id = d.distributor_id
+            JOIN users u ON dr.approved_by = u.user_id
+            ORDER BY dr.dispatch_timestamp DESC
+        `;
+        const result = await pool.query(query);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching dispatch records:', err);
+        res.status(500).json({ error: 'Server error fetching dispatch records' });
+    }
+});
+
+// ROUTE 10: PATCH /dispatches/:dispatch_id/collect
+// Updates the collected_timestamp for a given dispatch record
+router.patch('/dispatches/:dispatch_id/collect', async (req, res) => {
+    try {
+        const { dispatch_id } = req.params;
+        
+        // Prevent marking if already collected
+        const checkQuery = `SELECT collected_timestamp FROM dispatch_records WHERE dispatch_id = $1`;
+        const checkRes = await pool.query(checkQuery, [dispatch_id]);
+        
+        if (checkRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Dispatch record not found' });
+        }
+        
+        if (checkRes.rows[0].collected_timestamp !== null) {
+            return res.status(400).json({ error: 'Batch is already collected.' });
+        }
+
+        const query = `
+            UPDATE dispatch_records 
+            SET collected_timestamp = NOW() 
+            WHERE dispatch_id = $1
+            RETURNING *
+        `;
+        const result = await pool.query(query, [dispatch_id]);
+
+        res.json({ success: true, dispatch: result.rows[0] });
+    } catch (err) {
+        console.error('Error marking dispatch as collected:', err);
+        res.status(500).json({ error: 'Server error marking dispatch collected' });
+    }
+});
+
 module.exports = router;
