@@ -224,7 +224,7 @@ router.get('/recommendations', async (req, res) => {
         batches.forEach(batch => {
             const risk_band = batch.risk_band;
             let urgency_score = Math.min((batch.days_in_warehouse || 0) / 30, 5);
-            
+
             let suggested_distributor_id = null;
             let suggested_distributor_name = null;
             let suggested_next_visit_date = null;
@@ -328,14 +328,14 @@ router.post('/recommendations/action', async (req, res) => {
             WHERE b.batch_id = $1
         `;
         const batchRes = await client.query(batchQuery, [batch_id]);
-        
+
         if (batchRes.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Batch not found' });
         }
 
         const batch = batchRes.rows[0];
-        
+
         if (batch.status !== 'in_storage') {
             await client.query('ROLLBACK');
             return res.status(400).json({ error: 'Batch is already processed' });
@@ -359,7 +359,7 @@ router.post('/recommendations/action', async (req, res) => {
 
         } else if (action_type === 'clearance') {
             // Insert into clearance_records
-            const finalReason = reason || 'System Promoted Clearance';
+            const finalReason = reason || 'Manager-approved clearance';
             await client.query(`
                 INSERT INTO clearance_records (batch_id, reason, approved_by, cleared_at)
                 VALUES ($1, $2, $3, NOW())
@@ -380,7 +380,7 @@ router.post('/recommendations/action', async (req, res) => {
         `, [batch_id]);
 
         await client.query('COMMIT');
-        
+
         res.json({ success: true, message: `Batch successfully processed as ${action_type}` });
     } catch (err) {
         await client.query('ROLLBACK');
@@ -561,15 +561,15 @@ router.get('/dispatches', async (req, res) => {
 router.patch('/dispatches/:dispatch_id/collect', async (req, res) => {
     try {
         const { dispatch_id } = req.params;
-        
+
         // Prevent marking if already collected
         const checkQuery = `SELECT collected_timestamp FROM dispatch_records WHERE dispatch_id = $1`;
         const checkRes = await pool.query(checkQuery, [dispatch_id]);
-        
+
         if (checkRes.rows.length === 0) {
             return res.status(404).json({ error: 'Dispatch record not found' });
         }
-        
+
         if (checkRes.rows[0].collected_timestamp !== null) {
             return res.status(400).json({ error: 'Batch is already collected.' });
         }
@@ -586,6 +586,258 @@ router.patch('/dispatches/:dispatch_id/collect', async (req, res) => {
     } catch (err) {
         console.error('Error marking dispatch as collected:', err);
         res.status(500).json({ error: 'Server error marking dispatch collected' });
+    }
+});
+// ROUTE: POST /returns/evaluate
+// Evaluates return liability WITHOUT committing to DB
+router.post('/returns/evaluate', async (req, res) => {
+    try {
+        const { batch_id } = req.body;
+
+        if (!batch_id) {
+            return res.status(400).json({ error: 'Missing batch_id' });
+        }
+
+        // 1. Validate batch exists and has status = 'dispatched'
+        const batchQuery = `SELECT status FROM batches WHERE batch_id = $1 LIMIT 1`;
+        const batchRes = await pool.query(batchQuery, [batch_id]);
+
+        if (batchRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Batch not found' });
+        }
+
+        if (batchRes.rows[0].status !== 'dispatched') {
+            return res.status(400).json({ error: 'Batch is not currently dispatched' });
+        }
+
+        // 2. Fetch the most recent dispatch_record for this batch
+        const dispatchQuery = `
+            SELECT frs_at_dispatch, dispatch_timestamp, distributor_id
+            FROM dispatch_records
+            WHERE batch_id = $1
+            ORDER BY dispatch_timestamp DESC
+            LIMIT 1
+        `;
+        const dispatchRes = await pool.query(dispatchQuery, [batch_id]);
+
+        if (dispatchRes.rows.length === 0) {
+            return res.status(400).json({ error: 'No dispatch record found for this batch' });
+        }
+
+        const { frs_at_dispatch, dispatch_timestamp, distributor_id } = dispatchRes.rows[0];
+
+        // 3. Calculate days_since_dispatch
+        const nowMs = Date.now();
+        const dispatchMs = new Date(dispatch_timestamp).getTime();
+        const days_since_dispatch = Math.floor((nowMs - dispatchMs) / (1000 * 60 * 60 * 24));
+
+        // 4. Determine recommendation logic
+        let recommendation = 'review';
+        let reason = 'Mixed signals — physical inspection required before decision';
+
+        if (frs_at_dispatch >= 80 && days_since_dispatch <= 30) {
+            recommendation = 'reject';
+            reason = 'Batch was in good condition at dispatch and returned within expected window — distributor liable';
+        } else if (frs_at_dispatch < 60 || days_since_dispatch > 60) {
+            recommendation = 'accept';
+            reason = 'Batch had compromised freshness at dispatch or held too long — Nestlé liability';
+        }
+
+        res.json({
+            recommendation,
+            reason,
+            frs_at_dispatch,
+            days_since_dispatch,
+            distributor_id
+        });
+
+    } catch (err) {
+        console.error('Error evaluating return:', err);
+        res.status(500).json({ error: 'Server error processing return evaluation' });
+    }
+});
+
+// ROUTE 11: POST /returns
+// Processes a batch return evaluating liability and creating necessary records
+router.post('/returns', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { batch_id, return_reason, distributor_id, manager_decision, system_recommendation, override_reason, frs_at_dispatch } = req.body;
+        const user_id = req.user?.user_id || req.user?.id || 1;
+
+        if (!batch_id || !distributor_id || !manager_decision || !system_recommendation) {
+            return res.status(400).json({ error: 'Missing required parameters' });
+        }
+
+        if (manager_decision !== system_recommendation && (!override_reason || override_reason.trim() === '')) {
+            return res.status(400).json({ error: 'Override reason is mandatory when manager decision differs from system recommendation.' });
+        }
+
+        await client.query('BEGIN');
+
+        // 1. Validate batch exists and has status = 'dispatched'
+        const batchQuery = `SELECT status FROM batches WHERE batch_id = $1 LIMIT 1`;
+        const batchRes = await client.query(batchQuery, [batch_id]);
+
+        if (batchRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Batch not found' });
+        }
+
+        if (batchRes.rows[0].status !== 'dispatched') {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Batch is not currently dispatched' });
+        }
+
+        // 2. Insert into return_records
+        const insertQuery = `
+            INSERT INTO return_records (batch_id, distributor_id, return_reason, frs_at_dispatch, system_recommendation, decision, override_reason, decided_by, decided_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+            RETURNING *
+        `;
+        const returnRecordRes = await client.query(insertQuery, [
+            batch_id, distributor_id, return_reason || '', frs_at_dispatch, system_recommendation, manager_decision, override_reason || null, user_id
+        ]);
+        const returnRecord = returnRecordRes.rows[0];
+
+        // 3. Update batch status to 'returned'
+        await client.query(`UPDATE batches SET status = 'returned' WHERE batch_id = $1`, [batch_id]);
+
+        await client.query('COMMIT');
+
+        // Return inserted record
+        res.json({
+            ...returnRecord,
+            success: true
+        });
+
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Error processing return:', err);
+        res.status(500).json({ error: 'Server error processing return' });
+    } finally {
+        client.release();
+    }
+});
+
+// ROUTE 12: GET /returns
+// Returns all return records joined with batch, product, and distributor info
+router.get('/returns', async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                rr.return_id,
+                rr.batch_id,
+                p.product_name,
+                d.distributor_name,
+                rr.return_reason,
+                rr.frs_at_dispatch,
+                rr.decision,
+                rr.system_recommendation,
+                rr.override_reason,
+                COALESCE(rr.decided_at, rr.created_at) AS decided_at,
+                (EXTRACT(EPOCH FROM (COALESCE(rr.decided_at, rr.created_at) - dr.dispatch_timestamp)) / 86400)::int as days_since_dispatch
+            FROM return_records rr
+            JOIN batches b ON rr.batch_id = b.batch_id
+            JOIN products p ON b.product_id = p.product_id
+            JOIN distributor_records d ON rr.distributor_id = d.distributor_id
+            LEFT JOIN LATERAL (
+                SELECT dispatch_timestamp 
+                FROM dispatch_records 
+                WHERE batch_id = rr.batch_id AND dispatch_timestamp < COALESCE(rr.decided_at, rr.created_at)
+                ORDER BY dispatch_timestamp DESC 
+                LIMIT 1
+            ) dr ON true
+            ORDER BY COALESCE(rr.decided_at, rr.created_at) DESC
+        `;
+        const result = await pool.query(query);
+
+        const records = result.rows.map(record => {
+            let decision_reason = 'Mixed signals — physical inspection required before decision';
+
+            if (record.frs_at_dispatch >= 80 && record.days_since_dispatch <= 30) {
+                decision_reason = 'Batch was in good condition at dispatch and returned within expected window — distributor liable';
+            } else if (record.frs_at_dispatch < 60 || record.days_since_dispatch > 60) {
+                decision_reason = 'Batch had compromised freshness at dispatch or held too long — Nestlé liability';
+            }
+
+            return {
+                ...record,
+                decision_reason
+            };
+        });
+
+        res.json(records);
+    } catch (err) {
+        console.error('Error fetching returns:', err);
+        res.status(500).json({ error: 'Server error fetching returns' });
+    }
+});
+
+// ROUTE 13: GET /clearance-recommendations
+// Returns all high-risk in_storage batches with calculated promotions
+router.get('/clearance-recommendations', async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                b.*,
+                p.product_name,
+                p.pack_size,
+                fs.frs_score,
+                fs.risk_band,
+                fs.days_in_warehouse
+            FROM batches b
+            JOIN products p ON b.product_id = p.product_id
+            JOIN freshness_scores fs ON b.batch_id = fs.batch_id
+            WHERE b.status = 'in_storage' AND fs.risk_band = 'high'
+            ORDER BY fs.frs_score ASC
+        `;
+        const result = await pool.query(query);
+        const batches = result.rows;
+
+        const results = batches.map(batch => {
+            const frs = Number(batch.frs_score);
+            let discount_percent = 0;
+
+            if (frs === 0) {
+                discount_percent = 35;
+            } else if (frs < 20) {
+                discount_percent = 30;
+            } else if (frs <= 39) {
+                discount_percent = 20;
+            } else if (frs <= 59) {
+                discount_percent = 10;
+            }
+
+            let promotion_type = '';
+            if (frs >= 40) {
+                promotion_type = 'Trade Discount';
+            } else if (frs >= 20) {
+                promotion_type = 'Bundle Offer';
+            } else {
+                promotion_type = 'Fast Distributor Override';
+            }
+
+            const parsedDate = new Date(batch.expiry_date);
+            const formattedExpiry = !isNaN(parsedDate.getTime())
+                ? parsedDate.toISOString().split('T')[0]
+                : batch.expiry_date;
+
+            const rationale = `${batch.product_name} has FRS ${batch.frs_score} after ${batch.days_in_warehouse || 0} days in Zone ${batch.zone_id}. Recommend ${promotion_type} at ${discount_percent}% to move stock before expiry on ${formattedExpiry}.`;
+
+            return {
+                ...batch,
+                discount_percent,
+                promotion_type,
+                rationale
+            };
+        });
+
+        res.json(results);
+
+    } catch (err) {
+        console.error('Error fetching clearance recommendations:', err);
+        res.status(500).json({ error: 'Server error fetching clearance recommendations' });
     }
 });
 

@@ -288,7 +288,7 @@ const Dashboard = () => {
                     </div>
                 </section>
 
-                <div style={{ padding: '0 20px', marginBottom: '25px', marginTop: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ padding: '0 20px', marginBottom: '25px', marginTop: '10px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
                     <button
                         onClick={() => navigate('/recommendations')}
                         style={{
@@ -323,6 +323,39 @@ const Dashboard = () => {
                     </button>
 
                     <button
+                        onClick={() => navigate('/clearance')}
+                        style={{
+                            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                            color: 'white',
+                            padding: '16px 24px',
+                            border: '2px solid #ef4444',
+                            borderRadius: '12px',
+                            fontSize: '18px',
+                            fontWeight: 'bold',
+                            letterSpacing: '0.5px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+                            transition: 'all 0.3s ease'
+                        }}
+                        onMouseOver={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-3px)';
+                            e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
+                        }}
+                        onMouseOut={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
+                        }}
+                    >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#f87171' }}>
+                            <span style={{ fontSize: '20px' }}>🔥</span> Clearance Promotions
+                        </span>
+                        <span style={{ fontSize: '24px', color: '#f87171' }}>→</span>
+                    </button>
+
+                    <button
                         onClick={() => navigate('/certificates')}
                         style={{
                             background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
@@ -353,6 +386,39 @@ const Dashboard = () => {
                             <span style={{ fontSize: '20px' }}>📜</span> Dispatch Certificates
                         </span>
                         <span style={{ fontSize: '24px', color: '#C8A96E' }}>→</span>
+                    </button>
+
+                    <button
+                        onClick={() => navigate('/returns')}
+                        style={{
+                            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                            color: 'white',
+                            padding: '16px 24px',
+                            border: '2px solid #2563eb',
+                            borderRadius: '12px',
+                            fontSize: '18px',
+                            fontWeight: 'bold',
+                            letterSpacing: '0.5px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+                            transition: 'all 0.3s ease'
+                        }}
+                        onMouseOver={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-3px)';
+                            e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
+                        }}
+                        onMouseOut={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
+                        }}
+                    >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#60a5fa' }}>
+                            <span style={{ fontSize: '20px' }}>↩️</span> Return Intelligence
+                        </span>
+                        <span style={{ fontSize: '24px', color: '#60a5fa' }}>→</span>
                     </button>
                 </div>
 

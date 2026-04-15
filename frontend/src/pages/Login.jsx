@@ -198,18 +198,7 @@ const Login = () => {
         </div>
       </div>
 
-      <div style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        textAlign: 'center',
-        fontSize: '11px',
-        color: 'rgba(255,255,255,0.7)',
-        padding: '10px 16px',
-        backgroundColor: 'rgba(42, 19, 1, 0.95)',
-        zIndex: 10
-      }}>
+      <div className="login-footer-bar">
         © 2026 FIROS — Freshness Intelligence & Risk Optimization System | Nestlé Lanka | All Rights Reserved
       </div>
     </div>

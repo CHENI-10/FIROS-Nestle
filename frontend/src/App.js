@@ -7,6 +7,9 @@ import ActionRecommendations from './pages/ActionRecommendations';
 import Alerts from './pages/Alerts';
 import BatchDetail from './pages/BatchDetail';
 import DispatchCertificates from './pages/DispatchCertificates';
+import ReturnIntelligence from './pages/ReturnIntelligence';
+import ClearanceRecommendations from './pages/ClearanceRecommendations';
+
 // A simple Protected Route component wrapper
 const ProtectedRoute = ({ children }) => {
   const token = sessionStorage.getItem('token');
@@ -18,8 +21,6 @@ const ProtectedRoute = ({ children }) => {
 
   return children;
 };
-
-
 
 const App = () => {
   return (
@@ -78,9 +79,26 @@ const App = () => {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="/returns" 
+          element={
+            <ProtectedRoute>
+              <ReturnIntelligence />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/clearance" 
+          element={
+            <ProtectedRoute>
+              <ClearanceRecommendations />
+            </ProtectedRoute>
+          } 
+        />
         
         {/* Catch-all fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />
+
       </Routes>
     </BrowserRouter>
   );

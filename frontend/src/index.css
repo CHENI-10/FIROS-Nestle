@@ -1,3 +1,8 @@
+html {
+  background-color: #2A1301; /* Themes background color */
+  height: 100%;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -5,7 +10,11 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  zoom: 0.9; /* Simulates a slightly zoomed-out, wider panoramic resolution feel */
+  background-color: transparent; /* Allows html background to fill gaps under zoom */
+  zoom: 0.9; /* Simulates panoramic view */
+  min-height: calc(100vh / 0.9); /* Compensates for zoom to fill physical screen */
+  display: flex;
+  flex-direction: column;
 }
 
 code {

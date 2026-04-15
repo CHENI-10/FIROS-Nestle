@@ -289,7 +289,9 @@ CREATE TABLE return_records (
     distributor_id  INTEGER       NOT NULL REFERENCES distributor_records(distributor_id),
     return_reason   TEXT          NOT NULL,
     frs_at_dispatch INTEGER       NOT NULL,
+    system_recommendation VARCHAR(10) CHECK (system_recommendation IN ('accept', 'review', 'reject')),
     decision        VARCHAR(10)   CHECK (decision IN ('accept', 'review', 'reject')),
+    override_reason TEXT,
     decided_by      INTEGER       REFERENCES users(user_id),
     created_at      TIMESTAMP     NOT NULL DEFAULT NOW(),
     decided_at      TIMESTAMP

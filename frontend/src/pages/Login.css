@@ -17,12 +17,11 @@
   --bg-color: #FFFFFF;
 }
 
-body, html {
+body {
   margin: 0;
   padding: 0;
   height: 100%;
   font-family: 'Inter', sans-serif;
-  background-color: var(--bg-color);
 }
 
 .login-wrapper {
@@ -30,6 +29,7 @@ body, html {
   display: flex;
   flex-direction: column;
   position: relative;
+  background-color: var(--nestle-choco-main); /* Match panel background */
 }
 
 /* Warm Gold Top Gradient Accent Bar */
@@ -424,6 +424,18 @@ body, html {
   font-size: 0.8rem;
   margin: 0;
   font-weight: 500;
+}
+
+/* Footer Bar */
+.login-footer-bar {
+  text-align: center;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 12px 16px;
+  background-color: rgba(42, 19, 1, 0.95);
+  border-top: 1px solid rgba(200, 169, 110, 0.1);
+  width: 100%;
+  z-index: 10;
 }
 
 /* Keyframes */
