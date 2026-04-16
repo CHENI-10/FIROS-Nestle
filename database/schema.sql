@@ -272,6 +272,7 @@ CREATE TABLE clearance_records (
     batch_id      VARCHAR(50)   NOT NULL REFERENCES batches(batch_id),
     reason        VARCHAR(100)  NOT NULL,
     notes         TEXT,
+    distributor_id INTEGER      REFERENCES distributor_records(distributor_id),
     approved_by   INTEGER       NOT NULL REFERENCES users(user_id),
     cleared_at    TIMESTAMP     NOT NULL DEFAULT NOW()
 );

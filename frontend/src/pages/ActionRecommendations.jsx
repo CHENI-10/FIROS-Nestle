@@ -25,6 +25,7 @@ const ActionRecommendations = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [clearanceReason, setClearanceReason] = useState('');
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [completedActionType, setCompletedActionType] = useState(null);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -187,6 +188,7 @@ const ActionRecommendations = () => {
             // Re-fetch to clear this batch organically from the UI queue
             await fetchRecommendations();
 
+            setCompletedActionType(actionType);
             setShowSuccessModal(true);
 
         } catch (err) {
@@ -387,14 +389,20 @@ const ActionRecommendations = () => {
                                     </div>
                                     
                                     <button 
-                                        onClick={openDispatchModal}
+                                        onClick={() => {
+                                            if (isHigh) {
+                                                navigate('/clearance', { state: { autoSelectBatchId: batch.batch_id } });
+                                            } else {
+                                                openDispatchModal();
+                                            }
+                                        }}
                                         style={{ 
                                             ...btnStyle, 
                                             backgroundColor: isHigh ? riskColors.high : riskColors.low, 
                                             color: 'white',
                                         }}
                                     >
-                                        {isHigh ? 'Approve Clearance' : 'Confirm Dispatch'}
+                                        {isHigh ? 'View Clearance Promotions' : 'Confirm Dispatch'}
                                     </button>
                                 </div>
                             </div>
@@ -533,12 +541,19 @@ const ActionRecommendations = () => {
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <button 
-                                onClick={() => { setShowSuccessModal(false); navigate('/certificates'); }}
+                                onClick={() => { 
+                                    setShowSuccessModal(false); 
+                                    if (completedActionType === 'clearance') {
+                                        navigate('/dashboard');
+                                    } else {
+                                        navigate('/certificates'); 
+                                    }
+                                }}
                                 style={{ background: isDark ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : '#ffffff', color: isDark ? '#C8A96E' : '#3D1C02', border: isDark ? '2px solid #C8A96E' : '2px solid #3D1C02', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}
                                 onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
                                 onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
                             >
-                                <span style={{ marginRight: '8px', fontSize: '14px' }}>[ LEDGER ]</span> View Certificate Vault
+                                <span style={{ marginRight: '8px', fontSize: '14px' }}>[ LEDGER ]</span> {completedActionType === 'clearance' ? 'View Dashboard Inventory' : 'View Certificate Vault'}
                             </button>
                             <button 
                                 onClick={() => setShowSuccessModal(false)}

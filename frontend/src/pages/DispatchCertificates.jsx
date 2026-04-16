@@ -12,6 +12,10 @@ const DispatchCertificates = () => {
     const [confirmCollectId, setConfirmCollectId] = useState(null);
     const [successMsg, setSuccessMsg] = useState('');
     const [collectError, setCollectError] = useState('');
+    const [activeTab, setActiveTab] = useState('dispatches'); // 'dispatches' or 'clearance'
+    const [clearances, setClearances] = useState([]);
+    const [tabLoading, setTabLoading] = useState(false);
+    const [confirmClearanceId, setConfirmClearanceId] = useState(null);
     const isDark = theme === 'dark';
     const bgColor = isDark ? '#0f172a' : '#f8fafc';
     const textColor = isDark ? '#f1f5f9' : '#1e293b';
@@ -41,7 +45,7 @@ const DispatchCertificates = () => {
             }
 
             const data = await response.json();
-            setDispatches(data);
+            setDispatches(data.dispatches || data);
             setError(null);
         } catch (err) {
             console.error("Error fetching dispatches", err);
@@ -51,10 +55,32 @@ const DispatchCertificates = () => {
         }
     };
 
+    const fetchClearances = async () => {
+        setTabLoading(true);
+        const token = sessionStorage.getItem('token');
+        try {
+            const response = await fetch('/api/dashboard/clearance-ledger', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setClearances(data);
+            }
+        } catch (err) {
+            console.error("Error fetching clearance ledger", err);
+        } finally {
+            setTabLoading(false);
+        }
+    };
+
     useEffect(() => {
-        fetchDispatches();
+        if (activeTab === 'dispatches') {
+            fetchDispatches();
+        } else {
+            fetchClearances();
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [activeTab]);
 
     const handleLogout = () => {
         sessionStorage.removeItem('token');
@@ -91,6 +117,28 @@ const DispatchCertificates = () => {
 
         } catch (err) {
             console.error(err);
+            setCollectError(err.message);
+        } finally {
+            setIsCollecting(false);
+        }
+    };
+
+    const processClearancePickup = async () => {
+        setIsCollecting(true);
+        setCollectError('');
+        const token = sessionStorage.getItem('token');
+        try {
+            const response = await fetch(`/api/dashboard/clearance/${confirmClearanceId}/collect`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!response.ok) throw new Error('Failed to verify clearance pickup');
+
+            setConfirmClearanceId(null);
+            setSuccessMsg('Clearance Pickup Verified Successfully.');
+            await fetchClearances();
+        } catch (err) {
             setCollectError(err.message);
         } finally {
             setIsCollecting(false);
@@ -154,8 +202,38 @@ const DispatchCertificates = () => {
                     </div>
                 </div>
 
+                {/* Tab Navigation */}
+                <div style={{ display: 'flex', gap: '24px', borderBottom: `2px solid ${isDark ? '#334155' : '#e2e8f0'}`, marginBottom: '32px' }}>
+                    <button 
+                        onClick={() => setActiveTab('dispatches')}
+                        style={{ 
+                            background: 'none', border: 'none', padding: '12px 0', 
+                            fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', 
+                            color: activeTab === 'dispatches' ? (isDark ? '#60a5fa' : '#2563eb') : textMuted,
+                            borderBottom: activeTab === 'dispatches' ? `3px solid ${isDark ? '#60a5fa' : '#2563eb'}` : '3px solid transparent',
+                            transform: 'translateY(2px)'
+                        }}
+                    >
+                        Standard Dispatches
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('clearance')}
+                        style={{ 
+                            background: 'none', border: 'none', padding: '12px 0', 
+                            fontSize: '18px', fontWeight: 'bold', cursor: 'pointer', 
+                            color: activeTab === 'clearance' ? (isDark ? '#60a5fa' : '#2563eb') : textMuted,
+                            borderBottom: activeTab === 'clearance' ? `3px solid ${isDark ? '#60a5fa' : '#2563eb'}` : '3px solid transparent',
+                            transform: 'translateY(2px)'
+                        }}
+                    >
+                        Clearance Ledger
+                    </button>
+                </div>
+
                 {loading ? (
                     <div style={{ textAlign: 'center', padding: '64px', fontWeight: 'bold', fontSize: '18px' }}>Tracking Ledger...</div>
+                ) : tabLoading ? (
+                    <div style={{ textAlign: 'center', padding: '64px', fontWeight: 'bold', fontSize: '18px', color: textMuted }}>Refreshing Ledger...</div>
                 ) : error ? (
                     <div style={{ textAlign: 'center', padding: '64px', color: '#ef4444' }}>{error}</div>
                 ) : dispatches.length === 0 ? (
@@ -167,94 +245,169 @@ const DispatchCertificates = () => {
                 ) : (
                     <div style={{ backgroundColor: cardBgColor, borderRadius: '12px', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, overflow: 'hidden' }}>
                         <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                <thead>
-                                    <tr style={{ backgroundColor: isDark ? '#334155' : '#f8fafc', color: textMuted, fontSize: '14px', borderBottom: `2px solid ${isDark ? '#475569' : '#e2e8f0'}` }}>
-                                        <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Dispatch ID</th>
-                                        <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Batch & Product</th>
-                                        <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Distributor Assigned</th>
-                                        <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Dispatch FRS</th>
-                                        <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Status</th>
-                                        <th style={{ padding: '16px 24px', fontWeight: 'bold' }} className="action-column">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {dispatches.map(record => {
-                                        const isCollected = !!record.collected_timestamp;
-                                        
-                                        return (
-                                            <tr key={record.dispatch_id} style={{ borderBottom: `1px solid ${isDark ? '#334155' : '#e2e8f0'}` }}>
-                                                <td style={{ padding: '16px 24px', fontWeight: 'bold' }}>#{record.dispatch_id}</td>
+                            {activeTab === 'dispatches' ? (
+                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr style={{ backgroundColor: isDark ? '#334155' : '#f8fafc', color: textMuted, fontSize: '14px', borderBottom: `2px solid ${isDark ? '#475569' : '#e2e8f0'}` }}>
+                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Dispatch ID</th>
+                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Batch & Product</th>
+                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Distributor Assigned</th>
+                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Dispatch FRS</th>
+                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Status</th>
+                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }} className="action-column">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {dispatches.map(record => {
+                                            const isCollected = !!record.collected_timestamp;
+                                            
+                                            return (
+                                                <tr key={record.dispatch_id} style={{ borderBottom: `1px solid ${isDark ? '#334155' : '#e2e8f0'}` }}>
+                                                    <td style={{ padding: '16px 24px', fontWeight: 'bold' }}>#{record.dispatch_id}</td>
+                                                    <td style={{ padding: '16px 24px' }}>
+                                                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{record.product_name}</div>
+                                                        <div style={{ fontSize: '13px', color: textMuted }}>Batch: {record.batch_id}</div>
+                                                    </td>
+                                                    <td style={{ padding: '16px 24px' }}>
+                                                        <div style={{ fontWeight: 'bold' }}>{record.distributor_name}</div>
+                                                        <div style={{ fontSize: '13px', color: textMuted }}>Authorized via System</div>
+                                                    </td>
+                                                    <td style={{ padding: '16px 24px' }}>
+                                                        <span style={{ 
+                                                            backgroundColor: isDark ? '#1e293b' : '#f1f5f9', 
+                                                            padding: '6px 12px', 
+                                                            borderRadius: '6px', 
+                                                            color: record.risk_band_at_dispatch === 'low' ? '#22c55e' : (record.risk_band_at_dispatch === 'medium' ? '#f59e0b' : '#ef4444'),
+                                                            fontWeight: 'bold'
+                                                        }}>
+                                                            {Number(record.frs_at_dispatch).toFixed(1)}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ padding: '16px 24px' }}>
+                                                        {isCollected ? (
+                                                            <div style={{ color: '#16a34a', fontSize: '13px', fontWeight: 'bold' }}>
+                                                                [ VERIFIED ]
+                                                            </div>
+                                                        ) : (
+                                                            <div style={{ color: '#d97706', fontSize: '13px', fontWeight: 'bold' }}>
+                                                                [ PENDING PICKUP ]
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td style={{ padding: '16px 24px' }} className="action-column">
+                                                        <div style={{ display: 'flex', gap: '12px' }}>
+                                                            <button 
+                                                                onClick={() => setSelectedCert(record)}
+                                                                style={{ 
+                                                                    background: isDark ? 'rgba(59, 130, 246, 0.2)' : '#eff6ff', 
+                                                                    color: '#3b82f6', 
+                                                                    border: 'none', 
+                                                                    padding: '8px 16px', 
+                                                                    borderRadius: '6px', 
+                                                                    fontWeight: 'bold', 
+                                                                    cursor: 'pointer' 
+                                                                }}
+                                                            >
+                                                                View Certificate
+                                                            </button>
+                                                            {!isCollected && (
+                                                                <button 
+                                                                    onClick={() => setConfirmCollectId(record.dispatch_id)}
+                                                                    disabled={isCollecting}
+                                                                    style={{ 
+                                                                        background: isDark ? '#334155' : '#e2e8f0', 
+                                                                        color: isDark ? '#f8fafc' : '#1e293b', 
+                                                                        border: 'none', 
+                                                                        padding: '8px 16px', 
+                                                                        borderRadius: '6px', 
+                                                                        fontWeight: 'bold', 
+                                                                        cursor: isCollecting ? 'wait' : 'pointer' 
+                                                                    }}
+                                                                >
+                                                                    Physical Handover
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr style={{ backgroundColor: isDark ? '#334155' : '#f8fafc', color: textMuted, fontSize: '14px', borderBottom: `2px solid ${isDark ? '#475569' : '#e2e8f0'}` }}>
+                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Clearance ID</th>
+                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Batch & Product</th>
+                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Distributor / Reason</th>
+                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Promo %</th>
+                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Action Date</th>
+                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>FRS Score</th>
+                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {clearances.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="7" style={{ padding: '48px', textAlign: 'center', color: textMuted }}>No clearance records found.</td>
+                                            </tr>
+                                        ) : clearances.map(record => (
+                                            <tr key={record.clearance_id} style={{ borderBottom: `1px solid ${isDark ? '#334155' : '#e2e8f0'}` }}>
+                                                <td style={{ padding: '16px 24px', fontWeight: 'bold' }}>#{record.clearance_id}</td>
                                                 <td style={{ padding: '16px 24px' }}>
                                                     <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{record.product_name}</div>
                                                     <div style={{ fontSize: '13px', color: textMuted }}>Batch: {record.batch_id}</div>
                                                 </td>
                                                 <td style={{ padding: '16px 24px' }}>
-                                                    <div style={{ fontWeight: 'bold' }}>{record.distributor_name}</div>
-                                                    <div style={{ fontSize: '13px', color: textMuted }}>Authorized via System</div>
+                                                    <div style={{ fontWeight: 'bold' }}>{record.distributor_name || (record.reason === 'long in warehouse' ? 'Expired Salvage' : 'Direct Clearance')}</div>
+                                                    <div style={{ fontSize: '13px', color: textMuted }}>{record.reason} {!!record.collected_timestamp && <span style={{ color: '#16a34a', fontWeight: 'bold' }}>[ PICKED UP ]</span>}</div>
+                                                </td>
+                                                <td style={{ padding: '16px 24px' }}>
+                                                    <div style={{ fontWeight: 'bold', color: '#3b82f6' }}>{record.discount_applied ? `${record.discount_applied}%` : 'VAR'}</div>
+                                                </td>
+                                                <td style={{ padding: '16px 24px' }}>
+                                                    <div>{new Date(record.cleared_at).toLocaleDateString()}</div>
+                                                    <div style={{ fontSize: '13px', color: textMuted }}>Approved by {record.approved_by_name}</div>
                                                 </td>
                                                 <td style={{ padding: '16px 24px' }}>
                                                     <span style={{ 
                                                         backgroundColor: isDark ? '#1e293b' : '#f1f5f9', 
                                                         padding: '6px 12px', 
                                                         borderRadius: '6px', 
-                                                        color: record.risk_band_at_dispatch === 'low' ? '#22c55e' : (record.risk_band_at_dispatch === 'medium' ? '#f59e0b' : '#ef4444'),
+                                                        color: record.frs_score >= 80 ? '#22c55e' : (record.frs_score >= 60 ? '#f59e0b' : '#ef4444'),
                                                         fontWeight: 'bold'
                                                     }}>
-                                                        {Number(record.frs_at_dispatch).toFixed(1)}
+                                                        {record.frs_score !== null && record.frs_score !== undefined ? Number(record.frs_score).toFixed(1) : 'REC.'}
                                                     </span>
                                                 </td>
                                                 <td style={{ padding: '16px 24px' }}>
-                                                    {isCollected ? (
-                                                        <div style={{ color: '#16a34a', fontSize: '13px', fontWeight: 'bold' }}>
-                                                            [ VERIFIED ]
-                                                        </div>
-                                                    ) : (
-                                                        <div style={{ color: '#d97706', fontSize: '13px', fontWeight: 'bold' }}>
-                                                            [ PENDING PICKUP ]
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td style={{ padding: '16px 24px' }} className="action-column">
-                                                    <div style={{ display: 'flex', gap: '12px' }}>
+                                                    {!record.collected_timestamp ? (
                                                         <button 
-                                                            onClick={() => setSelectedCert(record)}
+                                                            onClick={() => setConfirmClearanceId(record.clearance_id)}
+                                                            disabled={isCollecting}
                                                             style={{ 
-                                                                background: isDark ? 'rgba(59, 130, 246, 0.2)' : '#eff6ff', 
-                                                                color: '#3b82f6', 
+                                                                background: isDark ? '#334155' : '#e2e8f0', 
+                                                                color: isDark ? '#f8fafc' : '#1e293b', 
                                                                 border: 'none', 
                                                                 padding: '8px 16px', 
                                                                 borderRadius: '6px', 
                                                                 fontWeight: 'bold', 
-                                                                cursor: 'pointer' 
+                                                                cursor: isCollecting ? 'wait' : 'pointer',
+                                                                fontSize: '13px'
                                                             }}
                                                         >
-                                                            View Certificate
+                                                            Verify Pickup
                                                         </button>
-                                                        {!isCollected && (
-                                                            <button 
-                                                                onClick={() => setConfirmCollectId(record.dispatch_id)}
-                                                                disabled={isCollecting}
-                                                                style={{ 
-                                                                    background: isDark ? '#334155' : '#e2e8f0', 
-                                                                    color: isDark ? '#f8fafc' : '#1e293b', 
-                                                                    border: 'none', 
-                                                                    padding: '8px 16px', 
-                                                                    borderRadius: '6px', 
-                                                                    fontWeight: 'bold', 
-                                                                    cursor: isCollecting ? 'wait' : 'pointer' 
-                                                                }}
-                                                            >
-                                                                Physical Handover
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                                    ) : (
+                                                        <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 'bold' }}>Handover Complete</span>
+                                                    )}
                                                 </td>
                                             </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
                     </div>
                 )}
@@ -413,6 +566,38 @@ const DispatchCertificates = () => {
                                 style={{ padding: '10px 16px', borderRadius: '6px', border: 'none', backgroundColor: '#10b981', color: 'white', fontWeight: 'bold', cursor: isCollecting ? 'wait' : 'pointer', opacity: isCollecting ? 0.7 : 1 }}
                             >
                                 {isCollecting ? 'Verifying...' : 'Confirm Registration'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {confirmClearanceId && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ backgroundColor: cardBgColor, padding: '24px', borderRadius: '12px', maxWidth: '440px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+                        <h3 style={{ margin: '0 0 12px 0', color: textColor }}>Verify Clearance Handover</h3>
+                        <p style={{ color: textMuted, fontSize: '14px', marginBottom: '24px', lineHeight: '1.5' }}>
+                            You are confirming the physical exit of this clearance batch from the facility. This action is immutable and will finalize the audit trail.
+                        </p>
+                        
+                        {collectError && (
+                            <div style={{ padding: '12px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '6px', marginBottom: '24px', fontSize: '13px' }}>
+                                {collectError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                            <button 
+                                onClick={() => { setConfirmClearanceId(null); setCollectError(''); }}
+                                style={{ padding: '10px 16px', borderRadius: '6px', border: `1px solid ${isDark ? '#475569' : '#cbd5e1'}`, backgroundColor: 'transparent', color: textColor, fontWeight: 'bold', cursor: 'pointer' }}
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={processClearancePickup}
+                                disabled={isCollecting}
+                                style={{ padding: '10px 16px', borderRadius: '6px', border: 'none', backgroundColor: '#3b82f6', color: 'white', fontWeight: 'bold', cursor: isCollecting ? 'wait' : 'pointer', opacity: isCollecting ? 0.7 : 1 }}
+                            >
+                                {isCollecting ? 'Verifying...' : 'Verify Physical Exit'}
                             </button>
                         </div>
                     </div>

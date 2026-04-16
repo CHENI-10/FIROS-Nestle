@@ -29,6 +29,14 @@ const ReturnIntelligence = () => {
     const [evidenceLoading, setEvidenceLoading] = useState(false);
     const [evidenceError, setEvidenceError] = useState('');
 
+    // Resolve State
+    const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
+    const [resolvingReturn, setResolvingReturn] = useState(null);
+    const [resolveDecision, setResolveDecision] = useState('');
+    const [resolveOverrideReason, setResolveOverrideReason] = useState('');
+    const [resolveError, setResolveError] = useState('');
+    const [resolveLoading, setResolveLoading] = useState(false);
+
     const isDark = theme === 'dark';
     const bgColor = isDark ? '#0f172a' : '#f8fafc';
     const textColor = isDark ? '#f1f5f9' : '#1e293b';
@@ -48,22 +56,15 @@ const ReturnIntelligence = () => {
     const fetchDistributors = async () => {
         const token = sessionStorage.getItem('token');
         try {
-            const res = await fetch('/api/dashboard/dispatches', {
+            const res = await fetch('/api/dashboard/distributors', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
                 const data = await res.json();
-                // Extract unique distributors
-                const uniqueDict = {};
-                data.forEach(d => {
-                    if (d.distributor_id && !uniqueDict[d.distributor_id]) {
-                        uniqueDict[d.distributor_id] = {
-                            id: d.distributor_id,
-                            name: d.distributor_name
-                        };
-                    }
-                });
-                setDistributors(Object.values(uniqueDict));
+                setDistributors(data.map(d => ({
+                    id: d.distributor_id,
+                    name: d.distributor_name
+                })));
             }
         } catch (err) {
             console.error("Failed to load distributors", err);
@@ -101,6 +102,63 @@ const ReturnIntelligence = () => {
         document.body.className = newTheme;
     };
 
+    const openResolveModal = (record) => {
+        setResolvingReturn(record);
+        setResolveDecision('');
+        setResolveOverrideReason('');
+        setResolveError('');
+        setIsResolveModalOpen(true);
+    };
+
+    const handleResolveSubmit = async () => {
+        if (!resolveDecision) {
+            setResolveError('Please select a final decision');
+            return;
+        }
+        
+        setResolveError('');
+        
+        if (resolveDecision !== resolvingReturn.system_recommendation && !resolveOverrideReason.trim()) {
+            setResolveError('An override justification is required when diverging from system advice.');
+            return;
+        }
+
+        setResolveLoading(true);
+        const token = sessionStorage.getItem('token');
+
+        try {
+            const payload = {
+                manager_decision: resolveDecision,
+                override_reason: resolveOverrideReason
+            };
+
+            const res = await fetch(`/api/dashboard/returns/${resolvingReturn.return_id}/resolve`, {
+                method: 'PATCH',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await res.json();
+
+            if (!res.ok) {
+                throw new Error(result.error || 'Failed to resolve return request');
+            }
+
+            setIsResolveModalOpen(false);
+            setSuccessResult(true);
+            fetchHistory(); // refresh the view
+
+        } catch (err) {
+            console.error(err);
+            setResolveError(err.message);
+        } finally {
+            setResolveLoading(false);
+        }
+    };
+
     const handleBatchChange = (e) => {
         setBatchId(e.target.value);
         setDispatchEvidence(null);
@@ -119,7 +177,8 @@ const ReturnIntelligence = () => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
-                const data = await res.json();
+                const responseData = await res.json();
+                const data = responseData.dispatches || responseData;
                 // Find the latest dispatch for this batch (returns happen after dispatch, regardless of collection status)
                 const activeDispatch = data.find(d => d.batch_id === batchId);
                 if (activeDispatch) {
@@ -523,12 +582,13 @@ const ReturnIntelligence = () => {
                                             <th style={{ padding: '16px', fontWeight: 'bold' }}>Dispatch Info</th>
                                             <th style={{ padding: '16px', fontWeight: 'bold' }}>Recommendation</th>
                                             <th style={{ padding: '16px', fontWeight: 'bold' }}>Date</th>
+                                            <th style={{ padding: '16px', fontWeight: 'bold' }}>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {history.length === 0 ? (
                                             <tr>
-                                                <td colSpan="7" style={{ padding: '32px', textAlign: 'center', color: textMuted }}>No returned batches found.</td>
+                                                <td colSpan="8" style={{ padding: '32px', textAlign: 'center', color: textMuted }}>No returned batches found.</td>
                                             </tr>
                                         ) : history.map(row => (
                                             <tr key={row.return_id} style={{ borderBottom: `1px solid ${borderCol}` }}>
@@ -572,6 +632,25 @@ const ReturnIntelligence = () => {
                                                 <td style={{ padding: '16px', color: textMuted, fontSize: '14px' }}>
                                                     {new Date(row.decided_at).toLocaleDateString()}
                                                 </td>
+                                                <td style={{ padding: '16px' }}>
+                                                    {row.decision === 'review' && (
+                                                        <button 
+                                                            onClick={() => openResolveModal(row)}
+                                                            style={{
+                                                                background: isDark ? 'rgba(59, 130, 246, 0.2)' : '#eff6ff', 
+                                                                color: '#3b82f6', 
+                                                                border: 'none', 
+                                                                padding: '6px 12px', 
+                                                                borderRadius: '6px', 
+                                                                fontWeight: 'bold', 
+                                                                cursor: 'pointer',
+                                                                fontSize: '12px'
+                                                            }}
+                                                        >
+                                                            Resolve Review
+                                                        </button>
+                                                    )}
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -581,6 +660,76 @@ const ReturnIntelligence = () => {
                     </div>
                 )}
             </main>
+
+            {/* Resolve Modal Overlay */}
+            {isResolveModalOpen && resolvingReturn && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+                    <div style={{ backgroundColor: cardBgColor, width: '100%', maxWidth: '500px', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', border: `1px solid ${borderCol}` }}>
+                        <div style={{ backgroundColor: navBg, padding: '20px 24px', color: 'white' }}>
+                            <h3 style={{ margin: 0, fontSize: '20px' }}>Resolve Pending Review</h3>
+                        </div>
+                        
+                        <div style={{ padding: '24px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', backgroundColor: isDark ? '#0f172a' : '#f8fafc', padding: '16px', borderRadius: '8px' }}>
+                                <div>
+                                    <div style={{ fontSize: '12px', color: textMuted, fontWeight: 'bold' }}>BATCH ID</div>
+                                    <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{resolvingReturn.batch_id}</div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ fontSize: '12px', color: textMuted, fontWeight: 'bold' }}>SYSTEM REC</div>
+                                    <div style={{ fontWeight: 'bold', fontSize: '16px', color: getRecommendationColor(resolvingReturn.system_recommendation) }}>{resolvingReturn.system_recommendation.toUpperCase()}</div>
+                                </div>
+                            </div>
+
+                            {resolveError && (
+                                <div style={{ color: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '12px', borderRadius: '6px', marginBottom: '16px', fontSize: '14px', fontWeight: 'bold' }}>
+                                    {resolveError}
+                                </div>
+                            )}
+
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Final Decision</label>
+                                <select 
+                                    value={resolveDecision}
+                                    onChange={(e) => setResolveDecision(e.target.value)}
+                                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `1px solid ${borderCol}`, backgroundColor: isDark ? '#334155' : '#ffffff', color: textColor, boxSizing: 'border-box' }}
+                                >
+                                    <option value="">Select final action...</option>
+                                    <option value="accept">ACCEPT Return (Nestlé Liability)</option>
+                                    <option value="reject">REJECT Return (Distributor Liability)</option>
+                                </select>
+                            </div>
+
+                            <div style={{ marginBottom: '24px' }}>
+                                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Override / Inspection Notes</label>
+                                <textarea 
+                                    value={resolveOverrideReason}
+                                    onChange={(e) => setResolveOverrideReason(e.target.value)}
+                                    rows="3"
+                                    placeholder="Enter physical inspection results or justification..."
+                                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: resolveDecision && resolveDecision !== resolvingReturn.system_recommendation ? '1px solid #ef4444' : `1px solid ${borderCol}`, backgroundColor: isDark ? '#334155' : '#ffffff', color: textColor, resize: 'vertical', boxSizing: 'border-box' }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                                <button 
+                                    onClick={() => setIsResolveModalOpen(false)}
+                                    style={{ padding: '12px 24px', borderRadius: '8px', border: `1px solid ${borderCol}`, backgroundColor: 'transparent', color: textColor, fontWeight: 'bold', cursor: 'pointer' }}
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={handleResolveSubmit}
+                                    disabled={resolveLoading}
+                                    style={{ padding: '12px 24px', borderRadius: '8px', border: 'none', backgroundColor: '#3b82f6', color: 'white', fontWeight: 'bold', cursor: resolveLoading ? 'wait' : 'pointer', opacity: resolveLoading ? 0.7 : 1 }}
+                                >
+                                    {resolveLoading ? 'Committing...' : 'Confirm Resolution'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

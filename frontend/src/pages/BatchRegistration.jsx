@@ -11,6 +11,14 @@ const BatchRegistration = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
+  // Outbound Tab State
+  const [activeTab, setActiveTab] = useState('inbound'); // 'inbound', 'outbound'
+  const [pendingDispatches, setPendingDispatches] = useState([]);
+  const [outboundLoading, setOutboundLoading] = useState(false);
+  const [outboundFilter, setOutboundFilter] = useState('');
+  const [outboundActionId, setOutboundActionId] = useState(null);
+  const [confirmingDispatch, setConfirmingDispatch] = useState(null);
+
   // Auth guard + role detection
   const token = sessionStorage.getItem('token');
   const role = sessionStorage.getItem('role');
@@ -20,6 +28,30 @@ const BatchRegistration = () => {
       navigate('/login');
     }
   }, [token, navigate]);
+
+  useEffect(() => {
+    if (activeTab === 'outbound' && token) {
+      fetchPendingDispatches();
+    }
+  }, [activeTab, token]);
+
+  const fetchPendingDispatches = async () => {
+    setOutboundLoading(true);
+    try {
+      const res = await axios.get('/api/dashboard/dispatches', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Filter out collected
+      const dispatchesArray = res.data.dispatches || res.data;
+      const pending = dispatchesArray.filter(d => !d.collected_timestamp);
+      setPendingDispatches(pending);
+    } catch (err) {
+      console.error(err);
+      setMessage({ type: 'error', text: 'Failed to fetch pending dispatches.' });
+    } finally {
+      setOutboundLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     sessionStorage.clear();
@@ -61,9 +93,16 @@ const BatchRegistration = () => {
 
   // Triggered by BarcodeScanner component
   const handleScan = (scannedBarcode) => {
-    setFormData(prev => ({ ...prev, ean13: scannedBarcode }));
-    setShowScanner(false); // Auto-close scanner on success
-    fetchProductDetails(scannedBarcode);
+    if (activeTab === 'inbound') {
+      setFormData(prev => ({ ...prev, ean13: scannedBarcode }));
+      setShowScanner(false); // Auto-close scanner on success
+      fetchProductDetails(scannedBarcode);
+    } else {
+      // Outbound logic: filter by scanned product EAN-13
+      setOutboundFilter(scannedBarcode);
+      setShowScanner(false);
+      setMessage({ type: 'success', text: `Filtered outbounds for barcode ${scannedBarcode}` });
+    }
   };
 
   const fetchProductDetails = async (barcode) => {
@@ -93,6 +132,25 @@ const BatchRegistration = () => {
       });
     } finally {
       setIsLoadingProduct(false);
+    }
+  };
+
+  const handleCollect = async (dispatchId) => {
+    // Note: Staff mark picking up a dispatched item
+    setOutboundActionId(dispatchId);
+    try {
+      await axios.patch(`/api/dashboard/dispatches/${dispatchId}/collect`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMessage({ type: 'success', text: 'Dispatch marked as picked up!' });
+      // Remove from list
+      setPendingDispatches(prev => prev.filter(d => d.dispatch_id !== dispatchId));
+    } catch (err) {
+      console.error(err);
+      setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to mark as collected.' });
+    } finally {
+      setOutboundActionId(null);
+      setConfirmingDispatch(null);
     }
   };
 
@@ -236,12 +294,28 @@ const BatchRegistration = () => {
         </div>
       )}
 
-      <div className="registration-header">
-        <h1>Batch Registration</h1>
-        <p>Scan or enter product details to register a new batch.</p>
+      <div className="registration-header" style={{ marginBottom: '16px' }}>
+        <h1>Floor Operations</h1>
+        <p>Manage inbound batch registration and outbound dispatch pickups.</p>
       </div>
 
-      <div className="registration-card">
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', backgroundColor: '#fff', padding: '8px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+        <button 
+          onClick={() => { setActiveTab('inbound'); setMessage({type:'', text:''}); setShowScanner(false); setFormData(f => ({...f, ean13: ''})); }}
+          style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'inbound' ? '#5c3a21' : 'transparent', color: activeTab === 'inbound' ? '#fff' : '#64748b', transition: 'all 0.2s' }}
+        >
+          📥 Inbound Registration
+        </button>
+        <button 
+          onClick={() => { setActiveTab('outbound'); setMessage({type:'', text:''}); setShowScanner(false); setOutboundFilter(''); }}
+          style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'outbound' ? '#5c3a21' : 'transparent', color: activeTab === 'outbound' ? '#fff' : '#64748b', transition: 'all 0.2s' }}
+        >
+          📤 Outbound Pickup
+        </button>
+      </div>
+
+      <div className="registration-card" style={activeTab === 'outbound' ? { backgroundColor: 'transparent', boxShadow: 'none', padding: 0 } : {}}>
         {message.text && (
           <div className={`message-banner ${message.type}`}>
             {message.type === 'error' ? (
@@ -257,26 +331,29 @@ const BatchRegistration = () => {
           </div>
         )}
 
-        {/* Barcode Section */}
-        <div className="scanner-section">
+        {/* Barcode Section (Shared) */}
+        <div className={`scanner-section ${activeTab === 'outbound' ? 'outbound-scanner' : ''}`} style={activeTab === 'outbound' ? { backgroundColor: '#fff', padding: '24px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '24px' } : {}}>
+          {activeTab === 'outbound' && <div style={{fontWeight: 'bold', marginBottom: '12px', color: '#1e293b'}}>Scan Product EAN-13 to filter Pending Pickups</div>}
           <div className="barcode-input-group">
             <div className="input-with-button">
               <input
                 type="text"
-                placeholder="Enter EAN-13 Barcode manually"
-                value={formData.ean13}
-                onChange={handleBarcodeChange}
-                maxLength="13"
+                placeholder={activeTab === 'inbound' ? "Enter EAN-13 Barcode manually" : "Filter by Product Barcode / Batch ID"}
+                value={activeTab === 'inbound' ? formData.ean13 : outboundFilter}
+                onChange={activeTab === 'inbound' ? handleBarcodeChange : (e) => setOutboundFilter(e.target.value)}
+                maxLength={activeTab === 'inbound' ? "13" : undefined}
                 className="barcode-input"
               />
-              <button 
-                type="button" 
-                onClick={handleManualFetch}
-                className="fetch-btn"
-                disabled={!formData.ean13 || isLoadingProduct}
-              >
-                {isLoadingProduct ? 'Searching...' : 'Search'}
-              </button>
+              {activeTab === 'inbound' && (
+                <button 
+                  type="button" 
+                  onClick={handleManualFetch}
+                  className="fetch-btn"
+                  disabled={!formData.ean13 || isLoadingProduct}
+                >
+                  {isLoadingProduct ? 'Searching...' : 'Search'}
+                </button>
+              )}
             </div>
             <div className="divider"><span>OR</span></div>
             <button 
@@ -298,7 +375,8 @@ const BatchRegistration = () => {
           )}
         </div>
 
-        {/* Main form */}
+        {/* INBOUND TAB CONTENT */}
+        {activeTab === 'inbound' && (
         <form onSubmit={handleSubmit} className="registration-form">
           <div className="form-row">
             <div className="form-group read-only">
@@ -392,7 +470,130 @@ const BatchRegistration = () => {
             {isSubmitting ? <span className="spinner"></span> : 'Register Batch'}
           </button>
         </form>
+        )}
+
+        {/* OUTBOUND TAB CONTENT */}
+        {activeTab === 'outbound' && (
+          <div className="outbound-list">
+            {outboundLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>Loading pending dispatches...</div>
+            ) : pendingDispatches.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#10b981', fontWeight: 'bold', backgroundColor: '#fff', borderRadius: '12px' }}>
+                ✅ Uncollected outbounds cleared. Loading dock is empty!
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {pendingDispatches
+                  .filter(d => !outboundFilter || 
+                               d.product_name.toLowerCase().includes(outboundFilter.toLowerCase()) || 
+                               d.batch_id.toLowerCase().includes(outboundFilter.toLowerCase()) ||
+                               (d.ean13_barcode && d.ean13_barcode.includes(outboundFilter)))
+                  .map(dispatch => (
+                  <div key={dispatch.dispatch_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: '24px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', borderLeft: '6px solid #f59e0b', flexWrap: 'wrap', gap: '16px' }}>
+                    <div style={{flex: '1 1 300px'}}>
+                      <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' }}>
+                        To: {dispatch.distributor_name} — Dispatch #{dispatch.dispatch_id}
+                      </div>
+                      <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e293b', marginBottom: '8px' }}>
+                        {dispatch.product_name}
+                      </div>
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                        <span style={{ backgroundColor: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>
+                          ID: {dispatch.batch_id}
+                        </span>
+                        <span style={{ backgroundColor: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>
+                          Qty: {dispatch.quantity}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setConfirmingDispatch(dispatch)}
+                      disabled={outboundActionId === dispatch.dispatch_id}
+                      style={{ 
+                        backgroundColor: '#10b981', color: 'white', padding: '16px 24px', border: 'none', borderRadius: '8px', 
+                        fontWeight: 'bold', fontSize: '16px', cursor: outboundActionId === dispatch.dispatch_id ? 'wait' : 'pointer',
+                        boxShadow: '0 4px 6px -1px rgba(16,185,129,0.4)', transition: 'all 0.2s', whiteSpace: 'nowrap'
+                      }}
+                      onMouseEnter={e => e.target.style.transform = 'translateY(-2px)'}
+                      onMouseLeave={e => e.target.style.transform = 'translateY(0)'}
+                    >
+                      {outboundActionId === dispatch.dispatch_id ? 'Marking...' : 'Mark Picked Up'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
+
+      {/* Confirmation Modal */}
+      {confirmingDispatch && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div style={{ backgroundColor: '#fff', width: '100%', maxWidth: '440px', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+            <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+              <h3 style={{ margin: 0, color: '#1e293b', fontSize: '20px' }}>Confirm Pickup</h3>
+            </div>
+            
+            <div style={{ padding: '24px' }}>
+              <p style={{ color: '#64748b', fontSize: '15px', marginBottom: '24px', lineHeight: '1.5' }}>
+                Please verify the details before officially marking this dispatch as picked up by the distributor.
+              </p>
+
+              <div style={{ backgroundColor: '#f1f5f9', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>To Distributor</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b' }}>{confirmingDispatch.distributor_name}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>Pickup Time</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#10b981' }}>{new Date().toLocaleTimeString()}</div>
+                  </div>
+                </div>
+                
+                <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '12px' }}>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold', marginBottom: '4px' }}>Product</div>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b' }}>{confirmingDispatch.product_name}</div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>Batch ID</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b' }}>{confirmingDispatch.batch_id}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 'bold' }}>Quantity</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b' }}>{confirmingDispatch.quantity} units</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: '20px 24px', backgroundColor: '#f8fafc', display: 'flex', gap: '12px', borderTop: '1px solid #e2e8f0' }}>
+              <button 
+                  onClick={() => setConfirmingDispatch(null)}
+                  style={{ flex: 1, padding: '12px 20px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: 'transparent', color: '#475569', fontWeight: 'bold', cursor: 'pointer' }}
+                  disabled={outboundActionId !== null}
+              >
+                  Cancel
+              </button>
+              <button 
+                  onClick={() => handleCollect(confirmingDispatch.dispatch_id)}
+                  disabled={outboundActionId !== null}
+                  style={{ 
+                      flex: 1, padding: '12px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#10b981', color: 'white', fontWeight: 'bold', cursor: outboundActionId !== null ? 'wait' : 'pointer',
+                      opacity: outboundActionId !== null ? 0.7 : 1
+                  }}
+              >
+                  {outboundActionId !== null ? 'Confirming...' : 'Yes, Confirm Pickup'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

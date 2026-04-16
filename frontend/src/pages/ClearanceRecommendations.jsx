@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const ClearanceRecommendations = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [theme, setTheme] = useState(sessionStorage.getItem('theme') || 'light');
     
     const [batches, setBatches] = useState([]);
@@ -46,7 +47,7 @@ const ClearanceRecommendations = () => {
                 fetch('/api/dashboard/clearance-recommendations', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch('/api/dashboard/dispatches', {
+                fetch('/api/dashboard/distributors', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
             ]);
@@ -64,19 +65,22 @@ const ClearanceRecommendations = () => {
             const distData = await distRes.json();
 
             setBatches(recData);
-
-            // Extract unique distributors
-            const uniqueDict = {};
-            distData.forEach(d => {
-                if (d.distributor_id && !uniqueDict[d.distributor_id]) {
-                    uniqueDict[d.distributor_id] = {
-                        id: d.distributor_id,
-                        name: d.distributor_name
-                    };
-                }
-            });
-            setDistributors(Object.values(uniqueDict));
+            setDistributors(distData.map(d => ({
+                id: d.distributor_id,
+                name: d.distributor_name
+            })));
             setError(null);
+
+            // Process payload auto-selection
+            if (location.state && location.state.autoSelectBatchId && recData) {
+                const found = recData.find(b => String(b.batch_id) === String(location.state.autoSelectBatchId));
+                if (found) {
+                    setSelectedBatch(found);
+                    setClearanceReason(found.promotion_type || '');
+                    window.history.replaceState({}, document.title);
+                }
+            }
+
         } catch (err) {
             console.error(err);
             setError(err.message);
@@ -136,7 +140,8 @@ const ClearanceRecommendations = () => {
                     batch_id: selectedBatch.batch_id,
                     action_type: 'clearance',
                     distributor_id: selectedDistributorId,
-                    reason: clearanceReason
+                    reason: clearanceReason,
+                    discount_applied: selectedBatch.discount_percent
                 })
             });
 
@@ -160,7 +165,7 @@ const ClearanceRecommendations = () => {
 
     const getPromoColor = (type) => {
         if (type === 'Trade Discount') return '#3b82f6'; // Blue
-        if (type === 'Bundle Offer') return '#8b5cf6'; // Purple
+        if (type === 'Clearance Markdown') return '#8b5cf6'; // Purple
         return '#ef4444'; // Red
     };
 

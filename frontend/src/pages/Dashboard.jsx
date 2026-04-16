@@ -19,6 +19,7 @@ const Dashboard = () => {
 
     const [riskFilter, setRiskFilter] = useState('All');
     const [zoneFilter, setZoneFilter] = useState('All Zones');
+    const [statusFilter, setStatusFilter] = useState('in_storage');
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -118,6 +119,8 @@ const Dashboard = () => {
 
     const { overall_freshness_percent = 0, total_batches = 0, high_risk_count = 0 } = data || {};
     const filteredBatches = (Array.isArray(batches) ? batches : []).filter(b => {
+        if (statusFilter !== 'All Statuses' && b.status !== statusFilter) return false;
+
         const bdRisk = b.risk_band ? b.risk_band.toLowerCase() : 'unknown';
         const fltRisk = riskFilter.toLowerCase().replace(' risk', '');
         if (riskFilter !== 'All' && bdRisk !== fltRisk) return false;
@@ -477,6 +480,13 @@ const Dashboard = () => {
                         <div className="panel-header">
                             <h2>Batch Inventory</h2>
                             <div className="filters">
+                                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                                    <option value="in_storage">In Storage</option>
+                                    <option value="dispatched">Dispatched</option>
+                                    <option value="returned">Returned</option>
+                                    <option value="cleared">Cleared</option>
+                                    <option value="All Statuses">All Statuses</option>
+                                </select>
                                 <select value={riskFilter} onChange={e => setRiskFilter(e.target.value)}>
                                     <option>All</option>
                                     <option>High Risk</option>

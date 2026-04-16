@@ -11,12 +11,18 @@ import ReturnIntelligence from './pages/ReturnIntelligence';
 import ClearanceRecommendations from './pages/ClearanceRecommendations';
 
 // A simple Protected Route component wrapper
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, allowedRoles }) => {
   const token = sessionStorage.getItem('token');
+  const role = sessionStorage.getItem('role');
   
   if (!token) {
     // Redirect to login if token is not authenticated
     return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles && (!role || !allowedRoles.includes(role))) {
+    // Redirect if user does not have permission
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -50,7 +56,7 @@ const App = () => {
         <Route 
           path="/recommendations" 
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin', 'manager']}>
               <ActionRecommendations />
             </ProtectedRoute>
           } 
@@ -82,7 +88,7 @@ const App = () => {
         <Route 
           path="/returns" 
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin', 'manager']}>
               <ReturnIntelligence />
             </ProtectedRoute>
           } 
@@ -90,7 +96,7 @@ const App = () => {
         <Route 
           path="/clearance" 
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin', 'manager']}>
               <ClearanceRecommendations />
             </ProtectedRoute>
           } 

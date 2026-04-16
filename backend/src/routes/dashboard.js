@@ -33,8 +33,9 @@ router.get('/', async (req, res) => {
             FROM batches b
             JOIN products p ON b.product_id = p.product_id
             LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
-            WHERE b.status = 'in_storage'
-            ORDER BY fs.frs_score ASC
+            ORDER BY 
+                CASE WHEN b.status = 'in_storage' THEN 0 ELSE 1 END ASC,
+                fs.frs_score ASC
         `;
 
         const result = await pool.query(query);
@@ -45,19 +46,23 @@ router.get('/', async (req, res) => {
         let high_risk_count = 0;
         let medium_risk_count = 0;
         let low_risk_count = 0;
+        let total_in_storage = 0;
 
         batches.forEach(batch => {
-            if (batch.frs_score !== null && batch.frs_score !== undefined) {
-                totalFrs += Number(batch.frs_score);
-                frsCount++;
+            if (batch.status === 'in_storage') {
+                total_in_storage++;
+                if (batch.frs_score !== null && batch.frs_score !== undefined) {
+                    totalFrs += Number(batch.frs_score);
+                    frsCount++;
+                }
+                if (batch.risk_band === 'high') high_risk_count++;
+                if (batch.risk_band === 'medium') medium_risk_count++;
+                if (batch.risk_band === 'low') low_risk_count++;
             }
-            if (batch.risk_band === 'high') high_risk_count++;
-            if (batch.risk_band === 'medium') medium_risk_count++;
-            if (batch.risk_band === 'low') low_risk_count++;
         });
 
         const overall_freshness_percent = frsCount > 0 ? Math.round(totalFrs / frsCount) : 0;
-        const total_batches = batches.length;
+        const total_batches = total_in_storage;
 
         // Return complete dashboard data
         res.json({
@@ -79,21 +84,18 @@ router.get('/', async (req, res) => {
 router.get('/zones', async (req, res) => {
     try {
         const query = `
-            SELECT zone_id, zone_name, last_reading_at AT TIME ZONE 'UTC' as last_reading_at
+            SELECT zone_id, zone_name, last_reading_at,
+                   EXTRACT(EPOCH FROM (NOW() - last_reading_at)) / 60 AS minutes_since_reading
             FROM warehouse_zones
             ORDER BY zone_id
         `;
         const result = await pool.query(query);
 
         const zones = result.rows.map(zone => {
-            let minutes_since_reading = null;
+            let minutes_since_reading = zone.minutes_since_reading ? Math.floor(zone.minutes_since_reading) : null;
             let is_stale = true;
 
-            if (zone.last_reading_at) {
-                const lastReadingDate = new Date(zone.last_reading_at);
-                const diffMs = Date.now() - lastReadingDate.getTime();
-                minutes_since_reading = Math.floor(diffMs / (1000 * 60));
-
+            if (minutes_since_reading !== null) {
                 // Stale if reading is more than 60 minutes ago
                 is_stale = minutes_since_reading > 60;
             }
@@ -142,6 +144,23 @@ router.get('/alerts', async (req, res) => {
     }
 });
 
+// ROUTE 4.5: GET /distributors
+// Returns master list of all authorized distributors
+router.get('/distributors', async (req, res) => {
+    try {
+        const query = `
+            SELECT distributor_id, distributor_name, region, contact_person, phone, next_visit_date
+            FROM distributor_records
+            ORDER BY distributor_name ASC
+        `;
+        const result = await pool.query(query);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching distributors:', err);
+        res.status(500).json({ error: 'Server error fetching distributors' });
+    }
+});
+
 // ROUTE 4: GET /expiry-timeline
 // Returns batches expiring within 30 days
 router.get('/expiry-timeline', async (req, res) => {
@@ -155,7 +174,7 @@ router.get('/expiry-timeline', async (req, res) => {
                 p.pack_size,
                 fs.frs_score,
                 fs.risk_band,
-                EXTRACT(DAY FROM (b.expiry_date - CURRENT_DATE)) as days_until_expiry
+                (b.expiry_date - CURRENT_DATE) as days_until_expiry
             FROM batches b
             JOIN products p ON b.product_id = p.product_id
             LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
@@ -248,7 +267,7 @@ router.get('/recommendations', async (req, res) => {
             if (risk_band === 'high') {
                 recommendationObj.action = 'CLEARANCE';
                 recommendationObj.priority = 1;
-                recommendationObj.recommendation = 'Remove from dispatch queue. Recommend 20% trade discount to fastest distributor or bundle with healthy-FRS product. Manager must approve clearance.';
+                recommendationObj.recommendation = 'Remove from dispatch queue. Transfer to Clearance Hub for dynamic promotion calculation and distributor assignment. Manager must approve clearance.';
                 recommendationObj.badge_color = 'red';
                 recommendationObj.badge_text = 'HIGH RISK — CLEARANCE';
                 high_risk.push(recommendationObj);
@@ -311,8 +330,9 @@ router.get('/recommendations', async (req, res) => {
 router.post('/recommendations/action', async (req, res) => {
     const client = await pool.connect();
     try {
-        const { batch_id, action_type, distributor_id, reason } = req.body;
-        const user_id = req.user.user_id || req.user.id || 1; // Using token validation
+        const { batch_id, action_type, distributor_id, reason, discount_applied } = req.body;
+        const user_id = req.user?.user_id || req.user?.id;
+        if (!user_id) return res.status(401).json({ error: 'Unauthorized' });
 
         if (!batch_id || !action_type) {
             return res.status(400).json({ error: 'Missing batch_id or action_type' });
@@ -361,9 +381,9 @@ router.post('/recommendations/action', async (req, res) => {
             // Insert into clearance_records
             const finalReason = reason || 'Manager-approved clearance';
             await client.query(`
-                INSERT INTO clearance_records (batch_id, reason, approved_by, cleared_at)
-                VALUES ($1, $2, $3, NOW())
-            `, [batch_id, finalReason, user_id]);
+                INSERT INTO clearance_records (batch_id, reason, approved_by, cleared_at, distributor_id, discount_applied)
+                VALUES ($1, $2, $3, NOW(), $4, $5)
+            `, [batch_id, finalReason, user_id, distributor_id || null, discount_applied || null]);
 
             // Update batch status
             await client.query(`UPDATE batches SET status = 'cleared' WHERE batch_id = $1`, [batch_id]);
@@ -532,6 +552,13 @@ router.get('/batches/:batch_id', async (req, res) => {
 // Returns all dispatch records mapped to product and distributor
 router.get('/dispatches', async (req, res) => {
     try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 1000; // Large default so we don't break pending pickup lists instantly
+        const offset = (page - 1) * limit;
+
+        const countRes = await pool.query(`SELECT COUNT(*) FROM dispatch_records`);
+        const total = parseInt(countRes.rows[0].count);
+
         const query = `
             SELECT 
                 dr.dispatch_id, dr.batch_id, dr.distributor_id, 
@@ -547,32 +574,96 @@ router.get('/dispatches', async (req, res) => {
             JOIN distributor_records d ON dr.distributor_id = d.distributor_id
             JOIN users u ON dr.approved_by = u.user_id
             ORDER BY dr.dispatch_timestamp DESC
+            LIMIT $1 OFFSET $2
         `;
-        const result = await pool.query(query);
-        res.json(result.rows);
+        const result = await pool.query(query, [limit, offset]);
+        res.json({
+            dispatches: result.rows,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit)
+            }
+        });
     } catch (err) {
         console.error('Error fetching dispatch records:', err);
         res.status(500).json({ error: 'Server error fetching dispatch records' });
     }
 });
 
+// ROUTE 9.5: GET /clearance-ledger
+// Returns historical ledger of all clearance actions
+router.get('/clearance-ledger', async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                cr.clearance_id, cr.batch_id, cr.reason, cr.cleared_at,
+                cr.discount_applied, cr.collected_timestamp,
+                p.product_name, p.pack_size,
+                fs.frs_score, fs.risk_band,
+                d.distributor_name,
+                u.full_name as approved_by_name
+            FROM clearance_records cr
+            JOIN batches b ON cr.batch_id = b.batch_id
+            JOIN products p ON b.product_id = p.product_id
+            LEFT JOIN freshness_scores fs ON cr.batch_id = fs.batch_id
+            LEFT JOIN distributor_records d ON cr.distributor_id = d.distributor_id
+            JOIN users u ON cr.approved_by = u.user_id
+            ORDER BY cr.cleared_at DESC
+        `;
+        const result = await pool.query(query);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching clearance ledger:', err);
+        res.status(500).json({ error: 'Server error fetching clearance ledger' });
+    }
+});
+
+router.patch('/clearance/:id/collect', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const query = `
+            UPDATE clearance_records 
+            SET collected_timestamp = NOW() 
+            WHERE clearance_id = $1 AND collected_timestamp IS NULL
+            RETURNING *
+        `;
+        const result = await pool.query(query, [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Record not found or already verified' });
+        }
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('Error verifying clearance pickup:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // ROUTE 10: PATCH /dispatches/:dispatch_id/collect
 // Updates the collected_timestamp for a given dispatch record
 router.patch('/dispatches/:dispatch_id/collect', async (req, res) => {
+    const client = await pool.connect();
     try {
         const { dispatch_id } = req.params;
 
+        await client.query('BEGIN');
+
         // Prevent marking if already collected
-        const checkQuery = `SELECT collected_timestamp FROM dispatch_records WHERE dispatch_id = $1`;
-        const checkRes = await pool.query(checkQuery, [dispatch_id]);
+        const checkQuery = `SELECT collected_timestamp, distributor_id FROM dispatch_records WHERE dispatch_id = $1`;
+        const checkRes = await client.query(checkQuery, [dispatch_id]);
 
         if (checkRes.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Dispatch record not found' });
         }
 
         if (checkRes.rows[0].collected_timestamp !== null) {
+            await client.query('ROLLBACK');
             return res.status(400).json({ error: 'Batch is already collected.' });
         }
+
+        const distributor_id = checkRes.rows[0].distributor_id;
 
         const query = `
             UPDATE dispatch_records 
@@ -580,12 +671,24 @@ router.patch('/dispatches/:dispatch_id/collect', async (req, res) => {
             WHERE dispatch_id = $1
             RETURNING *
         `;
-        const result = await pool.query(query, [dispatch_id]);
+        const result = await client.query(query, [dispatch_id]);
+
+        // Update the next visit date based on visit frequency
+        await client.query(`
+            UPDATE distributor_records
+            SET next_visit_date = CURRENT_DATE + visit_frequency_days::integer
+            WHERE distributor_id = $1
+        `, [distributor_id]);
+
+        await client.query('COMMIT');
 
         res.json({ success: true, dispatch: result.rows[0] });
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error('Error marking dispatch as collected:', err);
         res.status(500).json({ error: 'Server error marking dispatch collected' });
+    } finally {
+        client.release();
     }
 });
 // ROUTE: POST /returns/evaluate
@@ -612,7 +715,8 @@ router.post('/returns/evaluate', async (req, res) => {
 
         // 2. Fetch the most recent dispatch_record for this batch
         const dispatchQuery = `
-            SELECT frs_at_dispatch, dispatch_timestamp, distributor_id
+            SELECT frs_at_dispatch, dispatch_timestamp, distributor_id,
+                   EXTRACT(EPOCH FROM (NOW() - dispatch_timestamp)) / 86400 AS days_since_dispatch
             FROM dispatch_records
             WHERE batch_id = $1
             ORDER BY dispatch_timestamp DESC
@@ -624,12 +728,10 @@ router.post('/returns/evaluate', async (req, res) => {
             return res.status(400).json({ error: 'No dispatch record found for this batch' });
         }
 
-        const { frs_at_dispatch, dispatch_timestamp, distributor_id } = dispatchRes.rows[0];
+        const { frs_at_dispatch, dispatch_timestamp, distributor_id, days_since_dispatch: dbDays } = dispatchRes.rows[0];
 
-        // 3. Calculate days_since_dispatch
-        const nowMs = Date.now();
-        const dispatchMs = new Date(dispatch_timestamp).getTime();
-        const days_since_dispatch = Math.floor((nowMs - dispatchMs) / (1000 * 60 * 60 * 24));
+        // 3. Calculate days_since_dispatch via DB to avoid timezone issues
+        const days_since_dispatch = Math.floor(dbDays);
 
         // 4. Determine recommendation logic
         let recommendation = 'review';
@@ -663,7 +765,8 @@ router.post('/returns', async (req, res) => {
     const client = await pool.connect();
     try {
         const { batch_id, return_reason, distributor_id, manager_decision, system_recommendation, override_reason, frs_at_dispatch } = req.body;
-        const user_id = req.user?.user_id || req.user?.id || 1;
+        const user_id = req.user?.user_id || req.user?.id;
+        if (!user_id) return res.status(401).json({ error: 'Unauthorized' });
 
         if (!batch_id || !distributor_id || !manager_decision || !system_recommendation) {
             return res.status(400).json({ error: 'Missing required parameters' });
@@ -717,6 +820,51 @@ router.post('/returns', async (req, res) => {
         res.status(500).json({ error: 'Server error processing return' });
     } finally {
         client.release();
+    }
+});
+
+// ROUTE 11.5: PATCH /returns/:id/resolve
+// Resolves a pending 'review' return to either 'accept' or 'reject'
+router.patch('/returns/:id/resolve', async (req, res) => {
+    try {
+        const { manager_decision, override_reason } = req.body;
+        const return_id = req.params.id;
+        const user_id = req.user?.user_id || req.user?.id;
+        if (!user_id) return res.status(401).json({ error: 'Unauthorized' });
+
+        if (!manager_decision || !['accept', 'reject'].includes(manager_decision)) {
+            return res.status(400).json({ error: 'Valid manager decision is required' });
+        }
+
+        const currentRecQuery = `SELECT system_recommendation FROM return_records WHERE return_id = $1`;
+        const currentRecRes = await pool.query(currentRecQuery, [return_id]);
+
+        if (currentRecRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Return record not found' });
+        }
+        
+        const system_recommendation = currentRecRes.rows[0].system_recommendation;
+
+        if (manager_decision !== system_recommendation && (!override_reason || override_reason.trim() === '')) {
+            return res.status(400).json({ error: 'Override reason is mandatory when manager decision differs from system recommendation.' });
+        }
+
+        const updateQuery = `
+            UPDATE return_records
+            SET decision = $1, override_reason = CASE WHEN $2::text IS NOT NULL THEN $2 ELSE override_reason END, decided_by = $3, decided_at = NOW()
+            WHERE return_id = $4 AND decision = 'review'
+            RETURNING *
+        `;
+        const updateRes = await pool.query(updateQuery, [manager_decision, override_reason || null, user_id, return_id]);
+
+        if (updateRes.rows.length === 0) {
+            return res.status(400).json({ error: 'Failed to update return record. It may not be in review state.' });
+        }
+
+        res.json(updateRes.rows[0]);
+    } catch (err) {
+        console.error('Error resolving return:', err);
+        res.status(500).json({ error: 'Server error resolving return' });
     }
 });
 
@@ -813,7 +961,7 @@ router.get('/clearance-recommendations', async (req, res) => {
             if (frs >= 40) {
                 promotion_type = 'Trade Discount';
             } else if (frs >= 20) {
-                promotion_type = 'Bundle Offer';
+                promotion_type = 'Clearance Markdown';
             } else {
                 promotion_type = 'Fast Distributor Override';
             }
