@@ -210,3 +210,13 @@ runSimulation();
 cron.schedule('*/30 * * * *', runSimulation);
 
 console.log('FIROS Temperature Simulator started. Running every 30 minutes.');
+
+// Minimal HTTP server so Render doesn't kill the process (port scan requirement)
+const http = require('http');
+const PORT = process.env.PORT || 3001;
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ status: 'ok', message: 'FIROS Simulator is running.' }));
+}).listen(PORT, () => {
+  console.log(`Health-check server listening on port ${PORT}`);
+});
