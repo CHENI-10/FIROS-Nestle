@@ -28,12 +28,13 @@ const calculateFRS = (batchData, productData, scoreData) => {
     const days_in_warehouse = Math.floor((today - arrival) / 86400000);
 
     // 3. total_temp_breach_penalty (TBP):
-    const total_temp_breach_penalty = total_temp_breach_windows * Math.abs(temp_sensitivity_weight);
+    // Multiplier reduced to 0.5 for slower risk progression
+    const total_temp_breach_penalty = total_temp_breach_windows * (Math.abs(temp_sensitivity_weight) * 0.5);
 
     // 4. total_humidity_breach_penalty (HBP):
     // Zone D: humidity_sensitivity_weight = 0, so HBP = 0 always
     const effective_humidity_weight = zone_id === 'D' ? 0 : humidity_sensitivity_weight;
-    const total_humidity_breach_penalty = total_humidity_breach_windows * Math.abs(effective_humidity_weight);
+    const total_humidity_breach_penalty = total_humidity_breach_windows * (Math.abs(effective_humidity_weight) * 0.5);
 
     // 5. sensitivity_adjustment (SA):
     // Zone D: SA = Math.abs(temp_sensitivity_weight) only (humidity_weight = 0)
@@ -45,7 +46,7 @@ const calculateFRS = (batchData, productData, scoreData) => {
     // The Exact FRS Formula:
     const frs_score = Math.max(0, Math.round(
         slr_percent_raw
-        - (Math.floor(days_in_warehouse) * 0.25)
+        - (Math.floor(days_in_warehouse) * 0.10) // Reduced from 0.25 to 0.10 for slower decay
         - total_temp_breach_penalty
         - total_humidity_breach_penalty
         - sensitivity_adjustment

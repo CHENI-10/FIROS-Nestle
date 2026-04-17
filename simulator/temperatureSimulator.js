@@ -36,9 +36,9 @@ const calculateFRS = (batch, totalTempBreaches, totalHumidityBreaches) => {
 
   const frs = Math.max(0, Math.round(
     slrPercentRawCorrected
-    - (Math.floor(daysInWarehouse) * 0.25)
-    - (totalTempBreaches * Math.abs(tempWeight))
-    - (totalHumidityBreaches * Math.abs(humidityWeight))
+    - (Math.floor(daysInWarehouse) * 0.10) // Reduced from 0.25 to 0.10
+    - (totalTempBreaches * (Math.abs(tempWeight) * 0.5)) // Halved from 1.0x to 0.5x
+    - (totalHumidityBreaches * (Math.abs(humidityWeight) * 0.5)) // Halved from 1.0x to 0.5x
     - Math.max(Math.abs(tempWeight), Math.abs(humidityWeight))
   ));
 
