@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import Pagination from '../components/Pagination';
 
 const Alerts = () => {
     const navigate = useNavigate();
@@ -17,6 +18,8 @@ const Alerts = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('All');
     const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pagination, setPagination] = useState({ total: 0, page: 1, totalPages: 1 });
 
     const isDark = theme === 'dark';
     const bgColor = isDark ? '#0f172a' : '#f8fafc';
@@ -25,10 +28,10 @@ const Alerts = () => {
     const textMuted = isDark ? '#94a3b8' : '#64748b';
     const navBg = isDark ? '#1e293b' : '#3D1C02';
 
-    const fetchAlerts = React.useCallback(async () => {
+    const fetchAlerts = React.useCallback(async (page = 1) => {
         try {
             const token = sessionStorage.getItem('token');
-            const res = await axios.get('/api/dashboard/alerts/all', {
+            const res = await axios.get(`/api/dashboard/alerts/all?page=${page}&limit=25`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setAlerts(res.data.alerts || []);
@@ -36,6 +39,7 @@ const Alerts = () => {
                 total_alerts: 0, unread_count: 0, high_risk_count: 0,
                 medium_risk_count: 0, zone_c_count: 0, expiry_count: 0
             });
+            if (res.data.pagination) setPagination(res.data.pagination);
             setLoading(false);
         } catch (err) {
             console.error('Error fetching alerts:', err);
@@ -53,10 +57,14 @@ const Alerts = () => {
             navigate('/login');
             return;
         }
-        fetchAlerts();
-        const interval = setInterval(fetchAlerts, 60000);
+        fetchAlerts(currentPage);
+        const interval = setInterval(() => fetchAlerts(currentPage), 60000);
         return () => clearInterval(interval);
-    }, [navigate, fetchAlerts]);
+    }, [navigate, fetchAlerts, currentPage]);
+
+    const handlePageChange = (newPage) => {
+        setCurrentPage(newPage);
+    };
 
     const markAsRead = async (alertId) => {
         try {
@@ -64,7 +72,7 @@ const Alerts = () => {
             await axios.patch(`/api/dashboard/alerts/${alertId}/read`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            fetchAlerts();
+            fetchAlerts(currentPage);
         } catch (err) {
             console.error('Error marking as read:', err);
         }
@@ -284,6 +292,15 @@ const Alerts = () => {
                                 </div>
                             );
                         })
+                    )}
+                    {filteredAlerts.length > 0 && (
+                        <Pagination 
+                            currentPage={pagination.page}
+                            totalPages={pagination.totalPages}
+                            totalItems={pagination.total}
+                            onPageChange={handlePageChange}
+                            isDark={isDark}
+                        />
                     )}
                 </div>
             </main>

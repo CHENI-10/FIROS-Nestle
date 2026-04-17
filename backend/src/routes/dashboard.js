@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const verifyToken = require('../middleware/authMiddleware');
+const { requireRole } = require('../middleware/roleMiddleware');
 
 // Apply auth middleware to all routes
 router.use(verifyToken);
@@ -327,12 +328,16 @@ router.get('/recommendations', async (req, res) => {
 
 // ROUTE 5.5: POST /recommendations/action
 // Processes dispatch or clearance action, saving to DB and updating batch status
-router.post('/recommendations/action', async (req, res) => {
+// RBAC: Only admin and manager can approve dispatches/clearances
+router.post('/recommendations/action', requireRole('admin', 'manager'), async (req, res) => {
     const client = await pool.connect();
     try {
         const { batch_id, action_type, distributor_id, reason, discount_applied } = req.body;
         const user_id = req.user?.user_id || req.user?.id;
         if (!user_id) return res.status(401).json({ error: 'Unauthorized' });
+
+        // Audit log
+        console.log(`[AUDIT] User ${req.user.email} (${req.user.role}) performing ${action_type} on batch ${batch_id}`);
 
         if (!batch_id || !action_type) {
             return res.status(400).json({ error: 'Missing batch_id or action_type' });
@@ -412,9 +417,28 @@ router.post('/recommendations/action', async (req, res) => {
 });
 
 // ROUTE 6: GET /alerts/all
-// Returns all alerts with specific stats
+// Returns all alerts with specific stats — paginated
 router.get('/alerts/all', async (req, res) => {
     try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 25;
+        const offset = (page - 1) * limit;
+
+        // Summary counts (always computed over full dataset)
+        const summaryQuery = `
+            SELECT
+                COUNT(*) as total_alerts,
+                COUNT(*) FILTER (WHERE is_read = false) as unread_count,
+                COUNT(*) FILTER (WHERE risk_band = 'high') as high_risk_count,
+                COUNT(*) FILTER (WHERE risk_band = 'medium') as medium_risk_count,
+                COUNT(*) FILTER (WHERE alert_type = 'zone_c_breach') as zone_c_count,
+                COUNT(*) FILTER (WHERE alert_type = 'expiry_proximity') as expiry_count
+            FROM alert_records
+        `;
+        const summaryRes = await pool.query(summaryQuery);
+        const summary = summaryRes.rows[0];
+        const total = parseInt(summary.total_alerts);
+
         const query = `
             SELECT 
                 a.alert_id,
@@ -435,35 +459,25 @@ router.get('/alerts/all', async (req, res) => {
             JOIN products p ON b.product_id = p.product_id
             LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
             ORDER BY a.created_at DESC
+            LIMIT $1 OFFSET $2
         `;
-        const result = await pool.query(query);
-        const alerts = result.rows;
-
-        // Calculate summary counts
-        let total_alerts = alerts.length;
-        let unread_count = 0;
-        let high_risk_count = 0;
-        let medium_risk_count = 0;
-        let zone_c_count = 0;
-        let expiry_count = 0;
-
-        alerts.forEach(alert => {
-            if (alert.is_read === false) unread_count++;
-            if (alert.risk_band === 'high') high_risk_count++;
-            if (alert.risk_band === 'medium') medium_risk_count++;
-            if (alert.alert_type === 'zone_c_breach') zone_c_count++;
-            if (alert.alert_type === 'expiry_proximity') expiry_count++;
-        });
+        const result = await pool.query(query, [limit, offset]);
 
         res.json({
-            alerts,
+            alerts: result.rows,
             summary: {
-                total_alerts,
-                unread_count,
-                high_risk_count,
-                medium_risk_count,
-                zone_c_count,
-                expiry_count
+                total_alerts: parseInt(summary.total_alerts),
+                unread_count: parseInt(summary.unread_count),
+                high_risk_count: parseInt(summary.high_risk_count),
+                medium_risk_count: parseInt(summary.medium_risk_count),
+                zone_c_count: parseInt(summary.zone_c_count),
+                expiry_count: parseInt(summary.expiry_count)
+            },
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit)
             }
         });
     } catch (err) {
@@ -553,7 +567,7 @@ router.get('/batches/:batch_id', async (req, res) => {
 router.get('/dispatches', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 1000; // Large default so we don't break pending pickup lists instantly
+        const limit = parseInt(req.query.limit) || 25;
         const offset = (page - 1) * limit;
 
         const countRes = await pool.query(`SELECT COUNT(*) FROM dispatch_records`);
@@ -593,9 +607,16 @@ router.get('/dispatches', async (req, res) => {
 });
 
 // ROUTE 9.5: GET /clearance-ledger
-// Returns historical ledger of all clearance actions
+// Returns historical ledger of all clearance actions — paginated
 router.get('/clearance-ledger', async (req, res) => {
     try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 25;
+        const offset = (page - 1) * limit;
+
+        const countRes = await pool.query(`SELECT COUNT(*) FROM clearance_records`);
+        const total = parseInt(countRes.rows[0].count);
+
         const query = `
             SELECT 
                 cr.clearance_id, cr.batch_id, cr.reason, cr.cleared_at,
@@ -611,16 +632,26 @@ router.get('/clearance-ledger', async (req, res) => {
             LEFT JOIN distributor_records d ON cr.distributor_id = d.distributor_id
             JOIN users u ON cr.approved_by = u.user_id
             ORDER BY cr.cleared_at DESC
+            LIMIT $1 OFFSET $2
         `;
-        const result = await pool.query(query);
-        res.json(result.rows);
+        const result = await pool.query(query, [limit, offset]);
+        res.json({
+            clearances: result.rows,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit)
+            }
+        });
     } catch (err) {
         console.error('Error fetching clearance ledger:', err);
         res.status(500).json({ error: 'Server error fetching clearance ledger' });
     }
 });
 
-router.patch('/clearance/:id/collect', async (req, res) => {
+// RBAC: Staff can verify physical handover, managers and admin too
+router.patch('/clearance/:id/collect', requireRole('admin', 'manager', 'staff'), async (req, res) => {
     try {
         const { id } = req.params;
         const query = `
@@ -642,7 +673,8 @@ router.patch('/clearance/:id/collect', async (req, res) => {
 
 // ROUTE 10: PATCH /dispatches/:dispatch_id/collect
 // Updates the collected_timestamp for a given dispatch record
-router.patch('/dispatches/:dispatch_id/collect', async (req, res) => {
+// RBAC: Staff can verify physical handover, managers and admin too
+router.patch('/dispatches/:dispatch_id/collect', requireRole('admin', 'manager', 'staff'), async (req, res) => {
     const client = await pool.connect();
     try {
         const { dispatch_id } = req.params;
@@ -693,7 +725,8 @@ router.patch('/dispatches/:dispatch_id/collect', async (req, res) => {
 });
 // ROUTE: POST /returns/evaluate
 // Evaluates return liability WITHOUT committing to DB
-router.post('/returns/evaluate', async (req, res) => {
+// RBAC: Only admin and manager can evaluate returns
+router.post('/returns/evaluate', requireRole('admin', 'manager'), async (req, res) => {
     try {
         const { batch_id } = req.body;
 
@@ -761,12 +794,16 @@ router.post('/returns/evaluate', async (req, res) => {
 
 // ROUTE 11: POST /returns
 // Processes a batch return evaluating liability and creating necessary records
-router.post('/returns', async (req, res) => {
+// RBAC: Only admin and manager can process returns
+router.post('/returns', requireRole('admin', 'manager'), async (req, res) => {
     const client = await pool.connect();
     try {
         const { batch_id, return_reason, distributor_id, manager_decision, system_recommendation, override_reason, frs_at_dispatch } = req.body;
         const user_id = req.user?.user_id || req.user?.id;
         if (!user_id) return res.status(401).json({ error: 'Unauthorized' });
+
+        // Audit log
+        console.log(`[AUDIT] User ${req.user.email} (${req.user.role}) processing return for batch ${batch_id}, decision: ${manager_decision}`);
 
         if (!batch_id || !distributor_id || !manager_decision || !system_recommendation) {
             return res.status(400).json({ error: 'Missing required parameters' });
@@ -825,7 +862,8 @@ router.post('/returns', async (req, res) => {
 
 // ROUTE 11.5: PATCH /returns/:id/resolve
 // Resolves a pending 'review' return to either 'accept' or 'reject'
-router.patch('/returns/:id/resolve', async (req, res) => {
+// RBAC: Only admin and manager can resolve returns
+router.patch('/returns/:id/resolve', requireRole('admin', 'manager'), async (req, res) => {
     try {
         const { manager_decision, override_reason } = req.body;
         const return_id = req.params.id;
@@ -869,9 +907,17 @@ router.patch('/returns/:id/resolve', async (req, res) => {
 });
 
 // ROUTE 12: GET /returns
-// Returns all return records joined with batch, product, and distributor info
-router.get('/returns', async (req, res) => {
+// Returns all return records joined with batch, product, and distributor info — paginated
+// RBAC: Only admin and manager can view return history
+router.get('/returns', requireRole('admin', 'manager'), async (req, res) => {
     try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 25;
+        const offset = (page - 1) * limit;
+
+        const countRes = await pool.query(`SELECT COUNT(*) FROM return_records`);
+        const total = parseInt(countRes.rows[0].count);
+
         const query = `
             SELECT 
                 rr.return_id,
@@ -897,8 +943,9 @@ router.get('/returns', async (req, res) => {
                 LIMIT 1
             ) dr ON true
             ORDER BY COALESCE(rr.decided_at, rr.created_at) DESC
+            LIMIT $1 OFFSET $2
         `;
-        const result = await pool.query(query);
+        const result = await pool.query(query, [limit, offset]);
 
         const records = result.rows.map(record => {
             let decision_reason = 'Mixed signals — physical inspection required before decision';
@@ -915,7 +962,15 @@ router.get('/returns', async (req, res) => {
             };
         });
 
-        res.json(records);
+        res.json({
+            records,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit)
+            }
+        });
     } catch (err) {
         console.error('Error fetching returns:', err);
         res.status(500).json({ error: 'Server error fetching returns' });
@@ -924,7 +979,8 @@ router.get('/returns', async (req, res) => {
 
 // ROUTE 13: GET /clearance-recommendations
 // Returns all high-risk in_storage batches with calculated promotions
-router.get('/clearance-recommendations', async (req, res) => {
+// RBAC: Only admin and manager can view clearance recommendations
+router.get('/clearance-recommendations', requireRole('admin', 'manager'), async (req, res) => {
     try {
         const query = `
             SELECT 

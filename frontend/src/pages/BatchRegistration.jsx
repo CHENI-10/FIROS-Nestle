@@ -38,7 +38,7 @@ const BatchRegistration = () => {
   const fetchPendingDispatches = async () => {
     setOutboundLoading(true);
     try {
-      const res = await axios.get('/api/dashboard/dispatches', {
+      const res = await axios.get('/api/dashboard/dispatches?limit=1000', {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Filter out collected

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Pagination from '../components/Pagination';
 
 const DispatchCertificates = () => {
     const navigate = useNavigate();
@@ -16,6 +17,11 @@ const DispatchCertificates = () => {
     const [clearances, setClearances] = useState([]);
     const [tabLoading, setTabLoading] = useState(false);
     const [confirmClearanceId, setConfirmClearanceId] = useState(null);
+    // Pagination state
+    const [dispatchPage, setDispatchPage] = useState(1);
+    const [dispatchPagination, setDispatchPagination] = useState({ total: 0, page: 1, totalPages: 1 });
+    const [clearancePage, setClearancePage] = useState(1);
+    const [clearancePagination, setClearancePagination] = useState({ total: 0, page: 1, totalPages: 1 });
     const isDark = theme === 'dark';
     const bgColor = isDark ? '#0f172a' : '#f8fafc';
     const textColor = isDark ? '#f1f5f9' : '#1e293b';
@@ -23,7 +29,7 @@ const DispatchCertificates = () => {
     const navBg = isDark ? '#1e293b' : '#3D1C02';
     const textMuted = isDark ? '#94a3b8' : '#64748b';
 
-    const fetchDispatches = async () => {
+    const fetchDispatches = async (page = 1) => {
         const token = sessionStorage.getItem('token');
         if (!token) {
             navigate('/login');
@@ -31,7 +37,7 @@ const DispatchCertificates = () => {
         }
 
         try {
-            const response = await fetch('/api/dashboard/dispatches', {
+            const response = await fetch(`/api/dashboard/dispatches?page=${page}&limit=25`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -45,7 +51,8 @@ const DispatchCertificates = () => {
             }
 
             const data = await response.json();
-            setDispatches(data.dispatches || data);
+            setDispatches(data.dispatches || []);
+            if (data.pagination) setDispatchPagination(data.pagination);
             setError(null);
         } catch (err) {
             console.error("Error fetching dispatches", err);
@@ -55,16 +62,17 @@ const DispatchCertificates = () => {
         }
     };
 
-    const fetchClearances = async () => {
+    const fetchClearances = async (page = 1) => {
         setTabLoading(true);
         const token = sessionStorage.getItem('token');
         try {
-            const response = await fetch('/api/dashboard/clearance-ledger', {
+            const response = await fetch(`/api/dashboard/clearance-ledger?page=${page}&limit=25`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
                 const data = await response.json();
-                setClearances(data);
+                setClearances(data.clearances || data);
+                if (data.pagination) setClearancePagination(data.pagination);
             }
         } catch (err) {
             console.error("Error fetching clearance ledger", err);
@@ -75,12 +83,20 @@ const DispatchCertificates = () => {
 
     useEffect(() => {
         if (activeTab === 'dispatches') {
-            fetchDispatches();
+            fetchDispatches(dispatchPage);
         } else {
-            fetchClearances();
+            fetchClearances(clearancePage);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeTab]);
+    }, [activeTab, dispatchPage, clearancePage]);
+
+    const handleDispatchPageChange = (newPage) => {
+        setDispatchPage(newPage);
+    };
+
+    const handleClearancePageChange = (newPage) => {
+        setClearancePage(newPage);
+    };
 
     const handleLogout = () => {
         sessionStorage.removeItem('token');
@@ -113,7 +129,7 @@ const DispatchCertificates = () => {
             setConfirmCollectId(null);
             setSuccessMsg('Handover Verification Registered successfully.');
             if (selectedCert) setSelectedCert(null);
-            await fetchDispatches();
+            await fetchDispatches(dispatchPage);
 
         } catch (err) {
             console.error(err);
@@ -137,7 +153,7 @@ const DispatchCertificates = () => {
 
             setConfirmClearanceId(null);
             setSuccessMsg('Clearance Pickup Verified Successfully.');
-            await fetchClearances();
+            await fetchClearances(clearancePage);
         } catch (err) {
             setCollectError(err.message);
         } finally {
@@ -246,167 +262,185 @@ const DispatchCertificates = () => {
                     <div style={{ backgroundColor: cardBgColor, borderRadius: '12px', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, overflow: 'hidden' }}>
                         <div style={{ overflowX: 'auto' }}>
                             {activeTab === 'dispatches' ? (
-                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                    <thead>
-                                        <tr style={{ backgroundColor: isDark ? '#334155' : '#f8fafc', color: textMuted, fontSize: '14px', borderBottom: `2px solid ${isDark ? '#475569' : '#e2e8f0'}` }}>
-                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Dispatch ID</th>
-                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Batch & Product</th>
-                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Distributor Assigned</th>
-                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Dispatch FRS</th>
-                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Status</th>
-                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }} className="action-column">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {dispatches.map(record => {
-                                            const isCollected = !!record.collected_timestamp;
-                                            
-                                            return (
-                                                <tr key={record.dispatch_id} style={{ borderBottom: `1px solid ${isDark ? '#334155' : '#e2e8f0'}` }}>
-                                                    <td style={{ padding: '16px 24px', fontWeight: 'bold' }}>#{record.dispatch_id}</td>
+                                <>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                        <thead>
+                                            <tr style={{ backgroundColor: isDark ? '#334155' : '#f8fafc', color: textMuted, fontSize: '14px', borderBottom: `2px solid ${isDark ? '#475569' : '#e2e8f0'}` }}>
+                                                <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Dispatch ID</th>
+                                                <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Batch & Product</th>
+                                                <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Distributor Assigned</th>
+                                                <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Dispatch FRS</th>
+                                                <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Status</th>
+                                                <th style={{ padding: '16px 24px', fontWeight: 'bold' }} className="action-column">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {dispatches.map(record => {
+                                                const isCollected = !!record.collected_timestamp;
+                                                
+                                                return (
+                                                    <tr key={record.dispatch_id} style={{ borderBottom: `1px solid ${isDark ? '#334155' : '#e2e8f0'}` }}>
+                                                        <td style={{ padding: '16px 24px', fontWeight: 'bold' }}>#{record.dispatch_id}</td>
+                                                        <td style={{ padding: '16px 24px' }}>
+                                                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{record.product_name}</div>
+                                                            <div style={{ fontSize: '13px', color: textMuted }}>Batch: {record.batch_id}</div>
+                                                        </td>
+                                                        <td style={{ padding: '16px 24px' }}>
+                                                            <div style={{ fontWeight: 'bold' }}>{record.distributor_name}</div>
+                                                            <div style={{ fontSize: '13px', color: textMuted }}>Authorized via System</div>
+                                                        </td>
+                                                        <td style={{ padding: '16px 24px' }}>
+                                                            <span style={{ 
+                                                                backgroundColor: isDark ? '#1e293b' : '#f1f5f9', 
+                                                                padding: '6px 12px', 
+                                                                borderRadius: '6px', 
+                                                                color: record.risk_band_at_dispatch === 'low' ? '#22c55e' : (record.risk_band_at_dispatch === 'medium' ? '#f59e0b' : '#ef4444'),
+                                                                fontWeight: 'bold'
+                                                            }}>
+                                                                {Number(record.frs_at_dispatch).toFixed(1)}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ padding: '16px 24px' }}>
+                                                            {isCollected ? (
+                                                                <div style={{ color: '#16a34a', fontSize: '13px', fontWeight: 'bold' }}>
+                                                                    [ VERIFIED ]
+                                                                </div>
+                                                            ) : (
+                                                                <div style={{ color: '#d97706', fontSize: '13px', fontWeight: 'bold' }}>
+                                                                    [ PENDING PICKUP ]
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                        <td style={{ padding: '16px 24px' }} className="action-column">
+                                                            <div style={{ display: 'flex', gap: '12px' }}>
+                                                                <button 
+                                                                    onClick={() => setSelectedCert(record)}
+                                                                    style={{ 
+                                                                        background: isDark ? 'rgba(59, 130, 246, 0.2)' : '#eff6ff', 
+                                                                        color: '#3b82f6', 
+                                                                        border: 'none', 
+                                                                        padding: '8px 16px', 
+                                                                        borderRadius: '6px', 
+                                                                        fontWeight: 'bold', 
+                                                                        cursor: 'pointer' 
+                                                                    }}
+                                                                >
+                                                                    View Certificate
+                                                                </button>
+                                                                {!isCollected && (
+                                                                    <button 
+                                                                        onClick={() => setConfirmCollectId(record.dispatch_id)}
+                                                                        disabled={isCollecting}
+                                                                        style={{ 
+                                                                            background: isDark ? '#334155' : '#e2e8f0', 
+                                                                            color: isDark ? '#f8fafc' : '#1e293b', 
+                                                                            border: 'none', 
+                                                                            padding: '8px 16px', 
+                                                                            borderRadius: '6px', 
+                                                                            fontWeight: 'bold', 
+                                                                            cursor: isCollecting ? 'wait' : 'pointer' 
+                                                                        }}
+                                                                    >
+                                                                        Physical Handover
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                    <Pagination 
+                                        currentPage={dispatchPagination.page}
+                                        totalPages={dispatchPagination.totalPages}
+                                        totalItems={dispatchPagination.total}
+                                        onPageChange={handleDispatchPageChange}
+                                        isDark={isDark}
+                                    />
+                                </>
+                            ) : (
+                                <>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                        <thead>
+                                            <tr style={{ backgroundColor: isDark ? '#334155' : '#f8fafc', color: textMuted, fontSize: '14px', borderBottom: `2px solid ${isDark ? '#475569' : '#e2e8f0'}` }}>
+                                                <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Clearance ID</th>
+                                                <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Batch & Product</th>
+                                                <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Distributor / Reason</th>
+                                                <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Promo %</th>
+                                                <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Action Date</th>
+                                                <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>FRS Score</th>
+                                                <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {clearances.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan="7" style={{ padding: '48px', textAlign: 'center', color: textMuted }}>No clearance records found.</td>
+                                                </tr>
+                                            ) : clearances.map(record => (
+                                                <tr key={record.clearance_id} style={{ borderBottom: `1px solid ${isDark ? '#334155' : '#e2e8f0'}` }}>
+                                                    <td style={{ padding: '16px 24px', fontWeight: 'bold' }}>#{record.clearance_id}</td>
                                                     <td style={{ padding: '16px 24px' }}>
                                                         <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{record.product_name}</div>
                                                         <div style={{ fontSize: '13px', color: textMuted }}>Batch: {record.batch_id}</div>
                                                     </td>
                                                     <td style={{ padding: '16px 24px' }}>
-                                                        <div style={{ fontWeight: 'bold' }}>{record.distributor_name}</div>
-                                                        <div style={{ fontSize: '13px', color: textMuted }}>Authorized via System</div>
+                                                        <div style={{ fontWeight: 'bold' }}>{record.distributor_name || (record.reason === 'long in warehouse' ? 'Expired Salvage' : 'Direct Clearance')}</div>
+                                                        <div style={{ fontSize: '13px', color: textMuted }}>{record.reason} {!!record.collected_timestamp && <span style={{ color: '#16a34a', fontWeight: 'bold' }}>[ PICKED UP ]</span>}</div>
+                                                    </td>
+                                                    <td style={{ padding: '16px 24px' }}>
+                                                        <div style={{ fontWeight: 'bold', color: '#3b82f6' }}>{record.discount_applied ? `${record.discount_applied}%` : 'VAR'}</div>
+                                                    </td>
+                                                    <td style={{ padding: '16px 24px' }}>
+                                                        <div>{new Date(record.cleared_at).toLocaleDateString()}</div>
+                                                        <div style={{ fontSize: '13px', color: textMuted }}>Approved by {record.approved_by_name}</div>
                                                     </td>
                                                     <td style={{ padding: '16px 24px' }}>
                                                         <span style={{ 
                                                             backgroundColor: isDark ? '#1e293b' : '#f1f5f9', 
                                                             padding: '6px 12px', 
                                                             borderRadius: '6px', 
-                                                            color: record.risk_band_at_dispatch === 'low' ? '#22c55e' : (record.risk_band_at_dispatch === 'medium' ? '#f59e0b' : '#ef4444'),
+                                                            color: record.frs_score >= 80 ? '#22c55e' : (record.frs_score >= 60 ? '#f59e0b' : '#ef4444'),
                                                             fontWeight: 'bold'
                                                         }}>
-                                                            {Number(record.frs_at_dispatch).toFixed(1)}
+                                                            {record.frs_score !== null && record.frs_score !== undefined ? Number(record.frs_score).toFixed(1) : 'REC.'}
                                                         </span>
                                                     </td>
                                                     <td style={{ padding: '16px 24px' }}>
-                                                        {isCollected ? (
-                                                            <div style={{ color: '#16a34a', fontSize: '13px', fontWeight: 'bold' }}>
-                                                                [ VERIFIED ]
-                                                            </div>
-                                                        ) : (
-                                                            <div style={{ color: '#d97706', fontSize: '13px', fontWeight: 'bold' }}>
-                                                                [ PENDING PICKUP ]
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                    <td style={{ padding: '16px 24px' }} className="action-column">
-                                                        <div style={{ display: 'flex', gap: '12px' }}>
+                                                        {!record.collected_timestamp ? (
                                                             <button 
-                                                                onClick={() => setSelectedCert(record)}
+                                                                onClick={() => setConfirmClearanceId(record.clearance_id)}
+                                                                disabled={isCollecting}
                                                                 style={{ 
-                                                                    background: isDark ? 'rgba(59, 130, 246, 0.2)' : '#eff6ff', 
-                                                                    color: '#3b82f6', 
+                                                                    background: isDark ? '#334155' : '#e2e8f0', 
+                                                                    color: isDark ? '#f8fafc' : '#1e293b', 
                                                                     border: 'none', 
                                                                     padding: '8px 16px', 
                                                                     borderRadius: '6px', 
                                                                     fontWeight: 'bold', 
-                                                                    cursor: 'pointer' 
+                                                                    cursor: isCollecting ? 'wait' : 'pointer',
+                                                                    fontSize: '13px'
                                                                 }}
                                                             >
-                                                                View Certificate
+                                                                Verify Pickup
                                                             </button>
-                                                            {!isCollected && (
-                                                                <button 
-                                                                    onClick={() => setConfirmCollectId(record.dispatch_id)}
-                                                                    disabled={isCollecting}
-                                                                    style={{ 
-                                                                        background: isDark ? '#334155' : '#e2e8f0', 
-                                                                        color: isDark ? '#f8fafc' : '#1e293b', 
-                                                                        border: 'none', 
-                                                                        padding: '8px 16px', 
-                                                                        borderRadius: '6px', 
-                                                                        fontWeight: 'bold', 
-                                                                        cursor: isCollecting ? 'wait' : 'pointer' 
-                                                                    }}
-                                                                >
-                                                                    Physical Handover
-                                                                </button>
-                                                            )}
-                                                        </div>
+                                                        ) : (
+                                                            <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 'bold' }}>Handover Complete</span>
+                                                        )}
                                                     </td>
                                                 </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            ) : (
-                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                    <thead>
-                                        <tr style={{ backgroundColor: isDark ? '#334155' : '#f8fafc', color: textMuted, fontSize: '14px', borderBottom: `2px solid ${isDark ? '#475569' : '#e2e8f0'}` }}>
-                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Clearance ID</th>
-                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Batch & Product</th>
-                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Distributor / Reason</th>
-                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Promo %</th>
-                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Action Date</th>
-                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>FRS Score</th>
-                                            <th style={{ padding: '16px 24px', fontWeight: 'bold' }}>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {clearances.length === 0 ? (
-                                            <tr>
-                                                <td colSpan="7" style={{ padding: '48px', textAlign: 'center', color: textMuted }}>No clearance records found.</td>
-                                            </tr>
-                                        ) : clearances.map(record => (
-                                            <tr key={record.clearance_id} style={{ borderBottom: `1px solid ${isDark ? '#334155' : '#e2e8f0'}` }}>
-                                                <td style={{ padding: '16px 24px', fontWeight: 'bold' }}>#{record.clearance_id}</td>
-                                                <td style={{ padding: '16px 24px' }}>
-                                                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{record.product_name}</div>
-                                                    <div style={{ fontSize: '13px', color: textMuted }}>Batch: {record.batch_id}</div>
-                                                </td>
-                                                <td style={{ padding: '16px 24px' }}>
-                                                    <div style={{ fontWeight: 'bold' }}>{record.distributor_name || (record.reason === 'long in warehouse' ? 'Expired Salvage' : 'Direct Clearance')}</div>
-                                                    <div style={{ fontSize: '13px', color: textMuted }}>{record.reason} {!!record.collected_timestamp && <span style={{ color: '#16a34a', fontWeight: 'bold' }}>[ PICKED UP ]</span>}</div>
-                                                </td>
-                                                <td style={{ padding: '16px 24px' }}>
-                                                    <div style={{ fontWeight: 'bold', color: '#3b82f6' }}>{record.discount_applied ? `${record.discount_applied}%` : 'VAR'}</div>
-                                                </td>
-                                                <td style={{ padding: '16px 24px' }}>
-                                                    <div>{new Date(record.cleared_at).toLocaleDateString()}</div>
-                                                    <div style={{ fontSize: '13px', color: textMuted }}>Approved by {record.approved_by_name}</div>
-                                                </td>
-                                                <td style={{ padding: '16px 24px' }}>
-                                                    <span style={{ 
-                                                        backgroundColor: isDark ? '#1e293b' : '#f1f5f9', 
-                                                        padding: '6px 12px', 
-                                                        borderRadius: '6px', 
-                                                        color: record.frs_score >= 80 ? '#22c55e' : (record.frs_score >= 60 ? '#f59e0b' : '#ef4444'),
-                                                        fontWeight: 'bold'
-                                                    }}>
-                                                        {record.frs_score !== null && record.frs_score !== undefined ? Number(record.frs_score).toFixed(1) : 'REC.'}
-                                                    </span>
-                                                </td>
-                                                <td style={{ padding: '16px 24px' }}>
-                                                    {!record.collected_timestamp ? (
-                                                        <button 
-                                                            onClick={() => setConfirmClearanceId(record.clearance_id)}
-                                                            disabled={isCollecting}
-                                                            style={{ 
-                                                                background: isDark ? '#334155' : '#e2e8f0', 
-                                                                color: isDark ? '#f8fafc' : '#1e293b', 
-                                                                border: 'none', 
-                                                                padding: '8px 16px', 
-                                                                borderRadius: '6px', 
-                                                                fontWeight: 'bold', 
-                                                                cursor: isCollecting ? 'wait' : 'pointer',
-                                                                fontSize: '13px'
-                                                            }}
-                                                        >
-                                                            Verify Pickup
-                                                        </button>
-                                                    ) : (
-                                                        <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 'bold' }}>Handover Complete</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    <Pagination 
+                                        currentPage={clearancePagination.page}
+                                        totalPages={clearancePagination.totalPages}
+                                        totalItems={clearancePagination.total}
+                                        onPageChange={handleClearancePageChange}
+                                        isDark={isDark}
+                                    />
+                                </>
                             )}
                         </div>
                     </div>

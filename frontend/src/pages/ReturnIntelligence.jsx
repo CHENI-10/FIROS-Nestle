@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Pagination from '../components/Pagination';
 
 const ReturnIntelligence = () => {
     const navigate = useNavigate();
@@ -37,6 +38,10 @@ const ReturnIntelligence = () => {
     const [resolveError, setResolveError] = useState('');
     const [resolveLoading, setResolveLoading] = useState(false);
 
+    // Pagination state
+    const [historyPage, setHistoryPage] = useState(1);
+    const [historyPagination, setHistoryPagination] = useState({ total: 0, page: 1, totalPages: 1 });
+
     const isDark = theme === 'dark';
     const bgColor = isDark ? '#0f172a' : '#f8fafc';
     const textColor = isDark ? '#f1f5f9' : '#1e293b';
@@ -49,9 +54,9 @@ const ReturnIntelligence = () => {
     useEffect(() => {
         fetchDistributors();
         if (activeTab === 'history') {
-            fetchHistory();
+            fetchHistory(historyPage);
         }
-    }, [activeTab]);
+    }, [activeTab, historyPage]);
 
     const fetchDistributors = async () => {
         const token = sessionStorage.getItem('token');
@@ -71,16 +76,17 @@ const ReturnIntelligence = () => {
         }
     };
 
-    const fetchHistory = async () => {
+    const fetchHistory = async (page = 1) => {
         setLoading(true);
         const token = sessionStorage.getItem('token');
         try {
-            const res = await fetch('/api/dashboard/returns', {
+            const res = await fetch(`/api/dashboard/returns?page=${page}&limit=25`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!res.ok) throw new Error('Failed to fetch return history');
             const data = await res.json();
-            setHistory(data);
+            setHistory(data.records || data);
+            if (data.pagination) setHistoryPagination(data.pagination);
         } catch (err) {
             console.error(err);
             setError(err.message);
@@ -149,7 +155,7 @@ const ReturnIntelligence = () => {
 
             setIsResolveModalOpen(false);
             setSuccessResult(true);
-            fetchHistory(); // refresh the view
+            fetchHistory(historyPage); // refresh the view
 
         } catch (err) {
             console.error(err);
@@ -173,7 +179,7 @@ const ReturnIntelligence = () => {
         setEvidenceError('');
         const token = sessionStorage.getItem('token');
         try {
-            const res = await fetch('/api/dashboard/dispatches', {
+            const res = await fetch('/api/dashboard/dispatches?limit=1000', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -657,6 +663,13 @@ const ReturnIntelligence = () => {
                                 </table>
                             </div>
                         )}
+                        <Pagination 
+                            currentPage={historyPagination.page}
+                            totalPages={historyPagination.totalPages}
+                            totalItems={historyPagination.total}
+                            onPageChange={(newPage) => setHistoryPage(newPage)}
+                            isDark={isDark}
+                        />
                     </div>
                 )}
             </main>
