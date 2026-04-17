@@ -622,6 +622,7 @@ router.get('/clearance-ledger', async (req, res) => {
                 cr.clearance_id, cr.batch_id, cr.reason, cr.cleared_at,
                 cr.discount_applied, cr.collected_timestamp,
                 p.product_name, p.pack_size,
+                b.quantity, b.expiry_date, b.zone_id as zone,
                 fs.frs_score, fs.risk_band,
                 d.distributor_name,
                 u.full_name as approved_by_name

@@ -17,6 +17,7 @@ const DispatchCertificates = () => {
     const [clearances, setClearances] = useState([]);
     const [tabLoading, setTabLoading] = useState(false);
     const [confirmClearanceId, setConfirmClearanceId] = useState(null);
+    const [selectedClearanceCert, setSelectedClearanceCert] = useState(null);
     // Pagination state
     const [dispatchPage, setDispatchPage] = useState(1);
     const [dispatchPagination, setDispatchPagination] = useState({ total: 0, page: 1, totalPages: 1 });
@@ -408,7 +409,23 @@ const DispatchCertificates = () => {
                                                         </span>
                                                     </td>
                                                     <td style={{ padding: '16px 24px' }}>
-                                                        {!record.collected_timestamp ? (
+                                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                            <button
+                                                                onClick={() => setSelectedClearanceCert(record)}
+                                                                style={{
+                                                                    background: 'rgba(245, 158, 11, 0.12)',
+                                                                    color: '#d97706',
+                                                                    border: 'none',
+                                                                    padding: '8px 14px',
+                                                                    borderRadius: '6px',
+                                                                    fontWeight: 'bold',
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '13px'
+                                                                }}
+                                                            >
+                                                                View Certificate
+                                                            </button>
+                                                            {!record.collected_timestamp ? (
                                                             <button 
                                                                 onClick={() => setConfirmClearanceId(record.clearance_id)}
                                                                 disabled={isCollecting}
@@ -426,8 +443,9 @@ const DispatchCertificates = () => {
                                                                 Verify Pickup
                                                             </button>
                                                         ) : (
-                                                            <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 'bold' }}>Handover Complete</span>
+                                                            <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 'bold', padding: '8px 0' }}>Handover Complete</span>
                                                         )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -572,6 +590,178 @@ const DispatchCertificates = () => {
                     </div>
                 </div>
             )}
+
+            {/* ===== Clearance Certificate Modal ===== */}
+            {selectedClearanceCert && (() => {
+                const rec = selectedClearanceCert;
+                const riskColor = rec.frs_score >= 80 ? '#16a34a' : (rec.frs_score >= 60 ? '#d97706' : '#dc2626');
+                const riskBg   = rec.frs_score >= 80 ? '#f0fdf4' : (rec.frs_score >= 60 ? '#fffbeb' : '#fef2f2');
+                const riskBorder = rec.frs_score >= 80 ? '#bbf7d0' : (rec.frs_score >= 60 ? '#fde68a' : '#fecaca');
+                return (
+                    <div className="print-backdrop" style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: 'rgba(0,0,0,0.75)', zIndex: 1000,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: '24px', overflowY: 'auto'
+                    }}>
+                        <div className="cert-modal-content" style={{
+                            backgroundColor: '#ffffff', color: '#1e293b', width: '100%', maxWidth: '800px',
+                            borderRadius: '16px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)',
+                            position: 'relative'
+                        }}>
+                            {/* Amber header — visually different from standard dark dispatch cert */}
+                            <div style={{
+                                background: 'linear-gradient(135deg, #78350f 0%, #b45309 60%, #d97706 100%)',
+                                padding: '32px 40px', color: 'white',
+                                borderTopLeftRadius: '16px', borderTopRightRadius: '16px',
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'
+                            }}>
+                                <div>
+                                    <div style={{ fontSize: '11px', letterSpacing: '3px', color: 'rgba(255,255,255,0.6)', fontWeight: 'bold', marginBottom: '6px', textTransform: 'uppercase' }}>Clearance Dispatch Certificate</div>
+                                    <h2 style={{ margin: '0 0 6px 0', fontSize: '26px', color: '#fef3c7', letterSpacing: '0.5px' }}>Promotional Clearance Release</h2>
+                                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>Nestlé FIROS Clearance Protocol · Risk-Adjusted Dispatch</div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ fontWeight: 'bold', fontSize: '22px', color: '#fef3c7' }}>CLR-{rec.clearance_id.toString().padStart(6, '0')}</div>
+                                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', fontStyle: 'italic', marginTop: '4px' }}>System Generated</div>
+                                </div>
+                            </div>
+
+                            {/* Clearance Reason Banner */}
+                            <div style={{
+                                backgroundColor: '#fffbeb', borderBottom: '1px solid #fde68a',
+                                padding: '14px 40px', display: 'flex', alignItems: 'center', gap: '12px'
+                            }}>
+                                <span style={{ fontSize: '18px' }}>⚠️</span>
+                                <div>
+                                    <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#92400e', textTransform: 'uppercase', letterSpacing: '1px' }}>Clearance Trigger: </span>
+                                    <span style={{ fontSize: '14px', color: '#78350f', fontWeight: '600' }}>{rec.reason}</span>
+                                </div>
+                            </div>
+
+                            {/* Body */}
+                            <div style={{ padding: '36px 40px' }}>
+
+                                {/* Top grid: Distributor + Promotion */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '28px', marginBottom: '28px', paddingBottom: '28px', borderBottom: '1px solid #e2e8f0' }}>
+                                    <div>
+                                        <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 'bold', marginBottom: '6px' }}>Assigned Distributor</div>
+                                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#0f172a' }}>{rec.distributor_name || 'Direct Clearance'}</div>
+                                        <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>Release authorized by: {rec.approved_by_name}</div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 'bold', marginBottom: '6px' }}>Promotional Discount Applied</div>
+                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                                            <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#d97706', lineHeight: 1 }}>
+                                                {rec.discount_applied ? `${rec.discount_applied}%` : 'VAR'}
+                                            </div>
+                                            <div style={{ fontSize: '13px', color: '#92400e', fontWeight: '600' }}>OFF RRP</div>
+                                        </div>
+                                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>
+                                            {rec.discount_applied
+                                                ? `Clearance price reduction: ${rec.discount_applied}% below retail price`
+                                                : 'Variable promotional pricing — see distributor agreement'}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Middle: Commodity + FRS Freeze */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: '28px', marginBottom: '28px' }}>
+                                    <div>
+                                        <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 'bold', marginBottom: '8px' }}>Commodity Details</div>
+                                        <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
+                                            {[
+                                                ['Product', rec.product_name],
+                                                ['Batch Serial', rec.batch_id],
+                                                ['Pack Size', rec.pack_size || '—'],
+                                                ['Quantity', `${rec.quantity ?? '—'} units`],
+                                                ['Expiry Date', rec.expiry_date ? new Date(rec.expiry_date).toLocaleDateString() : '—'],
+                                                ['Storage Zone', rec.zone ? `Zone ${rec.zone}` : '—'],
+                                            ].map(([label, val]) => (
+                                                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '14px' }}>
+                                                    <span style={{ color: '#64748b' }}>{label}:</span>
+                                                    <span style={{ fontWeight: 'bold' }}>{val}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 'bold', marginBottom: '8px' }}>Frozen FRS Score</div>
+                                        <div style={{
+                                            backgroundColor: riskBg,
+                                            border: `1px solid ${riskBorder}`,
+                                            borderRadius: '8px',
+                                            padding: '20px 12px',
+                                            textAlign: 'center',
+                                            height: 'calc(100% - 22px)'
+                                        }}>
+                                            <div style={{ fontSize: '38px', fontWeight: 'bold', color: riskColor, lineHeight: 1 }}>
+                                                {rec.frs_score !== null && rec.frs_score !== undefined ? Number(rec.frs_score).toFixed(1) : '—'}
+                                            </div>
+                                            <div style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '6px', color: '#64748b' }}>SCORE / 100</div>
+                                            <div style={{ fontSize: '11px', marginTop: '8px', color: riskColor, fontWeight: 'bold', textTransform: 'uppercase' }}>
+                                                {rec.frs_score >= 80 ? 'Low Risk' : rec.frs_score >= 60 ? 'Medium Risk' : 'High Risk'}
+                                            </div>
+                                            <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '6px' }}>Score locked at clearance approval time</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Compliance note */}
+                                <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', padding: '20px 24px', borderRadius: '8px', fontSize: '13px', color: '#78350f', lineHeight: '1.65', marginBottom: '28px' }}>
+                                    <strong>Clearance Compliance Protocol:</strong><br />
+                                    This certificate documents that the identified high-risk or clearance-flagged batch was released under a manager-authorized promotional pricing event. The Freshness Risk Score (FRS) recorded above represents the batch condition at the moment of clearance approval and is permanently frozen for audit and dispute resolution purposes. Any future distributor quality complaints against this batch will be evaluated against this official locked score. This record is immutable within the FIROS ledger.
+                                </div>
+
+                                {/* Footer timestamps */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '2px dashed #fde68a', paddingTop: '28px' }}>
+                                    <div>
+                                        <div style={{ color: '#78350f', fontWeight: 'bold' }}>Clearance Approved</div>
+                                        <div style={{ color: '#64748b', fontSize: '14px' }}>{new Date(rec.cleared_at).toLocaleString()}</div>
+                                        <div style={{ color: '#64748b', fontSize: '13px', marginTop: '2px' }}>By: {rec.approved_by_name}</div>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        {rec.collected_timestamp ? (
+                                            <>
+                                                <div style={{ color: '#16a34a', fontWeight: 'bold' }}>[ VERIFIED PHYSICAL HANDOVER ]</div>
+                                                <div style={{ color: '#64748b', fontSize: '14px' }}>{new Date(rec.collected_timestamp).toLocaleString()}</div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div style={{ color: '#d97706', fontWeight: 'bold' }}>[ PENDING DISTRIBUTORS TRUCK ]</div>
+                                                <div style={{ color: '#64748b', fontSize: '14px' }}>Awaiting terminal scan verification...</div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Footer buttons */}
+                            <div className="hide-on-print" style={{
+                                backgroundColor: '#fefce8', padding: '16px 40px',
+                                borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px',
+                                display: 'flex', justifyContent: 'flex-end', gap: '16px',
+                                borderTop: '1px solid #fde68a'
+                            }}>
+                                <button
+                                    onClick={() => setSelectedClearanceCert(null)}
+                                    style={{ background: 'transparent', border: '1px solid #d97706', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', color: '#92400e' }}
+                                >
+                                    Close
+                                </button>
+                                <button
+                                    onClick={printCertificate}
+                                    style={{ background: '#78350f', border: 'none', color: 'white', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                >
+                                    <span style={{ fontSize: '12px' }}>[ EXPORT DOCUMENT ]</span> Save as PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
             {/* Native Alert Overlays */}
             {confirmCollectId && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
