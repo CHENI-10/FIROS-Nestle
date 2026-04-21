@@ -302,12 +302,16 @@ const DispatchCertificates = () => {
                                                             </span>
                                                         </td>
                                                         <td style={{ padding: '16px 24px' }}>
-                                                            {isCollected ? (
-                                                                <div style={{ color: '#16a34a', fontSize: '13px', fontWeight: 'bold' }}>
+                                                            {record.status === 'returned' ? (
+                                                                <div style={{ color: '#ef4444', fontSize: '13px', fontWeight: 'bold', letterSpacing: '0.5px' }}>
+                                                                    [ RETURNED ]
+                                                                </div>
+                                                            ) : isCollected ? (
+                                                                <div style={{ color: '#16a34a', fontSize: '13px', fontWeight: 'bold', letterSpacing: '0.5px' }}>
                                                                     [ VERIFIED ]
                                                                 </div>
                                                             ) : (
-                                                                <div style={{ color: '#d97706', fontSize: '13px', fontWeight: 'bold' }}>
+                                                                <div style={{ color: '#d97706', fontSize: '13px', fontWeight: 'bold', letterSpacing: '0.5px' }}>
                                                                     [ PENDING PICKUP ]
                                                                 </div>
                                                             )}
@@ -328,7 +332,7 @@ const DispatchCertificates = () => {
                                                                 >
                                                                     View Certificate
                                                                 </button>
-                                                                {!isCollected && (
+                                                                {!isCollected && record.status !== 'returned' && (
                                                                     <button 
                                                                         onClick={() => setConfirmCollectId(record.dispatch_id)}
                                                                         disabled={isCollecting}

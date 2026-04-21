@@ -578,7 +578,7 @@ router.get('/dispatches', async (req, res) => {
                 dr.dispatch_id, dr.batch_id, dr.distributor_id, 
                 dr.frs_at_dispatch, dr.risk_band_at_dispatch, dr.zone_at_dispatch,
                 dr.dispatch_timestamp, dr.collected_timestamp,
-                b.quantity, b.expiry_date,
+                b.quantity, b.expiry_date, b.status,
                 p.product_name, p.pack_size,
                 d.distributor_name,
                 u.full_name as approved_by_name
@@ -743,8 +743,15 @@ router.post('/returns/evaluate', requireRole('admin', 'manager'), async (req, re
             return res.status(404).json({ error: 'Batch not found' });
         }
 
-        if (batchRes.rows[0].status !== 'dispatched') {
-            return res.status(400).json({ error: 'Batch is not currently dispatched' });
+        const currentStatus = batchRes.rows[0].status;
+        if (currentStatus === 'returned') {
+            return res.status(400).json({ error: 'Batch has already been returned' });
+        } else if (currentStatus === 'in_storage') {
+            return res.status(400).json({ error: 'Batch is currently in storage and cannot be returned' });
+        } else if (currentStatus === 'cleared') {
+            return res.status(400).json({ error: 'Batch was processed via clearance and cannot be returned' });
+        } else if (currentStatus !== 'dispatched') {
+            return res.status(400).json({ error: `Batch has invalid status: ${currentStatus}` });
         }
 
         // 2. Fetch the most recent dispatch_record for this batch
@@ -825,9 +832,19 @@ router.post('/returns', requireRole('admin', 'manager'), async (req, res) => {
             return res.status(404).json({ error: 'Batch not found' });
         }
 
-        if (batchRes.rows[0].status !== 'dispatched') {
+        const currentStatus = batchRes.rows[0].status;
+        if (currentStatus === 'returned') {
             await client.query('ROLLBACK');
-            return res.status(400).json({ error: 'Batch is not currently dispatched' });
+            return res.status(400).json({ error: 'Batch has already been returned' });
+        } else if (currentStatus === 'in_storage') {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Batch is currently in storage and cannot be returned' });
+        } else if (currentStatus === 'cleared') {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'Batch was processed via clearance and cannot be returned' });
+        } else if (currentStatus !== 'dispatched') {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: `Batch has invalid status: ${currentStatus}` });
         }
 
         // 2. Insert into return_records
