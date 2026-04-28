@@ -1,0 +1,889 @@
+/* =============================================
+   DispatchCertificates.css
+   Companion stylesheet for DispatchCertificates.jsx
+   ============================================= */
+
+/* ---- Print Overrides ---- */
+@media print {
+  nav,
+  .back-btn,
+  .action-column,
+  .hide-on-print {
+    display: none !important;
+  }
+  .cert-modal-content {
+    box-shadow: none !important;
+    border: 2px solid #ccc !important;
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+  .print-backdrop {
+    position: static !important;
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+  }
+}
+
+/* ---- Page Root ---- */
+.dc-root {
+  min-height: 100vh;
+  font-family: inherit;
+}
+
+/* ---- Navbar ---- */
+.dc-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  color: white;
+}
+.dc-nav-brand {
+  font-weight: bold;
+  font-size: 20px;
+  letter-spacing: 1px;
+}
+.dc-nav-brand-sub {
+  color: #C8A96E;
+  font-size: 14px;
+  margin-left: 8px;
+}
+.dc-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.dc-theme-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 18px;
+}
+.dc-logout-btn {
+  background: rgba(0, 0, 0, 0.2);
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+/* ---- Main Content ---- */
+.dc-main {
+  padding: 32px 48px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.dc-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 32px;
+}
+.dc-back-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 0;
+}
+.dc-page-title {
+  margin: 0 0 8px 0;
+  font-size: 32px;
+}
+.dc-page-subtitle {
+  margin: 0;
+}
+
+/* ---- Tab Navigation ---- */
+.dc-tabs {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+.dc-tab-btn {
+  background: none;
+  border: none;
+  padding: 12px 0;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transform: translateY(2px);
+}
+
+/* ---- Status States ---- */
+.dc-loading {
+  text-align: center;
+  padding: 64px;
+  font-weight: bold;
+  font-size: 18px;
+}
+.dc-error {
+  text-align: center;
+  padding: 64px;
+  color: #ef4444;
+}
+.dc-empty-state {
+  padding: 48px;
+  border-radius: 12px;
+  text-align: center;
+}
+.dc-empty-label {
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+}
+.dc-empty-title {
+  margin: 0 0 8px 0;
+}
+.dc-empty-body {
+  margin: 0;
+}
+
+/* ---- Table Wrapper ---- */
+.dc-table-card {
+  border-radius: 12px;
+  overflow: hidden;
+}
+.dc-table-scroll {
+  overflow-x: auto;
+}
+.dc-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.dc-table thead tr {
+  font-size: 14px;
+}
+.dc-table th {
+  padding: 16px 24px;
+  font-weight: bold;
+}
+.dc-table td {
+  padding: 16px 24px;
+}
+.dc-cell-bold {
+  font-weight: bold;
+}
+.dc-cell-sub {
+  font-size: 13px;
+}
+.dc-cell-product-name {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+/* ---- FRS Score Badge ---- */
+.dc-frs-badge {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: bold;
+}
+
+/* ---- Status Labels ---- */
+.dc-status {
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+.dc-status--returned { color: #ef4444; }
+.dc-status--verified { color: #16a34a; }
+.dc-status--pending  { color: #d97706; }
+
+/* ---- Action Cell Buttons ---- */
+.dc-action-group {
+  display: flex;
+  gap: 12px;
+}
+.dc-btn-view-cert {
+  background: #eff6ff;
+  color: #3b82f6;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.dc-btn-handover {
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: bold;
+}
+
+/* ---- Clearance table action cell ---- */
+.dc-action-group--clr {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dc-btn-view-clr-cert {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 13px;
+}
+.dc-btn-verify-pickup {
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 13px;
+}
+.dc-handover-complete {
+  font-size: 12px;
+  color: #16a34a;
+  font-weight: bold;
+  padding: 8px 0;
+}
+.dc-picked-up-badge {
+  color: #16a34a;
+  font-weight: bold;
+}
+
+/* =========================================
+   DISPATCH CERTIFICATE MODAL
+   ========================================= */
+.dc-modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+}
+.dc-modal-box {
+  background-color: #ffffff;
+  color: #1e293b;
+  width: 100%;
+  max-width: 800px;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  position: relative;
+}
+
+/* Dispatch modal header */
+.dc-modal-header {
+  background-color: #0f172a;
+  padding: 32px 40px;
+  color: white;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.dc-modal-header-title {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  color: #C8A96E;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.dc-modal-header-sub {
+  font-size: 14px;
+  color: #94a3b8;
+}
+.dc-modal-header-id {
+  font-weight: bold;
+  font-size: 24px;
+}
+.dc-modal-header-gen {
+  font-size: 13px;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* Dispatch modal body */
+.dc-modal-body {
+  padding: 40px;
+}
+.dc-modal-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 32px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 32px;
+  margin-bottom: 32px;
+}
+.dc-modal-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+.dc-modal-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #0f172a;
+}
+.dc-modal-value-sub {
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* Commodity + FRS grid */
+.dc-commodity-grid {
+  display: grid;
+  grid-template-columns: 3fr 1fr;
+  gap: 32px;
+  margin-bottom: 32px;
+}
+.dc-commodity-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+.dc-commodity-table {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+}
+.dc-commodity-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.dc-commodity-row:last-child {
+  margin-bottom: 0;
+}
+.dc-commodity-row-key {
+  color: #64748b;
+}
+.dc-commodity-row-val {
+  font-weight: bold;
+}
+
+/* FRS Score box */
+.dc-frs-box {
+  border-radius: 8px;
+  padding: 24px 16px;
+  text-align: center;
+  height: calc(100% - 22px);
+}
+.dc-frs-score {
+  font-size: 36px;
+  font-weight: bold;
+  line-height: 1;
+}
+.dc-frs-label {
+  font-size: 13px;
+  font-weight: bold;
+  margin-top: 8px;
+  color: #64748b;
+}
+
+/* Compliance note */
+.dc-compliance-note {
+  background-color: #f8fafc;
+  padding: 24px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+
+/* Footer timestamps */
+.dc-modal-footer-timestamps {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-top: 2px dashed #e2e8f0;
+  padding-top: 32px;
+}
+.dc-timestamp-approved {
+  color: #0f172a;
+  font-weight: bold;
+}
+.dc-timestamp-date {
+  color: #64748b;
+  font-size: 14px;
+}
+.dc-verified-stamp {
+  color: #16a34a;
+  font-weight: bold;
+}
+.dc-pending-stamp {
+  color: #d97706;
+  font-weight: bold;
+}
+.dc-stamp-sub {
+  color: #64748b;
+  font-size: 14px;
+}
+
+/* Modal action footer */
+.dc-modal-action-footer {
+  background-color: #f8fafc;
+  padding: 16px 40px;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+.dc-btn-close-modal {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #334155;
+}
+.dc-btn-export {
+  background: #0f172a;
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dc-btn-export-label {
+  font-size: 12px;
+}
+
+/* =========================================
+   CLEARANCE CERTIFICATE MODAL
+   ========================================= */
+.dc-clr-modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+}
+.dc-clr-modal-box {
+  background-color: #ffffff;
+  color: #1e293b;
+  width: 100%;
+  max-width: 800px;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  position: relative;
+}
+
+/* Clearance amber header */
+.dc-clr-header {
+  background: linear-gradient(135deg, #78350f 0%, #b45309 60%, #d97706 100%);
+  padding: 32px 40px;
+  color: white;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.dc-clr-header-eyebrow {
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: bold;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+.dc-clr-header-title {
+  margin: 0 0 6px 0;
+  font-size: 26px;
+  color: #fef3c7;
+  letter-spacing: 0.5px;
+}
+.dc-clr-header-sub {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+}
+.dc-clr-header-id {
+  font-weight: bold;
+  font-size: 22px;
+  color: #fef3c7;
+}
+.dc-clr-header-gen {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+/* Clearance reason banner */
+.dc-clr-reason-banner {
+  background-color: #fffbeb;
+  border-bottom: 1px solid #fde68a;
+  padding: 14px 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dc-clr-reason-icon {
+  font-size: 18px;
+}
+.dc-clr-reason-label {
+  font-size: 12px;
+  font-weight: bold;
+  color: #92400e;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.dc-clr-reason-value {
+  font-size: 14px;
+  color: #78350f;
+  font-weight: 600;
+}
+
+/* Clearance body */
+.dc-clr-body {
+  padding: 36px 40px;
+}
+.dc-clr-top-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  margin-bottom: 28px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.dc-clr-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+.dc-clr-value-lg {
+  font-size: 18px;
+  font-weight: bold;
+  color: #0f172a;
+}
+.dc-clr-value-sub {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 4px;
+}
+.dc-clr-promo-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.dc-clr-promo-pct {
+  font-size: 36px;
+  font-weight: bold;
+  color: #d97706;
+  line-height: 1;
+}
+.dc-clr-promo-off {
+  font-size: 13px;
+  color: #92400e;
+  font-weight: 600;
+}
+.dc-clr-promo-note {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 6px;
+}
+
+/* Clearance commodity + FRS grid */
+.dc-clr-mid-grid {
+  display: grid;
+  grid-template-columns: 3fr 1fr;
+  gap: 28px;
+  margin-bottom: 28px;
+}
+.dc-clr-commodity-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+.dc-clr-commodity-table {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+}
+.dc-clr-commodity-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+.dc-clr-commodity-row:last-child {
+  margin-bottom: 0;
+}
+.dc-clr-row-key { color: #64748b; }
+.dc-clr-row-val { font-weight: bold; }
+
+/* Clearance FRS box */
+.dc-clr-frs-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+.dc-clr-frs-box {
+  border-radius: 8px;
+  padding: 20px 12px;
+  text-align: center;
+  height: calc(100% - 22px);
+}
+.dc-clr-frs-score {
+  font-size: 38px;
+  font-weight: bold;
+  line-height: 1;
+}
+.dc-clr-frs-sublabel {
+  font-size: 12px;
+  font-weight: bold;
+  margin-top: 6px;
+  color: #64748b;
+}
+.dc-clr-frs-band {
+  font-size: 11px;
+  margin-top: 8px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+.dc-clr-frs-note {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-top: 6px;
+}
+
+/* Clearance compliance note */
+.dc-clr-compliance-note {
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  padding: 20px 24px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #78350f;
+  line-height: 1.65;
+  margin-bottom: 28px;
+}
+
+/* Clearance footer timestamps */
+.dc-clr-footer-timestamps {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-top: 2px dashed #fde68a;
+  padding-top: 28px;
+}
+.dc-clr-ts-approved {
+  color: #78350f;
+  font-weight: bold;
+}
+.dc-clr-ts-date {
+  color: #64748b;
+  font-size: 14px;
+}
+.dc-clr-ts-by {
+  color: #64748b;
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+/* Clearance modal action footer */
+.dc-clr-action-footer {
+  background-color: #fefce8;
+  padding: 16px 40px;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  border-top: 1px solid #fde68a;
+}
+.dc-clr-btn-close {
+  background: transparent;
+  border: 1px solid #d97706;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #92400e;
+}
+.dc-clr-btn-export {
+  background: #78350f;
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dc-clr-btn-export-label {
+  font-size: 12px;
+}
+
+/* =========================================
+   CONFIRM / SUCCESS MODALS
+   ========================================= */
+.dc-confirm-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dc-confirm-box {
+  padding: 32px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+.dc-confirm-title {
+  margin: 0 0 16px 0;
+  font-size: 20px;
+}
+.dc-confirm-body {
+  margin-bottom: 24px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.dc-confirm-error {
+  padding: 12px;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-radius: 6px;
+  margin-bottom: 24px;
+  font-size: 13px;
+}
+.dc-confirm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+.dc-btn-cancel {
+  padding: 10px 16px;
+  border-radius: 6px;
+  background-color: transparent;
+  font-weight: bold;
+  cursor: pointer;
+}
+.dc-btn-confirm-green {
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: none;
+  background-color: #10b981;
+  color: white;
+  font-weight: bold;
+}
+.dc-btn-confirm-blue {
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: none;
+  background-color: #3b82f6;
+  color: white;
+  font-weight: bold;
+}
+
+/* Clearance confirm modal (lighter backdrop) */
+.dc-clr-confirm-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dc-clr-confirm-box {
+  padding: 24px;
+  border-radius: 12px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* Success modal */
+.dc-success-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dc-success-box {
+  padding: 32px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+.dc-success-icon-ring {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  border: 3px solid #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dc-success-checkmark {
+  width: 12px;
+  height: 20px;
+  border-bottom: 3px solid #10b981;
+  border-right: 3px solid #10b981;
+  transform: rotate(45deg);
+  margin-top: -6px;
+}
+.dc-success-title {
+  margin: 0 0 12px 0;
+  font-size: 20px;
+}
+.dc-success-msg {
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+.dc-btn-success-close {
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  width: 100%;
+}

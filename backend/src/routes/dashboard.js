@@ -748,31 +748,54 @@ router.post('/returns/evaluate', requireRole('admin', 'manager'), async (req, re
             return res.status(400).json({ error: 'Batch has already been returned' });
         } else if (currentStatus === 'in_storage') {
             return res.status(400).json({ error: 'Batch is currently in storage and cannot be returned' });
-        } else if (currentStatus === 'cleared') {
-            return res.status(400).json({ error: 'Batch was processed via clearance and cannot be returned' });
-        } else if (currentStatus !== 'dispatched') {
+        } else if (currentStatus !== 'dispatched' && currentStatus !== 'cleared') {
             return res.status(400).json({ error: `Batch has invalid status: ${currentStatus}` });
         }
 
-        // 2. Fetch the most recent dispatch_record for this batch
-        const dispatchQuery = `
-            SELECT frs_at_dispatch, dispatch_timestamp, distributor_id,
-                   EXTRACT(EPOCH FROM (NOW() - dispatch_timestamp)) / 86400 AS days_since_dispatch
-            FROM dispatch_records
-            WHERE batch_id = $1
-            ORDER BY dispatch_timestamp DESC
+        // 2. Fetch the most recent outbound event (dispatch or clearance)
+        const outboundQuery = `
+            WITH outbound_event AS (
+                SELECT 
+                    frs_at_dispatch AS frs_score, 
+                    dispatch_timestamp AS event_timestamp, 
+                    distributor_id,
+                    'dispatch' as type
+                FROM dispatch_records
+                WHERE batch_id = $1
+                UNION ALL
+                SELECT 
+                    fs.frs_score, 
+                    cr.cleared_at AS event_timestamp, 
+                    cr.distributor_id,
+                    'clearance' as type
+                FROM clearance_records cr
+                LEFT JOIN freshness_scores fs ON cr.batch_id = fs.batch_id
+                WHERE cr.batch_id = $1
+            )
+            SELECT 
+                frs_score, 
+                event_timestamp, 
+                distributor_id,
+                EXTRACT(EPOCH FROM (NOW() - event_timestamp)) / 86400 AS days_since_event
+            FROM outbound_event
+            ORDER BY event_timestamp DESC
             LIMIT 1
         `;
-        const dispatchRes = await pool.query(dispatchQuery, [batch_id]);
+        const outboundRes = await pool.query(outboundQuery, [batch_id]);
 
-        if (dispatchRes.rows.length === 0) {
-            return res.status(400).json({ error: 'No dispatch record found for this batch' });
+        if (outboundRes.rows.length === 0) {
+            return res.status(400).json({ error: 'No outbound record (dispatch or clearance) found for this batch' });
         }
 
-        const { frs_at_dispatch, dispatch_timestamp, distributor_id, days_since_dispatch: dbDays } = dispatchRes.rows[0];
+        const { frs_score, event_timestamp, distributor_id, days_since_event: dbDays } = outboundRes.rows[0];
+
+        if (!distributor_id) {
+            return res.status(400).json({ error: 'This batch was cleared without a distributor assignment and cannot be returned through the system.' });
+        }
 
         // 3. Calculate days_since_dispatch via DB to avoid timezone issues
         const days_since_dispatch = Math.floor(dbDays);
+        const frs_at_dispatch = frs_score;
 
         // 4. Determine recommendation logic
         let recommendation = 'review';
@@ -839,10 +862,7 @@ router.post('/returns', requireRole('admin', 'manager'), async (req, res) => {
         } else if (currentStatus === 'in_storage') {
             await client.query('ROLLBACK');
             return res.status(400).json({ error: 'Batch is currently in storage and cannot be returned' });
-        } else if (currentStatus === 'cleared') {
-            await client.query('ROLLBACK');
-            return res.status(400).json({ error: 'Batch was processed via clearance and cannot be returned' });
-        } else if (currentStatus !== 'dispatched') {
+        } else if (currentStatus !== 'dispatched' && currentStatus !== 'cleared') {
             await client.query('ROLLBACK');
             return res.status(400).json({ error: `Batch has invalid status: ${currentStatus}` });
         }
