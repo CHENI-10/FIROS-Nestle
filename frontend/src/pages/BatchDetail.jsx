@@ -49,7 +49,7 @@ const BatchDetail = () => {
         return (
             <div className={`batch-detail-container ${theme} flex-center fullscreen`}>
                 <div className="spinner"></div>
-                <h2 style={{marginTop: '20px'}}>Loading Batch Details...</h2>
+                <h2 style={{ marginTop: '20px' }}>Loading Batch Details...</h2>
             </div>
         );
     }
@@ -84,9 +84,9 @@ const BatchDetail = () => {
 
     return (
         <div className={`batch-detail-container ${theme}`}>
-            <nav style={{ 
-                padding: '12px 32px', 
-                backgroundColor: theme === 'dark' ? '#1a1a1a' : '#4d2600', 
+            <nav style={{
+                padding: '12px 32px',
+                backgroundColor: theme === 'dark' ? '#1a1a1a' : '#4d2600',
                 color: 'white',
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -130,9 +130,9 @@ const BatchDetail = () => {
                                 <label>Storage Environment</label>
                                 <span>
                                     Zone {batch.zone_id} Status:{' '}
-                                    <span style={{ 
-                                        color: (batch.total_temp_breach_windows > 0 || batch.total_humidity_breach_windows > 0) ? '#ef4444' : '#22c55e', 
-                                        fontWeight: 700 
+                                    <span style={{
+                                        color: (batch.total_temp_breach_windows > 0 || batch.total_humidity_breach_windows > 0) ? '#ef4444' : '#22c55e',
+                                        fontWeight: 700
                                     }}>
                                         {(batch.total_temp_breach_windows > 0 || batch.total_humidity_breach_windows > 0) ? 'Threshold Breach' : 'Optimal'}
                                     </span>
@@ -169,7 +169,7 @@ const BatchDetail = () => {
                                     <div style={{ width: `${batch.slr_percent_raw}%`, height: '100%', background: getRiskColor(batch.risk_band), transition: 'width 1s ease' }}></div>
                                 </div>
                             </div>
-                            
+
                             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', background: 'rgba(0,0,0,0.02)', borderRadius: '16px' }}>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', fontWeight: 800 }}>TEMP BREACHES</label>
@@ -181,11 +181,11 @@ const BatchDetail = () => {
                                 </div>
                             </div>
 
-                            <div style={{ 
-                                padding: '16px', 
-                                background: 'rgba(200,169,110,0.1)', 
+                            <div style={{
+                                padding: '16px',
+                                background: 'rgba(200,169,110,0.1)',
                                 border: '1px solid rgba(200,169,110,0.2)',
-                                borderRadius: '16px', 
+                                borderRadius: '16px',
                                 fontSize: '0.85rem',
                                 color: '#854d0e',
                                 fontWeight: 500,

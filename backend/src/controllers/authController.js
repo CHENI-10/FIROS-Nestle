@@ -2,7 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 
-const login = async (req, res) => {
+const handleAuth = async (req, res, requireRole = null) => {
     try {
         const { email, password } = req.body;
 
@@ -19,6 +19,10 @@ const login = async (req, res) => {
 
         const user = rows[0];
 
+        if (requireRole && user.role !== requireRole) {
+            return res.status(403).json({ message: 'Access forbidden: Incorrect role' });
+        }
+
         const isMatch = await bcrypt.compare(password, user.password_hash);
 
         if (!isMatch) {
@@ -26,8 +30,11 @@ const login = async (req, res) => {
         }
 
         const payload = {
-            user_id: user.user_id,
-            full_name: user.full_name,
+            userId: user.user_id, // new spec
+            id: user.user_id, // new spec
+            user_id: user.user_id, // backwards compatibility
+            fullName: user.full_name, // new spec
+            full_name: user.full_name, // backwards compatibility
             email: user.email,
             role: user.role
         };
@@ -41,6 +48,10 @@ const login = async (req, res) => {
     }
 };
 
+const login = (req, res) => handleAuth(req, res);
+const salesRepLogin = (req, res) => handleAuth(req, res, 'sales_rep');
+
 module.exports = {
-    login
+    login,
+    salesRepLogin
 };

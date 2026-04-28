@@ -6,6 +6,8 @@ const path = require('path');
 const authRoutes = require('./routes/auth');
 const batchRoutes = require('./routes/batches');
 const dashboardRoutes = require('./routes/dashboard');
+const productsRoutes = require('./routes/products');
+const reportsRoutes = require('./routes/reports');
 const { startFRSJob } = require('./jobs/recalculateFRSJob');
 const { recalculateAllBatches } = require('./services/frsService');
 const pool = require('./config/db');
@@ -17,7 +19,8 @@ const corsOptions = {
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:3001',
-      process.env.FRONTEND_URL
+      process.env.FRONTEND_URL,
+      process.env.CLIENT_URL
     ].filter(Boolean)
     
     if (!origin || allowedOrigins.includes(origin)) {
@@ -35,6 +38,12 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/batches', batchRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/products', productsRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/distributors', require('./routes/distributors'));
+app.use('/api/manager', require('./routes/manager'));
+app.use('/api/scorecard', require('./routes/scorecardRoutes'));
+app.use('/api/allocation', require('./routes/allocationRoutes'));
 
 // Serve React frontend in production
 if (process.env.NODE_ENV === 'production') {

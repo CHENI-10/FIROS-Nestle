@@ -423,6 +423,74 @@ const Dashboard = () => {
                         </span>
                         <span style={{ fontSize: '24px', color: '#60a5fa' }}>→</span>
                     </button>
+
+                    <button
+                        onClick={() => navigate('/dashboard/market-intelligence')}
+                        style={{
+                            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                            color: 'white',
+                            padding: '16px 24px',
+                            border: '2px solid #22c55e',
+                            borderRadius: '12px',
+                            fontSize: '18px',
+                            fontWeight: 'bold',
+                            letterSpacing: '0.5px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+                            transition: 'all 0.3s ease',
+                            gridColumn: '1 / -1'
+                        }}
+                        onMouseOver={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-3px)';
+                            e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
+                        }}
+                        onMouseOut={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
+                        }}
+                    >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#4ade80' }}>
+                            <span style={{ fontSize: '20px' }}>📊</span> Market Intelligence Reports
+                        </span>
+                        <span style={{ fontSize: '24px', color: '#4ade80' }}>→</span>
+                    </button>
+
+                    <button
+                        onClick={() => navigate('/dashboard/scorecard')}
+                        style={{
+                            background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+                            color: 'white',
+                            padding: '16px 24px',
+                            border: '2px solid #38bdf8',
+                            borderRadius: '12px',
+                            fontSize: '18px',
+                            fontWeight: 'bold',
+                            letterSpacing: '0.5px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+                            transition: 'all 0.3s ease',
+                            gridColumn: '1 / -1'
+                        }}
+                        onMouseOver={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-3px)';
+                            e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
+                        }}
+                        onMouseOut={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
+                        }}
+                    >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#7dd3fc' }}>
+                            <span style={{ fontSize: '20px' }}>📈</span> Distributor Scorecards
+                        </span>
+                        <span style={{ fontSize: '24px', color: '#7dd3fc' }}>→</span>
+                    </button>
                 </div>
 
                 <h2 className="section-title">Warehouse Zones Status</h2>
