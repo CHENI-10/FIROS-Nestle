@@ -13,8 +13,8 @@ const getReports = async (req, res) => {
                 r.audit_date as "auditDate",
                 r.submitted_at as "submittedAt",
                 r.status,
-                u.full_name as "repName",
-                u.user_id as "repId",
+                COALESCE(r.rep_name, u.full_name) as "repName",
+                COALESCE(r.rep_work_id, u.user_id::text) as "repId",
                 COUNT(l.sku) as "totalProducts",
                 COUNT(CASE WHEN l.is_empty_shelf = true THEN 1 END) as "emptyShelvesCount"
             FROM sales_rep_reports r
@@ -41,7 +41,7 @@ const getReports = async (req, res) => {
             query += ` AND (u.full_name ILIKE $${params.length} OR r.retailer_name ILIKE $${params.length})`;
         }
 
-        query += ` GROUP BY r.report_id, u.full_name, u.user_id ORDER BY r.submitted_at DESC`;
+        query += ` GROUP BY r.report_id, u.full_name, u.user_id, r.rep_name, r.rep_work_id ORDER BY r.submitted_at DESC`;
 
         const { rows } = await db.query(query, params);
         res.json(rows);
@@ -59,7 +59,8 @@ const getReportById = async (req, res) => {
         const reportQuery = `
             SELECT 
                 r.report_id as "reportId",
-                u.full_name as "repName",
+                COALESCE(r.rep_name, u.full_name) as "repName",
+                COALESCE(r.rep_work_id, u.user_id::text) as "repId",
                 r.region,
                 r.retailer_name as "retailerName",
                 r.distributor_name as "distributorName",

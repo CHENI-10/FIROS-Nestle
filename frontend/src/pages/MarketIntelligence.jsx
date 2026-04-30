@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
 
-const MarketIntelligence = ({ token, user, onLogout }) => {
+const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -112,6 +112,8 @@ const MarketIntelligence = ({ token, user, onLogout }) => {
       const filteredLineItems = Object.values(lineItems).filter(item => selectedSkus.includes(item.sku));
       
       const payload = {
+        repWorkId: verifiedRep?.repWorkId,
+        repName: verifiedRep?.repName,
         region,
         retailerName,
         distributorName,

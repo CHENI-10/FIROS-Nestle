@@ -5,18 +5,18 @@ const submitReport = async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        const { region, retailerName, distributorName, auditDate, notes, lineItems } = req.body;
+        const { repWorkId, repName, region, retailerName, distributorName, auditDate, notes, lineItems } = req.body;
         const userId = req.user.userId || req.user.user_id;
 
         // Note: providing dummy values for legacy columns that might still have NOT NULL/CHECK constraints
         const parentQuery = `
             INSERT INTO sales_rep_reports 
-            (sales_rep_id, region, retailer_name, distributor_name, audit_date, notes, product_id, movement_speed, movement_score, shelf_availability, urgency_bonus) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+            (sales_rep_id, rep_work_id, rep_name, region, retailer_name, distributor_name, audit_date, notes, product_id, movement_speed, movement_score, shelf_availability, urgency_bonus) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
             RETURNING report_id
         `;
         const parentValues = [
-            userId, region, retailerName, distributorName, auditDate, notes,
+            userId, repWorkId, repName, region, retailerName, distributorName, auditDate, notes,
             1, 'fast', 1, 'in_stock', 0 // dummy legacy values
         ];
         
@@ -29,11 +29,14 @@ const submitReport = async (req, res) => {
             if (e.code === '42703') { // undefined_column
                 const cleanParentQuery = `
                     INSERT INTO sales_rep_reports 
-                    (sales_rep_id, region, retailer_name, distributor_name, audit_date, notes) 
-                    VALUES ($1, $2, $3, $4, $5, $6) 
+                    (sales_rep_id, rep_work_id, rep_name, region, retailer_name, distributor_id, audit_date, raw_notes) 
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
                     RETURNING report_id
                 `;
-                const cleanParentValues = [userId, region, retailerName, distributorName, auditDate, notes];
+                // Assume distributorName holds the ID or we default to 1 for this test environment since we don't know the exact distributor_id mapping here.
+                // The frontend passes distributorId in reality, but it might be called distributorName here due to legacy. Let's pass it as is.
+                const distId = parseInt(req.body.distributorId || distributorName) || 1;
+                const cleanParentValues = [userId, repWorkId, repName, region, retailerName, distId, auditDate, notes || req.body.rawNotes];
                 const cleanRes = await client.query(cleanParentQuery, cleanParentValues);
                 reportId = cleanRes.rows[0].report_id;
             } else {

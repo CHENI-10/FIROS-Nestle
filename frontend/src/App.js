@@ -15,6 +15,7 @@ import MarketIntelligenceReports from './pages/MarketIntelligenceReports';
 import MarketIntelligenceReportDetail from './pages/MarketIntelligenceReportDetail';
 import DistributorScorecard from './pages/DistributorScorecard';
 import DistributorScorecardDetail from './pages/DistributorScorecardDetail';
+import IdentityVerification from './pages/IdentityVerification';
 
 // A simple Protected Route component wrapper
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -35,18 +36,21 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 };
 
 const App = () => {
-  // State for Sales Rep memory-only JWT
+  // State for Sales Rep memory-only JWT and Verification
   const [salesRepToken, setSalesRepToken] = useState(null);
   const [salesRepUser, setSalesRepUser] = useState(null);
+  const [verifiedRep, setVerifiedRep] = useState(null);
 
   const handleSalesRepLogin = (token, user) => {
     setSalesRepToken(token);
     setSalesRepUser(user);
+    setVerifiedRep(null); // Reset verification on new login
   };
 
   const handleSalesRepLogout = () => {
     setSalesRepToken(null);
     setSalesRepUser(null);
+    setVerifiedRep(null);
   };
 
   return (
@@ -68,9 +72,18 @@ const App = () => {
         <Route 
           path="/market-intelligence" 
           element={
-            salesRepToken 
-              ? <MarketIntelligence token={salesRepToken} user={salesRepUser} onLogout={handleSalesRepLogout} /> 
-              : <Navigate to="/salesrep" replace />
+            !salesRepToken ? (
+              <Navigate to="/salesrep" replace />
+            ) : !verifiedRep ? (
+              <IdentityVerification token={salesRepToken} onVerified={(rep) => setVerifiedRep(rep)} onLogout={handleSalesRepLogout} />
+            ) : (
+              <MarketIntelligence 
+                token={salesRepToken} 
+                user={salesRepUser} 
+                verifiedRep={verifiedRep}
+                onLogout={handleSalesRepLogout} 
+              />
+            )
           } 
         />
 

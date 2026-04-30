@@ -316,39 +316,42 @@ CREATE TABLE distributor_scorecards (
 
 
 -- ============================================================
--- TABLE 14: sales_rep_reports
--- movement_score: fast=3, medium=2, slow=1
--- urgency_bonus: +1 if out_of_stock
--- Introduced: Sprint 3 PB-11 | Seeded: Runtime Sprint 3
+-- TABLE 14: sales_reps
+-- Pre-seeded identities for shared sales rep login verification
+-- Introduced: Identity Verification Update
 -- ============================================================
-CREATE TABLE sales_rep_reports (
-    report_id          SERIAL        PRIMARY KEY,
-    sales_rep_id       INTEGER       NOT NULL REFERENCES users(user_id),
-    region             VARCHAR(30)   NOT NULL
-                       CHECK (region IN ('Colombo', 'Kandy', 'Galle', 'Jaffna', 'Kurunegala')),
-    product_id         INTEGER       NOT NULL REFERENCES products(product_id),
-    retailer_name      VARCHAR(100),
-    distributor_name   VARCHAR(100),
-    audit_date         DATE,
-    movement_speed     VARCHAR(10)   NOT NULL
-                       CHECK (movement_speed IN ('fast', 'medium', 'slow')),
-    movement_score     INTEGER       NOT NULL
-                       CHECK (movement_score IN (1, 2, 3)),
-    shelf_availability VARCHAR(15)   NOT NULL
-                       CHECK (shelf_availability IN ('in_stock', 'low', 'out_of_stock')),
-    urgency_bonus      INTEGER       NOT NULL DEFAULT 0
-                       CHECK (urgency_bonus IN (0, 1)),
-    notes              TEXT,
-    status             VARCHAR(20)   NOT NULL DEFAULT 'new'
-                       CHECK (status IN ('new', 'reviewed')),
-    reviewed_at        TIMESTAMP,
-    reviewed_by        INTEGER       REFERENCES users(user_id),
-    submitted_at       TIMESTAMP     NOT NULL DEFAULT NOW()
+CREATE TABLE sales_reps (
+    rep_id      SERIAL PRIMARY KEY,
+    work_id     VARCHAR UNIQUE NOT NULL,
+    name        VARCHAR NOT NULL,
+    region      VARCHAR,
+    created_at  TIMESTAMP DEFAULT NOW()
 );
 
 
 -- ============================================================
--- TABLE 15: report_line_items
+-- TABLE 15: sales_rep_reports
+-- Captures field data from shared sales reps.
+-- Now includes individual identity (rep_work_id, rep_name).
+-- Introduced: Sprint 3 PB-11 (Refactored)
+-- ============================================================
+CREATE TABLE sales_rep_reports (
+    report_id        SERIAL        PRIMARY KEY,
+    sales_rep_id     INTEGER       NOT NULL REFERENCES users(user_id),
+    rep_work_id      VARCHAR,
+    rep_name         VARCHAR,
+    retailer_name    VARCHAR(255)  NOT NULL,
+    distributor_id   INTEGER       NOT NULL REFERENCES distributor_records(distributor_id),
+    region           VARCHAR(50)   NOT NULL,
+    audit_date       DATE          NOT NULL,
+    raw_notes        TEXT,
+    status           VARCHAR(20)   DEFAULT 'pending',
+    submitted_at     TIMESTAMP     DEFAULT NOW()
+);
+
+
+-- ============================================================
+-- TABLE 16: report_line_items
 -- Detail line items for sales rep reports.
 -- Introduced: Sprint 3 PB-11 | Seeded: Runtime Sprint 3
 -- ============================================================
@@ -578,3 +581,15 @@ VALUES
     (3, 74.00,  76,  9,  3, 2,  5.8, 68.9, 1200.00),
     (4, 61.00,  54, 14,  8, 4, 11.2, 62.3, 4500.00),
     (5, 69.00,  43,  6,  2, 1,  7.3, 67.1, 800.00);
+
+
+-- ============================================================
+-- SEED 11: SALES REPS
+-- ============================================================
+INSERT INTO sales_reps (work_id, name, region) VALUES
+    ('REP001', 'Amal Silva', 'Colombo'),
+    ('REP002', 'Priya Fernando', 'Kandy'),
+    ('REP003', 'Kamal Perera', 'Galle'),
+    ('REP004', 'Saman Kumara', 'Jaffna'),
+    ('REP005', 'Ruwanthi de Silva', 'Kurunegala');
+
