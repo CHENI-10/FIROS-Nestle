@@ -109,6 +109,13 @@ const Alerts = () => {
         return matchFilter && matchSearch;
     });
 
+    const dynamicSummary = {
+        total_alerts: filteredAlerts.length,
+        unread_count: filteredAlerts.filter(a => !a.is_read).length,
+        zone_c_count: filteredAlerts.filter(a => a.alert_type === 'zone_c_breach').length,
+        expiry_count: filteredAlerts.filter(a => a.alert_type === 'expiry_proximity').length
+    };
+
     const getAlertConfig = (type, riskBand) => {
         const renderDot = (col) => <div style={{width: 8, height: 8, borderRadius: '50%', backgroundColor: col, display: 'inline-block', marginRight: 6}} />;
         if (type === 'zone_c_breach') return { icon: renderDot('#f97316'), color: '#f97316' };
@@ -165,19 +172,19 @@ const Alerts = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
                     <div style={{ backgroundColor: cardBgColor, padding: '24px', borderRadius: '16px', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, textAlign: 'center' }}>
                         <div style={{ fontSize: '12px', textTransform: 'uppercase', color: textMuted, fontWeight: 'bold' }}>Total Logged</div>
-                        <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '8px 0' }}>{summary.total_alerts}</div>
+                        <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '8px 0' }}>{dynamicSummary.total_alerts}</div>
                     </div>
-                    <div style={{ backgroundColor: cardBgColor, padding: '24px', borderRadius: '16px', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, textAlign: 'center', boxShadow: summary.unread_count > 0 ? '0 4px 20px rgba(239, 68, 68, 0.15)' : 'none' }}>
+                    <div style={{ backgroundColor: cardBgColor, padding: '24px', borderRadius: '16px', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, textAlign: 'center', boxShadow: dynamicSummary.unread_count > 0 ? '0 4px 20px rgba(239, 68, 68, 0.15)' : 'none' }}>
                         <div style={{ fontSize: '12px', textTransform: 'uppercase', color: '#ef4444', fontWeight: 'bold' }}>Urgent Attention</div>
-                        <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '8px 0', color: '#ef4444' }}>{summary.unread_count}</div>
+                        <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '8px 0', color: '#ef4444' }}>{dynamicSummary.unread_count}</div>
                     </div>
                     <div style={{ backgroundColor: cardBgColor, padding: '24px', borderRadius: '16px', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, textAlign: 'center' }}>
                         <div style={{ fontSize: '12px', textTransform: 'uppercase', color: '#f97316', fontWeight: 'bold' }}>Infant Formula Breaches</div>
-                        <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '8px 0', color: '#f97316' }}>{summary.zone_c_count}</div>
+                        <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '8px 0', color: '#f97316' }}>{dynamicSummary.zone_c_count}</div>
                     </div>
                     <div style={{ backgroundColor: cardBgColor, padding: '24px', borderRadius: '16px', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, textAlign: 'center' }}>
                         <div style={{ fontSize: '12px', textTransform: 'uppercase', color: '#f59e0b', fontWeight: 'bold' }}>Expiry Impending</div>
-                        <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '8px 0', color: '#f59e0b' }}>{summary.expiry_count}</div>
+                        <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '8px 0', color: '#f59e0b' }}>{dynamicSummary.expiry_count}</div>
                     </div>
                 </div>
 
