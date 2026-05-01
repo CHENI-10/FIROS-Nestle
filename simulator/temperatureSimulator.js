@@ -52,7 +52,6 @@ const calculateFRS = (batch, totalTempBreaches, totalHumidityBreaches) => {
 // Main simulation function
 const runSimulation = async () => {
   console.log(`\n--- Starting Simulation Cycle at ${new Date().toISOString()} ---`);
-  const client = await pool.connect();
 
   try {
     for (const zone of zones) {
@@ -64,24 +63,19 @@ const runSimulation = async () => {
       let batchesChecked = 0;
       let breachesFound = 0;
 
-      // STEP 2 - Save to environmental_logs table
-      await client.query(
+      // STEP 2 - Save to environmental_logs + update zone timestamp
+      await pool.query(
         `INSERT INTO environmental_logs (zone_id, temperature, humidity, logged_at) VALUES ($1, $2, $3, NOW())`,
         [zone.id, temperature, humidity]
       );
 
-      // Attempt to update warehouse_zones if it exists (ignoring errors if table doesn't exist yet for resilience)
-      try {
-        await client.query(
-          `UPDATE warehouse_zones SET last_reading_at = NOW() WHERE zone_id = $1`,
-          [zone.id]
-        );
-      } catch (e) {
-        // Table might not exist, silently ignore
-      }
+      await pool.query(
+        `UPDATE warehouse_zones SET last_reading_at = NOW() WHERE zone_id = $1`,
+        [zone.id]
+      );
 
       // STEP 3 - Check for breaches per zone
-      const batchesResult = await client.query(`
+      const batchesResult = await pool.query(`
         SELECT b.*, p.product_name, p.max_safe_temp, p.max_safe_humidity, p.shelf_life_months,
                p.temp_sensitivity_weight, p.humidity_sensitivity_weight,
                fs.total_temp_breach_windows, fs.total_humidity_breach_windows,
@@ -113,7 +107,7 @@ const runSimulation = async () => {
           const { frs, riskBand, slrPercentRawCorrected, daysInWarehouse } = calculateFRS(batch, totalTempBreaches, totalHumidBreaches);
 
           // Update freshness_scores
-          await client.query(`
+          await pool.query(`
             INSERT INTO freshness_scores 
               (batch_id, frs_score, risk_band, slr_percent_raw, days_in_warehouse, total_temp_breach_windows, total_humidity_breach_windows, last_calculated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
@@ -139,7 +133,7 @@ const runSimulation = async () => {
              message = `${batch.product_name || 'Product'} \u2014 ${batch.batch_id} (Zone ${zone.id}): ${frs} score. ${riskBand.toUpperCase()} RISK LEVEL. Action required immediately.`;
           } else if (riskBand !== prevRiskBand && (riskBand === 'medium' || riskBand === 'high')) {
             // Check if alert already exists
-            const alertCheck = await client.query(`
+            const alertCheck = await pool.query(`
               SELECT alert_id FROM alert_records WHERE batch_id = $1 AND risk_band = $2 ORDER BY created_at DESC LIMIT 1
             `, [batch.batch_id, riskBand]);
 
@@ -151,7 +145,7 @@ const runSimulation = async () => {
           }
 
           if (shouldAlert) {
-            await client.query(`
+            await pool.query(`
               INSERT INTO alert_records (batch_id, alert_type, risk_band, message, is_read)
               VALUES ($1, $2, $3, $4, false)
             `, [batch.batch_id, alertType, riskBand, message]);
@@ -176,18 +170,18 @@ const runSimulation = async () => {
         AND b.expiry_date <= NOW() + INTERVAL '60 days'
     `;
     try {
-      const expiryBatches = await client.query(expiryCheckQuery);
+      const expiryBatches = await pool.query(expiryCheckQuery);
 
       for (const batch of expiryBatches.rows) {
         const daysToExpiry = Math.ceil((new Date(batch.expiry_date) - new Date()) / 86400000);
         
-        const alertCheck = await client.query(`
+        const alertCheck = await pool.query(`
           SELECT alert_id FROM alert_records WHERE batch_id = $1 AND alert_type = 'expiry_proximity'
         `, [batch.batch_id]);
 
         if (alertCheck.rowCount === 0) {
           const message = `${batch.product_name || 'Product'} \u2014 ${batch.batch_id} (Zone ${batch.zone_id}): Expiry in ${daysToExpiry} days. ${batch.frs_score || 'N/A'} score. Urgent dispatch.`;
-          await client.query(`
+          await pool.query(`
             INSERT INTO alert_records (batch_id, alert_type, risk_band, message, is_read)
             VALUES ($1, 'expiry_proximity', 'high', $2, false)
           `, [batch.batch_id, message]);
@@ -198,8 +192,6 @@ const runSimulation = async () => {
     }
   } catch (error) {
     console.error('Fatal error setting up simulation cycle:', error);
-  } finally {
-    client.release();
   }
 };
 

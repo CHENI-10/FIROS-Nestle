@@ -21,13 +21,17 @@ const BarcodeScanner = ({ onScan }) => {
           fps: 20, 
           // Dynamic qrbox that scales with the screen size
           qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const size = Math.min(viewfinderWidth, viewfinderHeight) * 0.7;
             return {
-              width: viewfinderWidth * 0.8,
-              height: viewfinderHeight * 0.4
+              width: size,
+              height: size
             };
           },
-          // Only process EAN-13 barcodes as requested
-          formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13 ],
+          // Support both EAN-13 barcodes and QR codes
+          formatsToSupport: [ 
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.QR_CODE 
+          ],
           aspectRatio: 1.0
         },
         (decodedText, decodedResult) => {

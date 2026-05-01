@@ -16,6 +16,8 @@ import MarketIntelligenceReportDetail from './pages/MarketIntelligenceReportDeta
 import DistributorScorecard from './pages/DistributorScorecard';
 import DistributorScorecardDetail from './pages/DistributorScorecardDetail';
 import IdentityVerification from './pages/IdentityVerification';
+import RootCauseAnalytics from './pages/RootCauseAnalytics';
+import MyDistributors from './pages/MyDistributors';
 
 // A simple Protected Route component wrapper
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -181,6 +183,22 @@ const App = () => {
           element={
             <ProtectedRoute allowedRoles={['admin', 'manager']}>
               <ClearanceRecommendations />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard/root-cause" 
+          element={
+            <ProtectedRoute allowedRoles={['manager']}>
+              <RootCauseAnalytics />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/dashboard/my-distributors" 
+          element={
+            <ProtectedRoute allowedRoles={['manager']}>
+              <MyDistributors />
             </ProtectedRoute>
           } 
         />

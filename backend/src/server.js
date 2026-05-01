@@ -46,6 +46,8 @@ app.use('/api/distributors', require('./routes/distributors'));
 app.use('/api/manager', require('./routes/manager'));
 app.use('/api/scorecard', require('./routes/scorecardRoutes'));
 app.use('/api/allocation', require('./routes/allocationRoutes'));
+app.use('/api/root-cause', require('./routes/rootCauseRoutes'));
+app.use('/api/my-distributors', require('./routes/myDistributorsRoutes'));
 
 // Serve React frontend in production
 if (process.env.NODE_ENV === 'production') {

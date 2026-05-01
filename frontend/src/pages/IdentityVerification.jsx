@@ -8,23 +8,48 @@ const IdentityVerification = ({ token, onVerified, onLogout }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
 
-  // Auto-fetch name when Work ID loses focus
-  const handleWorkIdBlur = async () => {
-    if (!workId || workId.length < 3) return;
-
-    try {
-      const response = await fetch(`/api/auth/rep/${workId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setName(data.name);
-        setErrorMsg(''); // clear error if found
+  // Proactive name fetching when Work ID changes
+  React.useEffect(() => {
+    const fetchRepName = async () => {
+      if (!workId) {
+        setName('');
+        setErrorMsg('');
+        return;
       }
-    } catch (err) {
-      console.error("Error auto-fetching rep:", err);
-    }
-  };
+
+      // Strict validation for REP001-REP005
+      const validReps = ['REP001', 'REP002', 'REP003', 'REP004', 'REP005'];
+
+      if (workId.length >= 6) {
+        if (!validReps.includes(workId)) {
+          setErrorMsg('Invalid Work ID');
+          setName('');
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/auth/rep/${workId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setName(data.name);
+            setErrorMsg('');
+          } else {
+            setErrorMsg('ID not found in system.');
+            setName('');
+          }
+        } catch (err) {
+          console.error("Error fetching rep:", err);
+        }
+      } else {
+        setName('');
+        setErrorMsg('');
+      }
+    };
+
+    fetchRepName();
+  }, [workId, token]);
 
   const handleScan = (decodedText) => {
     // Expected format: "WORK_ID|Full Name"
@@ -129,8 +154,7 @@ const IdentityVerification = ({ token, onVerified, onLogout }) => {
               type="text"
               value={workId}
               onChange={(e) => setWorkId(e.target.value.toUpperCase())}
-              onBlur={handleWorkIdBlur}
-              placeholder="e.g. REP001"
+              placeholder=""
               style={styles.input}
               required
             />
@@ -142,7 +166,7 @@ const IdentityVerification = ({ token, onVerified, onLogout }) => {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Auto-fills from Work ID"
+              // placeholder="Auto-fills from Work ID"
               style={styles.input}
               required
             />

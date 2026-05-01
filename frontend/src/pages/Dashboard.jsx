@@ -424,6 +424,76 @@ const Dashboard = () => {
                         <span style={{ fontSize: '24px', color: '#60a5fa' }}>→</span>
                     </button>
 
+                    {role === 'manager' && (
+                        <>
+                            <button
+                                onClick={() => navigate('/dashboard/root-cause')}
+                                style={{
+                                    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                                    color: 'white',
+                                    padding: '16px 24px',
+                                    border: '2px solid #8b5cf6',
+                                    borderRadius: '12px',
+                                    fontSize: '18px',
+                                    fontWeight: 'bold',
+                                    letterSpacing: '0.5px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+                                    transition: 'all 0.3s ease'
+                                }}
+                                onMouseOver={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-3px)';
+                                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
+                                }}
+                                onMouseOut={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
+                                }}
+                            >
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#c4b5fd' }}>
+                                    <span style={{ fontSize: '20px' }}>🔍</span> Root Cause Analytics
+                                </span>
+                                <span style={{ fontSize: '24px', color: '#c4b5fd' }}>→</span>
+                            </button>
+
+                            <button
+                                onClick={() => navigate('/dashboard/my-distributors')}
+                                style={{
+                                    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                                    color: 'white',
+                                    padding: '16px 24px',
+                                    border: '2px solid #3b82f6',
+                                    borderRadius: '12px',
+                                    fontSize: '18px',
+                                    fontWeight: 'bold',
+                                    letterSpacing: '0.5px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+                                    transition: 'all 0.3s ease'
+                                }}
+                                onMouseOver={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-3px)';
+                                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
+                                }}
+                                onMouseOut={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
+                                }}
+                            >
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#93c5fd' }}>
+                                    <span style={{ fontSize: '20px' }}>🤝</span> Distributor Scorecards
+                                </span>
+                                <span style={{ fontSize: '24px', color: '#93c5fd' }}>→</span>
+                            </button>
+                        </>
+                    )}
+
                     <button
                         onClick={() => navigate('/dashboard/market-intelligence')}
                         style={{
@@ -458,40 +528,7 @@ const Dashboard = () => {
                         <span style={{ fontSize: '24px', color: '#4ade80' }}>→</span>
                     </button>
 
-                    <button
-                        onClick={() => navigate('/dashboard/scorecard')}
-                        style={{
-                            background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
-                            color: 'white',
-                            padding: '16px 24px',
-                            border: '2px solid #38bdf8',
-                            borderRadius: '12px',
-                            fontSize: '18px',
-                            fontWeight: 'bold',
-                            letterSpacing: '0.5px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-                            transition: 'all 0.3s ease',
-                            gridColumn: '1 / -1'
-                        }}
-                        onMouseOver={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-3px)';
-                            e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
-                        }}
-                        onMouseOut={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
-                        }}
-                    >
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#7dd3fc' }}>
-                            <span style={{ fontSize: '20px' }}>📈</span> Distributor Scorecards
-                        </span>
-                        <span style={{ fontSize: '24px', color: '#7dd3fc' }}>→</span>
-                    </button>
-                </div>
+                    </div>
 
                 <h2 className="section-title">Warehouse Zones Status</h2>
                 <section className="zones-row">
@@ -499,10 +536,11 @@ const Dashboard = () => {
                         const zoneLetter = getZoneLetter(zone.zone_id);
                         const zoneMeta = getZoneMeta(zoneLetter);
 
-                        const now = new Date();
-                        const lastReading = zone.last_reading_at ? new Date(zone.last_reading_at) : null;
-                        const minutesAgo = lastReading ? Math.floor((now - lastReading) / (1000 * 60)) : null;
-                        const isStale = !lastReading || minutesAgo > 60;
+                        // Use server-calculated values to avoid local timezone (IST) vs DB (UTC) mismatch
+                        const minutesAgo = (zone.minutes_since_reading !== null && zone.minutes_since_reading !== undefined)
+                            ? Math.floor(zone.minutes_since_reading)
+                            : null;
+                        const isStale = zone.is_stale !== undefined ? zone.is_stale : (minutesAgo === null || minutesAgo > 60);
 
                         let timeText = "No readings yet";
                         if (minutesAgo !== null) {

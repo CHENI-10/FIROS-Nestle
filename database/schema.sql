@@ -125,6 +125,7 @@ CREATE TABLE batches (
     status             VARCHAR(20)   NOT NULL DEFAULT 'in_storage'
                        CHECK (status IN ('in_storage', 'dispatched', 'returned', 'cleared')),
     registered_by      INTEGER       REFERENCES users(user_id),
+    unit_value         NUMERIC       DEFAULT 0,
     created_at         TIMESTAMP     NOT NULL DEFAULT NOW()
 );
 
@@ -311,6 +312,8 @@ CREATE TABLE distributor_scorecards (
     avg_collection_delay_days  NUMERIC(5,2)  NOT NULL DEFAULT 0.00,
     avg_frs_at_dispatch        NUMERIC(5,2)  NOT NULL DEFAULT 0.00,
     loss_contribution          NUMERIC(10,2) DEFAULT 0.00,
+    period_start_date          DATE,
+    period_end_date            DATE,
     last_updated_at            TIMESTAMP     NOT NULL DEFAULT NOW()
 );
 
@@ -340,12 +343,21 @@ CREATE TABLE sales_rep_reports (
     sales_rep_id     INTEGER       NOT NULL REFERENCES users(user_id),
     rep_work_id      VARCHAR,
     rep_name         VARCHAR,
-    retailer_name    VARCHAR(255)  NOT NULL,
-    distributor_id   INTEGER       NOT NULL REFERENCES distributor_records(distributor_id),
+    retailer_name    VARCHAR(255),
+    distributor_id   INTEGER       REFERENCES distributor_records(distributor_id),
+    distributor_name VARCHAR,
     region           VARCHAR(50)   NOT NULL,
-    audit_date       DATE          NOT NULL,
+    audit_date       DATE,
     raw_notes        TEXT,
-    status           VARCHAR(20)   DEFAULT 'pending',
+    notes            TEXT,
+    status           VARCHAR(20)   DEFAULT 'new',
+    product_id       INTEGER,
+    movement_speed   VARCHAR,
+    movement_score   INTEGER,
+    shelf_availability VARCHAR,
+    urgency_bonus    INTEGER       DEFAULT 0,
+    reviewed_at      TIMESTAMP,
+    reviewed_by      INTEGER,
     submitted_at     TIMESTAMP     DEFAULT NOW()
 );
 
