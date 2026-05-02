@@ -57,15 +57,15 @@ const SalesRepLogin = ({ onLoginSuccess }) => {
     <div className="login-wrapper" style={{ overflow: 'hidden' }}>
       <div className="gold-accent-bar"></div>
 
-      <div className="login-split-container" style={{ display: 'flex', flexDirection: 'column' }}>
+      <div className="login-split-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 60px)', padding: '20px' }}>
 
-        {/* Form Panel optimized for Mobile width */}
-        <div className="login-form-panel" style={{ width: '100%', maxWidth: '375px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="login-card-inner" style={{ padding: '24px' }}>
-            <div className="login-header">
-              <h1 className="logo-text">FIROS</h1>
-              <p className="logo-subtext">MARKET INTELLIGENCE</p>
-              <h2>Sales Rep Portal</h2>
+        {/* Form Panel centered and compact */}
+        <div className="login-form-panel" style={{ flex: 'none', width: '100%', maxWidth: '400px', borderRadius: '20px', boxShadow: '0 25px 60px rgba(0,0,0,0.4)', overflow: 'hidden' }}>
+          <div className="login-card-inner" style={{ padding: '24px 32px' }}>
+            <div className="login-header" style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <h1 className="logo-text" style={{ fontSize: '3rem' }}>FIROS</h1>
+              <p className="logo-subtext" style={{ marginBottom: '12px' }}>MARKET INTELLIGENCE</p>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '700' }}>Sales Rep Portal</h2>
             </div>
 
             <form onSubmit={handleLogin} className="login-form">
