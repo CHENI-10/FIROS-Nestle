@@ -13,7 +13,9 @@ const MyDistributors = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/my-distributors`, {
+                const apiUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/my-distributors`;
+                console.log("[DEBUG Frontend] Calling API:", apiUrl);
+                const res = await fetch(apiUrl, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
@@ -108,6 +110,111 @@ const MyDistributors = () => {
                     </div>
                 </div>
 
+                {/* Quick Navigation Bar */}
+                <style>
+                    {`
+                        .hide-scrollbar::-webkit-scrollbar { display: none; }
+                        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                    `}
+                </style>
+                <div style={styles.quickNav}>
+                    <div style={styles.quickNavLabel}>Quick Jump:</div>
+                    <div style={styles.quickNavList} className="hide-scrollbar">
+                        {data.distributors.map(dist => (
+                            <button 
+                                key={`nav-${dist.distributorId}`}
+                                onClick={() => {
+                                    const element = document.getElementById(`dist-card-${dist.distributorId}`);
+                                    if (element) {
+                                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        // Add a temporary highlight effect
+                                        element.style.outline = '3px solid var(--nestle-gold-main)';
+                                        element.style.outlineOffset = '4px';
+                                        setTimeout(() => {
+                                            element.style.outline = 'none';
+                                            element.style.outlineOffset = '0';
+                                        }, 2000);
+                                    }
+                                }}
+                                style={{
+                                    ...styles.navChip,
+                                    borderLeft: `4px solid ${dist.healthColor}`
+                                }}
+                            >
+                                {dist.distributorName}
+                            </button>
+                        ))}
+                    </div>
+                    <div style={styles.navArrow}>→</div>
+                </div>
+
+                {/* Contract Insights Section */}
+                <div style={styles.insightsPanel}>
+                    <div style={styles.insightsHeader}>
+                        <h2 style={styles.insightsTitle}>📊 Contract Performance Insights</h2>
+                        <span style={styles.insightsTag}>Strategic Overview</span>
+                    </div>
+
+                    <div style={styles.insightsGrid}>
+                        {/* Freshness Loss Summary Panel */}
+                        <div style={styles.lossPanel}>
+                            <h3 style={styles.panelHeading}>STOCK LOSS SUMMARY</h3>
+                            <div style={styles.lossMainRow}>
+                                <div style={styles.lossStat}>
+                                    <div style={styles.lossValue}>{data.totalUnitsLost || 0}</div>
+                                    <div style={styles.lossLabel}>Total Units Lost</div>
+                                </div>
+                                <div style={styles.lossDivider}></div>
+                                <div style={{ display: 'flex', gap: '20px' }}>
+                                    <div style={styles.lossStat}>
+                                        <div style={{ ...styles.lossValue, fontSize: '20px', color: '#fca5a5' }}>
+                                            {data.totalReturnsCount || 0} <span style={{ fontSize: '14px', opacity: 0.8 }}>Batches</span>
+                                        </div>
+                                        <div style={styles.lossLabel}>{data.totalReturnsUnits || 0} Units Ret</div>
+                                    </div>
+                                    <div style={styles.lossStat}>
+                                        <div style={{ ...styles.lossValue, fontSize: '20px', color: '#fdba74' }}>
+                                            {data.totalClearancesCount || 0} <span style={{ fontSize: '14px', opacity: 0.8 }}>Batches</span>
+                                        </div>
+                                        <div style={styles.lossLabel}>{data.totalClearancesUnits || 0} Units Clr</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style={styles.lossFooter}>
+                                ℹ Breakdown of stock impact from distributor returns vs. warehouse emergency clearances.
+                            </div>
+                        </div>
+
+                        {/* Trend Breakdown Panel */}
+                        <div style={styles.trendPanel}>
+                            <h3 style={styles.panelHeading}>PORTFOLIO TREND</h3>
+                            <div style={styles.trendRow}>
+                                <TrendStat
+                                    count={data.distributors.filter(d => d.performanceTrend === 'Improving').length}
+                                    label="Improving"
+                                    color="#22c55e"
+                                    icon="📈"
+                                />
+                                <TrendStat
+                                    count={data.distributors.filter(d => d.performanceTrend === 'Stable').length}
+                                    label="Stable"
+                                    color="#3b82f6"
+                                    icon="📊"
+                                />
+                                <TrendStat
+                                    count={data.distributors.filter(d => d.performanceTrend === 'Declining').length}
+                                    label="Declining"
+                                    color="#ef4444"
+                                    icon="📉"
+                                />
+                            </div>
+                            <div style={styles.trendFooter}>
+                                Classification based on 30-day return rate variance.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Summary Cards Row */}
                 <div style={styles.summaryGrid}>
                     <SummaryStatCard
@@ -125,11 +232,11 @@ const MyDistributors = () => {
                         statusLabel={(data.yourAvgCollectionDelay || 0) <= (data.systemAvgCollectionDelay || 0) ? '✅ Below avg' : '⚠ Above avg'}
                     />
                     <SummaryStatCard
-                        label="AVG FRS AT DISPATCH"
-                        value={data.yourAvgFrsAtDispatch || 0}
-                        sub={`System Avg: ${data.systemAvgFrsAtDispatch || 0}`}
-                        status={(data.yourAvgFrsAtDispatch || 0) >= (data.systemAvgFrsAtDispatch || 0) ? 'good' : 'poor'}
-                        statusLabel={(data.yourAvgFrsAtDispatch || 0) >= (data.systemAvgFrsAtDispatch || 0) ? '✅ Above avg' : '⚠ Below avg'}
+                        label="TOTAL UNITS LOST"
+                        value={data.totalUnitsLost || 0}
+                        sub={`${data.totalReturnsUnits || 0} Returns + ${data.totalClearancesUnits || 0} Clearances`}
+                        status="poor"
+                        icon="📦"
                     />
                     <SummaryStatCard
                         label="TOP RELIABLE PARTNER"
@@ -150,19 +257,33 @@ const MyDistributors = () => {
                 {/* Distributor List */}
                 <div style={styles.distributorList}>
                     {data.distributors.map(dist => (
-                        <div key={dist.distributorId} style={{ ...styles.distCard, borderLeft: `6px solid ${dist.healthColor}` }}>
+                        <div 
+                            key={dist.distributorId} 
+                            id={`dist-card-${dist.distributorId}`}
+                            style={{ ...styles.distCard, borderLeft: `6px solid ${dist.healthColor}` }}
+                        >
                             <div style={styles.distCardHeader}>
                                 <div>
                                     <h2 style={styles.distName}>{dist.distributorName}</h2>
                                     <div style={styles.distRegion}>{dist.distributorRegion}</div>
                                 </div>
-                                <div style={{
-                                    ...styles.healthBadge,
-                                    backgroundColor: dist.healthColor + '20',
-                                    color: dist.healthColor,
-                                    border: `1px solid ${dist.healthColor}`
-                                }}>
-                                    {dist.badge}
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                                    <div style={{
+                                        ...styles.healthBadge,
+                                        backgroundColor: dist.healthColor + '20',
+                                        color: dist.healthColor,
+                                        border: `1px solid ${dist.healthColor}`
+                                    }}>
+                                        {dist.badge}
+                                    </div>
+                                    <div style={{
+                                        ...styles.trendBadge,
+                                        backgroundColor: dist.performanceTrend === 'Improving' ? '#f0fdf4' : dist.performanceTrend === 'Declining' ? '#fef2f2' : '#eff6ff',
+                                        color: dist.performanceTrend === 'Improving' ? '#166534' : dist.performanceTrend === 'Declining' ? '#991b1b' : '#1e40af',
+                                        border: `1px solid ${dist.performanceTrend === 'Improving' ? '#bbf7d0' : dist.performanceTrend === 'Declining' ? '#fecaca' : '#bfdbfe'}`
+                                    }}>
+                                        {dist.performanceTrend === 'Improving' ? '📈 Improving' : dist.performanceTrend === 'Declining' ? '📉 Declining' : '📊 Stable'}
+                                    </div>
                                 </div>
                             </div>
 
@@ -172,7 +293,18 @@ const MyDistributors = () => {
                                     <>
                                         <SignalPill signal={dist.signals.returnSignal} labelPrefix="" />
                                         <SignalPill signal={dist.signals.delaySignal} labelPrefix="Pickup Delay: " />
-                                        <SignalPill signal={dist.signals.frsSignal} labelPrefix="Stock Quality: " />
+                                        <div style={{
+                                            ...styles.signalPill,
+                                            backgroundColor: '#fef2f2',
+                                            color: '#ef4444',
+                                            border: '1px solid #fecaca'
+                                        }}>
+                                            <span style={{ fontSize: '10px', marginRight: '4px' }}>📦</span>
+                                            <span style={{ fontWeight: '500' }}>Stock Loss: </span>
+                                            <span style={{ marginLeft: '6px', fontWeight: 'bold', opacity: 0.8 }}>
+                                                {dist.totalUnitsLost} units ({dist.totalReturnsUnits} Ret / {dist.totalClearancesUnits} Clr)
+                                            </span>
+                                        </div>
                                     </>
                                 )}
                             </div>
@@ -255,6 +387,14 @@ const MyDistributors = () => {
     );
 };
 
+const TrendStat = ({ count, label, color, icon }) => (
+    <div style={{ ...styles.trendStat, borderColor: color + '30' }}>
+        <div style={{ fontSize: '20px', marginBottom: '4px' }}>{icon}</div>
+        <div style={{ fontSize: '20px', fontWeight: '900', color }}>{count}</div>
+        <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{label}</div>
+    </div>
+);
+
 const SummaryStatCard = ({ label, value, sub, status, statusLabel, icon }) => (
     <div style={{
         ...styles.summaryCard,
@@ -298,6 +438,74 @@ const styles = {
     title: { fontSize: '26px', fontWeight: '800', color: 'var(--text-main)', margin: 0 },
     subtitle: { color: 'var(--text-muted)', fontSize: '14px', margin: '4px 0 0 0' },
     managerNameBadge: { backgroundColor: 'var(--card-bg)', padding: '10px 16px', borderRadius: '10px', border: '1px solid var(--border-color)', textAlign: 'right' },
+    quickNav: {
+        backgroundColor: 'var(--card-bg)',
+        padding: '12px 20px',
+        borderRadius: '12px',
+        marginBottom: '24px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '16px',
+        border: '1px solid var(--border-color)',
+        boxShadow: 'var(--shadow-sm)',
+        position: 'relative'
+    },
+    quickNavLabel: { fontSize: '13px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', flexShrink: 0 },
+    quickNavList: { 
+        display: 'flex', 
+        gap: '8px', 
+        overflowX: 'auto', 
+        paddingRight: '40px',
+        scrollBehavior: 'smooth'
+    },
+    navArrow: {
+        position: 'absolute',
+        right: '16px',
+        color: 'var(--text-muted)',
+        fontSize: '20px',
+        fontWeight: 'bold',
+        background: 'linear-gradient(to left, var(--card-bg) 60%, transparent)',
+        paddingLeft: '20px',
+        pointerEvents: 'none'
+    },
+    navChip: {
+        backgroundColor: 'var(--bg-main)',
+        border: '1px solid var(--border-color)',
+        padding: '6px 14px',
+        borderRadius: '8px',
+        fontSize: '13px',
+        fontWeight: '600',
+        color: 'var(--text-main)',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        display: 'flex',
+        alignItems: 'center'
+    },
+    insightsPanel: {
+        backgroundColor: '#A67956',
+        backgroundImage: 'linear-gradient(135deg, #A67956 0%, #3D1C02 100%)',
+        borderRadius: '20px',
+        padding: '24px',
+        marginBottom: '32px',
+        color: 'white',
+        boxShadow: '0 10px 30px rgba(92, 58, 33, 0.3)',
+        border: '1px solid var(--nestle-gold-main)'
+    },
+    insightsHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid rgba(200, 169, 110, 0.2)', paddingBottom: '12px' },
+    insightsTitle: { fontSize: '20px', fontWeight: '800', margin: 0, color: 'var(--nestle-gold-light)' },
+    insightsTag: { fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', backgroundColor: 'rgba(200, 169, 110, 0.2)', color: 'var(--nestle-gold-light)', padding: '4px 8px', borderRadius: '4px', letterSpacing: '1px' },
+    insightsGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' },
+    lossPanel: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '20px', border: '1px solid rgba(200, 169, 110, 0.1)' },
+    panelHeading: { fontSize: '11px', fontWeight: 'bold', color: 'var(--nestle-gold-main)', margin: '0 0 16px 0', letterSpacing: '1px' },
+    lossMainRow: { display: 'flex', alignItems: 'center', gap: '30px' },
+    lossStat: { flex: 1 },
+    lossValue: { fontSize: '32px', fontWeight: '900', color: 'white' },
+    lossLabel: { fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginTop: '4px' },
+    lossFooter: { marginTop: '16px', fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' },
+    trendPanel: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '20px', border: '1px solid rgba(200, 169, 110, 0.1)' },
+    trendRow: { display: 'flex', justifyContent: 'space-between', gap: '12px' },
+    trendStat: { flex: 1, textAlign: 'center', padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid transparent' },
+    trendFooter: { marginTop: '16px', fontSize: '11px', color: 'rgba(255,255,255,0.4)', textAlign: 'center' },
     summaryGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' },
     summaryCard: { padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
     sumCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' },
@@ -305,6 +513,7 @@ const styles = {
     sumCardValue: { fontSize: '22px', fontWeight: '900', margin: '4px 0' },
     sumCardSub: { fontSize: '12px', color: 'var(--text-muted)' },
     sumCardBadge: { marginTop: '10px', padding: '3px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold', color: 'white', display: 'inline-block', width: 'fit-content' },
+    trendBadge: { padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' },
     distributorList: { display: 'flex', flexDirection: 'column', gap: '24px' },
     distCard: { backgroundColor: 'var(--card-bg)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-color)' },
     distCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' },

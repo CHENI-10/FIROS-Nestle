@@ -25,10 +25,13 @@ async function calculateAllocationScores({ batchProductId, distributors }) {
         // 2. SALES VELOCITY SCORE — use distributor's own region + batch product_id
         let velocityScore = 50;
         let velocityDefaulted = false;
+        let isOOS = false;
 
         if (!fallbackMode) {
             const velRes = await db.query(`
-                SELECT AVG(li.movement_score_final) as avg_movement
+                SELECT 
+                    AVG(li.movement_score_final) as avg_movement,
+                    COUNT(CASE WHEN li.shelf_availability = 'out_of_stock' OR li.is_empty_shelf = true THEN 1 END) as oos_count
                 FROM sales_rep_reports r
                 JOIN report_line_items li ON r.report_id = li.report_id
                 WHERE r.region = $1
@@ -37,12 +40,16 @@ async function calculateAllocationScores({ batchProductId, distributors }) {
             `, [dist.region, String(batchProductId)]);
 
             const avg = velRes.rows[0]?.avg_movement ? parseFloat(velRes.rows[0].avg_movement) : null;
+            const oosCount = parseInt(velRes.rows[0]?.oos_count || 0);
 
-            if (avg === null) {
+            if (oosCount > 0) {
+                velocityScore = 100; // Priority 1: Stock out
+                isOOS = true;
+            } else if (avg === null) {
                 velocityScore = 50;
                 velocityDefaulted = true;
             } else if (avg >= 2.5) {
-                velocityScore = 100;
+                velocityScore = 100; // Priority 2: Fast movement
             } else if (avg >= 1.5) {
                 velocityScore = 60;
             } else {
@@ -81,6 +88,7 @@ async function calculateAllocationScores({ batchProductId, distributors }) {
                 velocityScore: parseFloat(velocityScore.toFixed(1)),
                 urgencyScore: parseFloat(urgencyScore.toFixed(1)),
                 velocityDefaulted,
+                isOOS,
                 fallbackMode
             },
             isRecommended: false

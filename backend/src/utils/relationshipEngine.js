@@ -11,6 +11,7 @@ const buildRelationshipProfile = ({
     distributorRegion,
     managerDispatches,   // array of dispatch records
     managerReturns,      // array of return records
+    managerClearances,   // array of clearance records
     systemAvgReturnRate, // for comparison
     systemAvgCollectionDelay,
     systemAvgFrsAtDispatch,
@@ -21,7 +22,15 @@ const buildRelationshipProfile = ({
     if (totalDispatches === 0) return null;
 
     const totalReturns = managerReturns.length;
+    const totalClearances = managerClearances.length;
     const managerReturnRate = (totalReturns / totalDispatches) * 100;
+
+    // Loss Summary
+    const totalReturnsCount = managerReturns.length;
+    const totalClearancesCount = managerClearances.length;
+    const totalReturnsUnits = managerReturns.reduce((sum, r) => sum + parseInt(r.quantity || 0), 0);
+    const totalClearancesUnits = managerClearances.reduce((sum, c) => sum + parseInt(c.quantity || 0), 0);
+    const totalUnitsLost = totalReturnsUnits + totalClearancesUnits;
 
     // Collection Delay
     const collectedRecords = managerDispatches.filter(d => d.collected_at !== null);
@@ -156,8 +165,32 @@ const buildRelationshipProfile = ({
         actionSeverity = 'warning';
     }
 
-    // Monthly History
+    // Performance Trend (Compare Last 30 days vs Previous 30 days)
     const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonth = prevDate.getMonth() + 1;
+    const prevYear = prevDate.getFullYear();
+
+    const currMonthReturns = managerReturns.filter(r => parseInt(r.month) === currentMonth && parseInt(r.year) === currentYear).length;
+    const currMonthDispatches = managerDispatches.filter(d => parseInt(d.month) === currentMonth && parseInt(d.year) === currentYear).length;
+    const prevMonthReturns = managerReturns.filter(r => parseInt(r.month) === prevMonth && parseInt(r.year) === prevYear).length;
+    const prevMonthDispatches = managerDispatches.filter(d => parseInt(d.month) === prevMonth && parseInt(d.year) === prevYear).length;
+
+    const currRate = currMonthDispatches > 0 ? (currMonthReturns / currMonthDispatches) * 100 : 0;
+    const prevRate = prevMonthDispatches > 0 ? (prevMonthReturns / prevMonthDispatches) * 100 : 0;
+
+    let performanceTrend = 'Stable';
+    if (currMonthDispatches === 0 || prevMonthDispatches === 0) {
+        performanceTrend = 'Stable'; // Not enough data for trend
+    } else if (currRate < prevRate - 2) {
+        performanceTrend = 'Improving';
+    } else if (currRate > prevRate + 2) {
+        performanceTrend = 'Declining';
+    }
+
+    // Monthly History
     const monthlyHistory = [];
     for (let i = 5; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -167,6 +200,7 @@ const buildRelationshipProfile = ({
 
         const dispatchesInMonth = managerDispatches.filter(disp => parseInt(disp.month) === m && parseInt(disp.year) === y);
         const returnsInMonth = managerReturns.filter(ret => parseInt(ret.month) === m && parseInt(ret.year) === y);
+        const clearancesInMonth = managerClearances.filter(clr => parseInt(clr.month) === m && parseInt(clr.year) === y);
         
         const delayRecords = dispatchesInMonth.filter(d => d.collected_at !== null);
         const avgDelayInMonth = delayRecords.length > 0
@@ -183,6 +217,7 @@ const buildRelationshipProfile = ({
             label: monthLabel,
             dispatched: dispatchesInMonth.length,
             returned: returnsInMonth.length,
+            cleared: clearancesInMonth.length,
             avgDelay: parseFloat(avgDelayInMonth.toFixed(1)),
             avgFrs: parseFloat(avgFrsInMonth.toFixed(1))
         });
@@ -195,12 +230,19 @@ const buildRelationshipProfile = ({
         overallScore,
         totalDispatches,
         totalReturns,
+        totalClearances,
         managerReturnRate: parseFloat(managerReturnRate.toFixed(1)),
         avgCollectionDelay,
         avgFrsAtDispatch,
         systemAvgReturnRate,
         systemAvgCollectionDelay,
         systemAvgFrsAtDispatch,
+        totalReturnsCount,
+        totalClearancesCount,
+        totalReturnsUnits,
+        totalClearancesUnits,
+        totalUnitsLost,
+        performanceTrend,
         signals: {
             returnSignal,
             delaySignal,

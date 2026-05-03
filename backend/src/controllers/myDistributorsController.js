@@ -17,6 +17,7 @@ exports.getMyDistributors = async (req, res) => {
             distributorsRes,
             allDispatchesRes,
             allReturnsRes,
+            allClearancesRes,
             allScorecardsRes,
             userRes
         ] = await Promise.all([
@@ -52,15 +53,17 @@ exports.getMyDistributors = async (req, res) => {
                     dr.frs_at_dispatch,
                     b.batch_id,
                     p.product_name,
+                    b.quantity,
+                    b.unit_value,
                     EXTRACT(EPOCH FROM (dr.collected_timestamp - dr.dispatch_timestamp)) / 86400 as collection_delay_days,
                     EXTRACT(MONTH FROM dr.dispatch_timestamp) as month,
                     EXTRACT(YEAR FROM dr.dispatch_timestamp) as year
                 FROM dispatch_records dr
                 JOIN batches b ON dr.batch_id = b.batch_id
                 JOIN products p ON b.product_id = p.product_id
-                WHERE dr.approved_by = $1
+                WHERE dr.dispatch_timestamp IS NOT NULL
                 ORDER BY dr.dispatch_timestamp DESC
-            `, [userId]),
+            `),
 
             // All returns for this manager
             pool.query(`
@@ -69,12 +72,28 @@ exports.getMyDistributors = async (req, res) => {
                     rr.return_id,
                     rr.decision,
                     rr.created_at,
+                    b.quantity,
+                    b.unit_value,
                     EXTRACT(MONTH FROM rr.created_at) as month,
                     EXTRACT(YEAR FROM rr.created_at) as year
                 FROM return_records rr
                 JOIN dispatch_records dr ON rr.batch_id = dr.batch_id
-                WHERE dr.approved_by = $1
-            `, [userId]),
+                JOIN batches b ON rr.batch_id = b.batch_id
+            `),
+
+            // All clearances for this manager
+            pool.query(`
+                SELECT
+                    cr.distributor_id,
+                    cr.clearance_id,
+                    cr.cleared_at,
+                    b.quantity,
+                    b.unit_value,
+                    EXTRACT(MONTH FROM cr.cleared_at) as month,
+                    EXTRACT(YEAR FROM cr.cleared_at) as year
+                FROM clearance_records cr
+                JOIN batches b ON cr.batch_id = b.batch_id
+            `),
 
             // All latest scorecards
             pool.query(`
@@ -106,6 +125,12 @@ exports.getMyDistributors = async (req, res) => {
             returnsByDist[row.distributor_id].push(row);
         });
 
+        const clearancesByDist = {};
+        allClearancesRes.rows.forEach(row => {
+            if (!clearancesByDist[row.distributor_id]) clearancesByDist[row.distributor_id] = [];
+            clearancesByDist[row.distributor_id].push(row);
+        });
+
         const scorecardsMap = {};
         allScorecardsRes.rows.forEach(row => {
             scorecardsMap[row.distributor_id] = parseFloat(row.performance_score);
@@ -116,6 +141,7 @@ exports.getMyDistributors = async (req, res) => {
         for (const dist of distributorsRes.rows) {
             const managerDispatches = dispatchesByDist[dist.distributor_id] || [];
             const managerReturns = returnsByDist[dist.distributor_id] || [];
+            const managerClearances = clearancesByDist[dist.distributor_id] || [];
             const overallScore = scorecardsMap[dist.distributor_id] || 0;
 
             if (managerDispatches.length === 0) continue;
@@ -126,6 +152,7 @@ exports.getMyDistributors = async (req, res) => {
                 distributorRegion: dist.region,
                 managerDispatches,
                 managerReturns,
+                managerClearances,
                 systemAvgReturnRate,
                 systemAvgCollectionDelay,
                 systemAvgFrsAtDispatch,
@@ -146,6 +173,12 @@ exports.getMyDistributors = async (req, res) => {
         const totalManagerDispatches = processedDistributors.reduce((sum, d) => sum + d.totalDispatches, 0);
         const totalManagerReturns = processedDistributors.reduce((sum, d) => sum + d.totalReturns, 0);
         const yourOverallReturnRate = totalManagerDispatches > 0 ? (totalManagerReturns / totalManagerDispatches) * 100 : 0;
+
+        const totalReturnsCount = processedDistributors.reduce((sum, d) => sum + d.totalReturnsCount, 0);
+        const totalClearancesCount = processedDistributors.reduce((sum, d) => sum + d.totalClearancesCount, 0);
+        const totalReturnsUnits = processedDistributors.reduce((sum, d) => sum + d.totalReturnsUnits, 0);
+        const totalClearancesUnits = processedDistributors.reduce((sum, d) => sum + d.totalClearancesUnits, 0);
+        const totalUnitsLost = totalReturnsUnits + totalClearancesUnits;
 
         const collectedDelays = processedDistributors.filter(d => d.avgCollectionDelay !== null).map(d => d.avgCollectionDelay);
         const yourAvgCollectionDelay = collectedDelays.length > 0 ? (collectedDelays.reduce((a, b) => a + b, 0) / collectedDelays.length) : 0;
@@ -168,6 +201,11 @@ exports.getMyDistributors = async (req, res) => {
             yourOverallReturnRate: parseFloat(yourOverallReturnRate.toFixed(1)),
             yourAvgCollectionDelay: parseFloat(yourAvgCollectionDelay.toFixed(1)),
             yourAvgFrsAtDispatch: parseFloat(yourAvgFrsAtDispatch.toFixed(1)),
+            totalReturnsCount,
+            totalClearancesCount,
+            totalReturnsUnits,
+            totalClearancesUnits,
+            totalUnitsLost,
             mostReliable: mostReliable ? {
                 distributorName: mostReliable.distributorName,
                 health: mostReliable.health,

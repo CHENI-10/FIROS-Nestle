@@ -22,12 +22,12 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
   const [distributorName, setDistributorName] = useState('');
   const [auditDate, setAuditDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
-  
+
   // Product List State
   const [products, setProducts] = useState([]);
   const [lineItems, setLineItems] = useState({});
-  const [selectedSkus, setSelectedSkus] = useState([]); 
-  const [allDistributors, setAllDistributors] = useState([]); 
+  const [selectedSkus, setSelectedSkus] = useState([]);
+  const [allDistributors, setAllDistributors] = useState([]);
 
   useEffect(() => {
     if (token) {
@@ -35,6 +35,12 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
       fetchDistributors();
     }
   }, [token]);
+
+  useEffect(() => {
+    if (verifiedRep && verifiedRep.region) {
+      setRegion(verifiedRep.region);
+    }
+  }, [verifiedRep]);
 
   const fetchDistributors = async () => {
     try {
@@ -70,6 +76,7 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
           initialItems[p.sku] = {
             sku: p.sku,
             productName: p.productName,
+            packSize: p.packSize,
             category: p.category,
             isEmptyShelf: false,
             movementSpeedRaw: 2,
@@ -93,7 +100,7 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
   };
 
   const toggleProductSelection = (sku) => {
-    setSelectedSkus(prev => 
+    setSelectedSkus(prev =>
       prev.includes(sku) ? prev.filter(s => s !== sku) : [...prev, sku]
     );
   };
@@ -110,7 +117,7 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
     setSubmitLoading(true);
     try {
       const filteredLineItems = Object.values(lineItems).filter(item => selectedSkus.includes(item.sku));
-      
+
       const payload = {
         repWorkId: verifiedRep?.repWorkId,
         repName: verifiedRep?.repName,
@@ -124,9 +131,9 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
 
       const response = await fetch('/api/reports', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(payload)
       });
@@ -140,7 +147,7 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
           setNotes('');
           setSelectedSkus([]);
           setSuccess(false);
-          fetchProducts(); 
+          fetchProducts();
         }, 3000);
       } else {
         alert('Failed to submit audit');
@@ -194,15 +201,10 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
       <p style={{ fontSize: '13px', color: '#666', marginBottom: '24px' }}>Select the outlet to begin your shelf check audit.</p>
 
       <div style={inputGroupStyle}>
-        <label style={labelStyle}>REGION</label>
-        <select style={inputStyle} value={region} onChange={e => setRegion(e.target.value)}>
-          <option value="">Select Region</option>
-          <option value="Colombo">Colombo</option>
-          <option value="Kandy">Kandy</option>
-          <option value="Galle">Galle</option>
-          <option value="Jaffna">Jaffna</option>
-          <option value="Kurunegala">Kurunegala</option>
-        </select>
+        <label style={labelStyle}>ASSIGNED REGION</label>
+        <div style={{ ...inputStyle, backgroundColor: '#f1f5f9', fontWeight: 'bold', border: '1px solid #cbd5e1' }}>
+          {region || 'Detecting assigned region...'}
+        </div>
       </div>
 
       <div style={inputGroupStyle}>
@@ -211,22 +213,22 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
       </div>
 
       <div style={inputGroupStyle}>
-        <label style={labelStyle}>DISTRIBUTOR</label>
-        <select style={{...inputStyle, opacity: region ? 1 : 0.5}} value={distributorName} onChange={e => setDistributorName(e.target.value)} disabled={!region}>
+        <label style={labelStyle}>SELECT DISTRIBUTOR</label>
+        <select style={{ ...inputStyle, opacity: region ? 1 : 0.5 }} value={distributorName} onChange={e => setDistributorName(e.target.value)} disabled={!region}>
           <option value="">Select Distributor</option>
           {availableDistributors.map(d => (
             <option key={d.distributor_id} value={d.distributor_name}>{d.distributor_name}</option>
           ))}
         </select>
-        {!region && <div style={{fontSize: '11px', color: '#888', marginTop: '6px'}}>Please select a region first</div>}
+        {!region && <div style={{ fontSize: '11px', color: '#888', marginTop: '6px' }}>Detecting region...</div>}
       </div>
 
       <div style={cardStyle}>
-        <label style={{...labelStyle, color: '#8B5E3C', marginBottom: '4px'}}>Audit Date</label>
+        <label style={{ ...labelStyle, color: '#8B5E3C', marginBottom: '4px' }}>Audit Date</label>
         <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#333' }}>{auditDate}</div>
       </div>
 
-      <button style={{...btnPrimary, opacity: (!region || !retailerName || !distributorName) ? 0.5 : 1}} onClick={() => setStep(2)} disabled={!region || !retailerName || !distributorName}>
+      <button style={{ ...btnPrimary, opacity: (!region || !retailerName || !distributorName) ? 0.5 : 1 }} onClick={() => setStep(2)} disabled={!region || !retailerName || !distributorName}>
         Proceed &rarr;
       </button>
     </div>
@@ -250,7 +252,7 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
               <input type="checkbox" checked={selectedSkus.includes(p.sku)} onChange={() => toggleProductSelection(p.sku)} style={{ marginRight: '16px', transform: 'scale(1.2)' }} />
               <img src={getProductImage(p.productName)} alt={p.productName} style={{ width: '40px', height: '40px', objectFit: 'contain', marginRight: '12px', borderRadius: '4px', backgroundColor: '#fff', border: '1px solid #eee' }} />
               <div>
-                <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#333' }}>{p.productName}</div>
+                <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#333' }}>{p.productName} - {p.packSize}</div>
                 <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>{p.category} • SKU: {p.sku}</div>
               </div>
             </label>
@@ -259,8 +261,8 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
       )}
 
       <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-        <button style={{...btnSecondary, flex: 1}} onClick={() => setStep(1)}>&larr; Back</button>
-        <button style={{...btnPrimary, flex: 2, opacity: selectedSkus.length === 0 ? 0.5 : 1}} onClick={() => setStep(3)} disabled={selectedSkus.length === 0}>
+        <button style={{ ...btnSecondary, flex: 1 }} onClick={() => setStep(1)}>&larr; Back</button>
+        <button style={{ ...btnPrimary, flex: 2, opacity: selectedSkus.length === 0 ? 0.5 : 1 }} onClick={() => setStep(3)} disabled={selectedSkus.length === 0}>
           Confirm ({selectedSkus.length}) &rarr;
         </button>
       </div>
@@ -286,6 +288,19 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
           {checkedCount} / {productsArray.length} checked ({progress}%)
         </p>
 
+        {/* MOVEMENT SPEED HELPER TEXT */}
+        <div style={{ backgroundColor: '#E8DDD0', borderRadius: '12px', padding: '16px', marginBottom: '24px', borderLeft: '4px solid #8B5E3C' }}>
+          <h4 style={{ color: '#8B5E3C', margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase' }}>Movement Speed Guide</h4>
+          <p style={{ fontSize: '12px', color: '#555', margin: '0 0 12px 0', lineHeight: '1.4' }}>
+            How fast is this product selling compared to your last visit?
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ fontSize: '11px', color: '#444' }}><span style={{ fontWeight: 'bold', color: '#22c55e' }}>FAST:</span> Shelf significantly more empty than last visit</div>
+            <div style={{ fontSize: '11px', color: '#444' }}><span style={{ fontWeight: 'bold', color: '#f59e0b' }}>NORMAL:</span> Some movement, partially restocked</div>
+            <div style={{ fontSize: '11px', color: '#444' }}><span style={{ fontWeight: 'bold', color: '#ef4444' }}>SLOW:</span> Same stock as last visit, little or no change</div>
+          </div>
+        </div>
+
         {productsArray.map(item => {
           const isErr = item.isEmptyShelf;
           const cardBg = isErr ? '#FFF5F5' : '#fff';
@@ -298,8 +313,8 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
                   <img src={getProductImage(item.productName)} alt="Product" style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: isErr ? 0.6 : 1 }} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '16px', color: isErr ? '#D32F2F' : '#333', marginBottom: '4px' }}>{item.productName}</div>
-                  <div style={{ fontSize: '11px', color: '#888' }}><span style={{backgroundColor: '#E8DDD0', padding: '2px 6px', borderRadius: '12px', color: '#8B5E3C', fontWeight: 'bold', marginRight: '6px'}}>{item.category}</span> SKU: {item.sku}</div>
+                  <div style={{ fontWeight: 'bold', fontSize: '16px', color: isErr ? '#D32F2F' : '#333', marginBottom: '4px' }}>{item.productName} - {item.packSize}</div>
+                  <div style={{ fontSize: '11px', color: '#888' }}><span style={{ backgroundColor: '#E8DDD0', padding: '2px 6px', borderRadius: '12px', color: '#8B5E3C', fontWeight: 'bold', marginRight: '6px' }}>{item.category}</span> SKU: {item.sku}</div>
                 </div>
               </div>
 
@@ -310,7 +325,7 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
 
               <div style={{ overflow: 'hidden', maxHeight: isErr ? '0px' : '200px', opacity: isErr ? 0 : 1, transition: 'all 0.4s ease', marginTop: isErr ? '0' : '16px' }}>
                 <div style={{ marginBottom: '16px' }}>
-                  <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px', fontWeight: 'bold', letterSpacing: '0.5px' }}>MOVEMENT SPEED</div>
+                  <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px', fontWeight: 'bold', letterSpacing: '0.5px' }}>SELLING SPEED (since last visit)</div>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={() => handleLineItemChange(item.sku, 'movementSpeedRaw', 1)} style={getPillStyle(item.movementSpeedRaw === 1, 'warn')}>Slow</button>
                     <button onClick={() => handleLineItemChange(item.sku, 'movementSpeedRaw', 2)} style={getPillStyle(item.movementSpeedRaw === 2, 'good')}>Normal</button>
@@ -319,7 +334,7 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
                 </div>
 
                 <div>
-                  <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px', fontWeight: 'bold', letterSpacing: '0.5px' }}>STOCK LEVEL</div>
+                  <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px', fontWeight: 'bold', letterSpacing: '0.5px' }}>CURRENT STOCK (right now)</div>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={() => handleLineItemChange(item.sku, 'shelfAvailability', 'low')} style={getPillStyle(item.shelfAvailability === 'low', 'err')}>Low</button>
                     <button onClick={() => handleLineItemChange(item.sku, 'shelfAvailability', 'in_stock')} style={getPillStyle(item.shelfAvailability === 'in_stock', 'warn')}>Med</button>
@@ -332,8 +347,8 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
         })}
 
         <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-          <button style={{...btnSecondary, flex: 1}} onClick={() => setStep(2)}>Products</button>
-          <button style={{...btnPrimary, flex: 2}} onClick={() => setStep(4)}>Review &rarr;</button>
+          <button style={{ ...btnSecondary, flex: 1 }} onClick={() => setStep(2)}>Products</button>
+          <button style={{ ...btnPrimary, flex: 2 }} onClick={() => setStep(4)}>Review &rarr;</button>
         </div>
       </div>
     );
@@ -346,8 +361,8 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
 
       <div style={inputGroupStyle}>
         <label style={labelStyle}>Store Observations</label>
-        <textarea 
-          style={{...inputStyle, minHeight: '160px', resize: 'vertical'}} 
+        <textarea
+          style={{ ...inputStyle, minHeight: '160px', resize: 'vertical' }}
           placeholder="Enter observations about shelf stock, competitor activity, visibility issues, or expired products..."
           value={notes}
           onChange={e => setNotes(e.target.value)}
@@ -355,8 +370,8 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
       </div>
 
       <div style={{ display: 'flex', gap: '12px', marginTop: '30px' }}>
-        <button style={{...btnSecondary, flex: 1}} onClick={() => setStep(3)}>&larr; Back</button>
-        <button style={{...btnPrimary, flex: 2}} onClick={() => setStep(5)}>Final Review &rarr;</button>
+        <button style={{ ...btnSecondary, flex: 1 }} onClick={() => setStep(3)}>&larr; Back</button>
+        <button style={{ ...btnPrimary, flex: 2 }} onClick={() => setStep(5)}>Final Review &rarr;</button>
       </div>
     </div>
   );
@@ -370,13 +385,13 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
       <div style={contentStyle}>
         <h3 style={{ color: '#8B5E3C', marginTop: 0, fontSize: '22px' }}>Review Audit</h3>
         <p style={{ fontSize: '13px', color: '#666', marginBottom: '20px' }}>{retailerName}</p>
-        
+
         <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
-          <div style={{...cardStyle, flex: 1, textAlign: 'center', margin: 0, backgroundColor: '#F9FBE7', border: '1px solid #DCEDC8'}}>
+          <div style={{ ...cardStyle, flex: 1, textAlign: 'center', margin: 0, backgroundColor: '#F9FBE7', border: '1px solid #DCEDC8' }}>
             <div style={{ fontSize: '28px', fontWeight: '900', color: '#33691E' }}>{productsArray.length}</div>
             <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#558B2F', textTransform: 'uppercase' }}>Products</div>
           </div>
-          <div style={{...cardStyle, flex: 1, textAlign: 'center', margin: 0, backgroundColor: emptyProducts.length > 0 ? '#FFEBEE' : '#F5F5F5', border: emptyProducts.length > 0 ? '1px solid #FFCDD2' : '1px solid #EEE'}}>
+          <div style={{ ...cardStyle, flex: 1, textAlign: 'center', margin: 0, backgroundColor: emptyProducts.length > 0 ? '#FFEBEE' : '#F5F5F5', border: emptyProducts.length > 0 ? '1px solid #FFCDD2' : '1px solid #EEE' }}>
             <div style={{ fontSize: '28px', fontWeight: '900', color: emptyProducts.length > 0 ? '#D32F2F' : '#999' }}>{emptyProducts.length}</div>
             <div style={{ fontSize: '11px', fontWeight: 'bold', color: emptyProducts.length > 0 ? '#C62828' : '#777', textTransform: 'uppercase' }}>Empty Shelves</div>
           </div>
@@ -388,8 +403,8 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
             {emptyProducts.map(p => (
               <div key={p.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', padding: '12px 0', borderBottom: '1px solid #eee' }}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <img src={getProductImage(p.productName)} alt="" style={{width: '30px', height: '30px', marginRight: '10px', objectFit: 'contain'}} />
-                  <span style={{fontWeight: 'bold', color: '#333'}}>{p.productName}</span>
+                  <img src={getProductImage(p.productName)} alt="" style={{ width: '30px', height: '30px', marginRight: '10px', objectFit: 'contain' }} />
+                  <span style={{ fontWeight: 'bold', color: '#333' }}>{p.productName}</span>
                 </div>
                 <button style={{ backgroundColor: '#D32F2F', color: '#fff', border: 'none', borderRadius: '20px', padding: '6px 12px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>Restock</button>
               </div>
@@ -402,8 +417,8 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
           {availableProducts.map(p => (
             <div key={p.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', padding: '12px 0', borderBottom: '1px solid #eee' }}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
-                <img src={getProductImage(p.productName)} alt="" style={{width: '30px', height: '30px', marginRight: '10px', objectFit: 'contain'}} />
-                <span style={{color: '#444'}}>{p.productName}</span>
+                <img src={getProductImage(p.productName)} alt="" style={{ width: '30px', height: '30px', marginRight: '10px', objectFit: 'contain' }} />
+                <span style={{ color: '#444' }}>{p.productName}</span>
               </div>
               <div style={{ color: '#4CAF50', fontWeight: 'bold', fontSize: '12px' }}>✓ Audited</div>
             </div>
@@ -411,9 +426,9 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
         </div>
 
         <div style={{ display: 'flex', gap: '12px', marginTop: '30px' }}>
-          <button style={{...btnSecondary, flex: 1, marginTop: '0'}} onClick={() => setStep(4)} disabled={submitLoading}>&larr; Back</button>
-          <button style={{...btnPrimary, flex: 2, marginTop: '0', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#4CAF50'}} onClick={submitAudit} disabled={submitLoading}>
-            {submitLoading ? 'Submitting...' : <><span style={{marginRight: '8px', fontSize: '20px'}}>📤</span> Submit Audit</>}
+          <button style={{ ...btnSecondary, flex: 1, marginTop: '0' }} onClick={() => setStep(4)} disabled={submitLoading}>&larr; Back</button>
+          <button style={{ ...btnPrimary, flex: 2, marginTop: '0', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#4CAF50' }} onClick={submitAudit} disabled={submitLoading}>
+            {submitLoading ? 'Submitting...' : <><span style={{ marginRight: '8px', fontSize: '20px' }}>📤</span> Submit Audit</>}
           </button>
         </div>
       </div>
@@ -421,7 +436,7 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
   };
 
   const renderSuccess = () => (
-    <div style={{...contentStyle, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center'}}>
+    <div style={{ ...contentStyle, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
       <div style={{ fontSize: '64px', marginBottom: '20px', animation: 'bounce 1s ease' }}>✅</div>
       <h3 style={{ color: '#4CAF50', margin: '0 0 12px 0', fontSize: '24px' }}>Audit Submitted!</h3>
       <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.5' }}>The intelligence data has been securely synced to the FIROS Field Server.</p>
@@ -432,12 +447,12 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
     <div style={containerStyle}>
       <div style={appStyle}>
         <div style={headerStyle}>
-          <div style={titleStyle}>FIROS <span style={{color: '#4CAF50'}}>MI</span></div>
+          <div style={titleStyle}>FIROS <span style={{ color: '#4CAF50' }}>MI</span></div>
           <button onClick={onLogout} style={{ backgroundColor: '#8B5E3C', border: 'none', color: '#fff', fontSize: '12px', padding: '6px 12px', borderRadius: '16px', cursor: 'pointer', fontWeight: 'bold' }}>
             Logout
           </button>
         </div>
-        
+
         {success ? renderSuccess() : (
           <>
             {step === 1 && renderStep1()}

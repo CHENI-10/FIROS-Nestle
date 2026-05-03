@@ -11,7 +11,7 @@ const verifyToken = require('../middleware/authMiddleware');
 const { requireRole } = require('../middleware/roleMiddleware');
 
 // GET /api/my-distributors
-// Restricted to warehouse_manager only
-router.get('/', verifyToken, requireRole('manager'), myDistributorsController.getMyDistributors);
+// Restricted to warehouse_manager and admin
+router.get('/', verifyToken, requireRole('manager', 'admin'), myDistributorsController.getMyDistributors);
 
 module.exports = router;
