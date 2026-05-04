@@ -16,12 +16,16 @@ const calcMetrics = (row) => {
     const rejection_penalty = Math.min(returnRejectionRate, 100) / 100 * 15;
     const delay_penalty = Math.min(avgDelay / 14, 1) * 20;
 
-    let overallScore = frs_score + (25 - return_penalty) + (15 - rejection_penalty) + (20 - delay_penalty);
+    const missCount = parseInt(row.miss_count) || 0;
+    const missPenalty = Math.min(missCount * 5, 20); // Penalty of 5 per miss, max 20
+
+    let overallScore = frs_score + (25 - return_penalty) + (15 - rejection_penalty) + (20 - delay_penalty) - missPenalty;
     overallScore = Math.max(0, Math.min(100, overallScore));
 
     return {
         totalDispatches: td,
         totalReturns: tr,
+        missCount,
         avgFrsAtDispatch: avgFrs.toFixed(1),
         returnRate: returnRate.toFixed(1),
         returnRejectionRate: returnRejectionRate.toFixed(1),
@@ -77,7 +81,14 @@ exports.getAllScorecards = async (req, res) => {
                 LIMIT 1
             `, [dist.distributor_id]);
 
-            const dispRow = { ...dispRes.rows[0], ...retRes.rows[0] };
+            const missRes = await db.query(`
+                SELECT COUNT(*) as miss_count
+                FROM report_line_items li
+                JOIN sales_rep_reports r ON li.report_id = r.report_id
+                WHERE r.distributor_id = $1 AND li.distributor_miss_flagged = true
+            `, [dist.distributor_id]);
+
+            const dispRow = { ...dispRes.rows[0], ...retRes.rows[0], ...missRes.rows[0] };
             const metrics = calcMetrics(dispRow);
 
             const hist = histRes.rows.length > 0 ? parseFloat(histRes.rows[0].historical_score) : null;
@@ -142,7 +153,14 @@ exports.getScorecardDetail = async (req, res) => {
             LIMIT 1
         `, [distId]);
 
-        const dispRow = { ...dispRes.rows[0], ...retRes.rows[0] };
+        const missRes = await db.query(`
+            SELECT COUNT(*) as miss_count
+            FROM report_line_items li
+            JOIN sales_rep_reports r ON li.report_id = r.report_id
+            WHERE r.distributor_id = $1 AND li.distributor_miss_flagged = true
+        `, [distId]);
+
+        const dispRow = { ...dispRes.rows[0], ...retRes.rows[0], ...missRes.rows[0] };
         const metrics = calcMetrics(dispRow);
 
         const hist = histRes.rows.length > 0 ? parseFloat(histRes.rows[0].historical_score) : null;

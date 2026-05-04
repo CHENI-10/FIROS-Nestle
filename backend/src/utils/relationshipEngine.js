@@ -15,7 +15,8 @@ const buildRelationshipProfile = ({
     systemAvgReturnRate, // for comparison
     systemAvgCollectionDelay,
     systemAvgFrsAtDispatch,
-    overallScore         // from distributor_scorecards
+    overallScore,         // from distributor_scorecards
+    missCount             // from sales rep audits
 }) => {
     // 1. BASIC METRICS
     const totalDispatches = managerDispatches.length;
@@ -79,19 +80,25 @@ const buildRelationshipProfile = ({
         frsSignal = { signal: 'poor', label: 'Low freshness sent', color: '#ef4444', value: avgFrsAtDispatch };
     }
 
+    // Miss Signal
+    let missSignal = { signal: 'good', label: 'Deliveries fulfilled', color: '#22c55e', value: '0' };
+    if (missCount > 0) {
+        missSignal = { signal: 'poor', label: 'Deliveries missed', color: '#ef4444', value: missCount };
+    }
+
     // 3. OVERALL RELATIONSHIP HEALTH
-    const poorWarningCount = [returnSignal, delaySignal, frsSignal].filter(s => s.signal === 'poor' || s.signal === 'warning').length;
-    const poorCount = [returnSignal, delaySignal, frsSignal].filter(s => s.signal === 'poor').length;
+    const poorWarningCount = [returnSignal, delaySignal, frsSignal, missSignal].filter(s => s.signal === 'poor' || s.signal === 'warning').length;
+    const poorCount = [returnSignal, delaySignal, frsSignal, missSignal].filter(s => s.signal === 'poor').length;
 
     let health = 'Excellent';
     let healthColor = '#22c55e';
     let badge = '⭐ Top Partner';
 
-    if (poorCount >= 2) {
+    if (poorCount >= 2 || missCount >= 3) {
         health = 'Poor';
         healthColor = '#ef4444';
         badge = '🚨 Requires Review';
-    } else if (poorCount === 1 || poorWarningCount >= 2) {
+    } else if (poorCount === 1 || poorWarningCount >= 2 || missCount > 0) {
         health = 'Fair';
         healthColor = '#f59e0b';
         badge = '⚠ Needs Attention';
@@ -104,9 +111,12 @@ const buildRelationshipProfile = ({
     // 4. PLAIN ENGLISH SUMMARY
     let summaryText = "";
     
-    // Return Sentence
-    if (totalReturns === 0) {
-        summaryText = `${totalDispatches} batches were dispatched to ${distributorName} with zero returns recorded.`;
+    // Return & Miss Sentence
+    if (totalReturns === 0 && missCount === 0) {
+        summaryText = `${totalDispatches} batches were dispatched to ${distributorName} with zero returns or delivery failures recorded.`;
+    } else if (missCount > 0) {
+        summaryText = `${totalDispatches} batches were dispatched to ${distributorName}, but sales reps reported ${missCount} cases of items not being delivered.`;
+        if (totalReturns > 0) summaryText += ` Additionally, ${totalReturns} batches resulted in returns.`;
     } else {
         summaryText = `${totalDispatches} batches were dispatched to ${distributorName} and ${totalReturns} resulted in returns — a ${managerReturnRate.toFixed(1)}% return rate.`;
     }
@@ -159,6 +169,9 @@ const buildRelationshipProfile = ({
         actionSeverity = 'critical';
     } else if (returnSignal.signal === 'poor' && frsSignal.signal === 'good') {
         suggestedAction = "High-quality stock was dispatched but returns remain high. The issue is likely external to product quality — distributor review recommended.";
+        actionSeverity = 'critical';
+    } else if (missCount > 0) {
+        suggestedAction = "Field reps reported missed deliveries. Verify distributor logs and ensure scheduled batches were actually dropped off.";
         actionSeverity = 'critical';
     } else if (health === 'Fair') {
         suggestedAction = "Monitor relationship metrics closely over the next period. Observe for any worsening trends.";
@@ -246,7 +259,8 @@ const buildRelationshipProfile = ({
         signals: {
             returnSignal,
             delaySignal,
-            frsSignal
+            frsSignal,
+            missSignal
         },
         health,
         healthColor,

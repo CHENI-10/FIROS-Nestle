@@ -13,8 +13,7 @@ const MyDistributors = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const apiUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/my-distributors`;
-                console.log("[DEBUG Frontend] Calling API:", apiUrl);
+                const apiUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/my-distributors?t=${new Date().getTime()}`;
                 const res = await fetch(apiUrl, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -94,8 +93,8 @@ const MyDistributors = () => {
                 {/* Header */}
                 <div style={styles.header}>
                     <div>
-                        <h1 style={styles.title}> Distributor Scorecards</h1>
-                        <p style={styles.subtitle}>Personal dispatch history — returns, collection speed, and stock freshness</p>
+                        <h1 style={styles.title}>Distributor Intelligence & Scorecards</h1>
+                        <p style={styles.subtitle}>Personal dispatch history — returns, collection speed, and field performance</p>
                     </div>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <button
@@ -293,6 +292,9 @@ const MyDistributors = () => {
                                     <>
                                         <SignalPill signal={dist.signals.returnSignal} labelPrefix="" />
                                         <SignalPill signal={dist.signals.delaySignal} labelPrefix="Pickup Delay: " />
+                                        {dist.signals.missSignal && dist.signals.missSignal.value > 0 && (
+                                            <SignalPill signal={dist.signals.missSignal} labelPrefix="" />
+                                        )}
                                         <div style={{
                                             ...styles.signalPill,
                                             backgroundColor: '#fef2f2',

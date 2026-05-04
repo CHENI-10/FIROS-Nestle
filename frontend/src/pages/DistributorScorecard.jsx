@@ -141,7 +141,7 @@ const DistributorScorecard = () => {
                 </colgroup>
                 <thead>
                   <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                    {['Distributor', 'Score', 'Trend', 'Avg FRS', 'Return Rate', 'Rejection Rate', 'Avg Delay'].map(col => (
+                    {['Distributor', 'Score', 'Trend', 'Avg FRS', 'Returns', 'Delays', 'Misses'].map(col => (
                       <th key={col} style={{ padding: '18px 20px', color: '#64748b', fontSize: '12px', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>{col}</th>
                     ))}
                   </tr>
@@ -172,8 +172,8 @@ const DistributorScorecard = () => {
                         <td style={{ padding: '18px 20px', fontSize: '18px' }}>{renderTrend(sc.scoreTrend)}</td>
                         <td style={{ padding: '18px 20px', fontWeight: '600', color: getColor(sc.avgFrsAtDispatch, 'frs'), fontSize: '14px' }}>{sc.avgFrsAtDispatch}</td>
                         <td style={{ padding: '18px 20px', fontWeight: '600', color: getColor(sc.returnRate, 'return'), fontSize: '14px' }}>{sc.returnRate}%</td>
-                        <td style={{ padding: '18px 20px', fontWeight: '600', color: getColor(sc.returnRejectionRate, 'rejection'), fontSize: '14px' }}>{sc.returnRejectionRate}%</td>
                         <td style={{ padding: '18px 20px', fontWeight: '600', color: getColor(sc.avgCollectionDelayDays, 'delay'), fontSize: '14px' }}>{sc.avgCollectionDelayDays}d</td>
+                        <td style={{ padding: '18px 20px', fontWeight: '700', color: sc.missCount > 0 ? '#ef4444' : '#64748b', fontSize: '15px' }}>{sc.missCount || 0}</td>
                       </tr>
                     ))
                   )}

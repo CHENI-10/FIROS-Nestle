@@ -12,16 +12,8 @@ exports.getMyDistributors = async (req, res) => {
         const userId = req.user.userId;
 
         // STEP 1: Fetch all required data in parallel (Bulk queries)
-        const [
-            systemStatsRes,
-            distributorsRes,
-            allDispatchesRes,
-            allReturnsRes,
-            allClearancesRes,
-            allScorecardsRes,
-            userRes
-        ] = await Promise.all([
-            // System stats (exclude current manager)
+        const results = await Promise.all([
+            // [0] System stats
             pool.query(`
                 SELECT
                     AVG(return_rate) as system_avg_return_rate,
@@ -39,72 +31,58 @@ exports.getMyDistributors = async (req, res) => {
                     GROUP BY dr.distributor_id
                 ) sub
             `, [userId]),
-
-            // All distributors
+            // [1] All distributors
             pool.query(`SELECT distributor_id, distributor_name, region FROM distributor_records ORDER BY distributor_name`),
-
-            // All dispatches for this manager
+            // [2] All dispatches for this manager
             pool.query(`
                 SELECT
-                    dr.distributor_id,
-                    dr.dispatch_id,
-                    dr.dispatch_timestamp as dispatched_at,
-                    dr.collected_timestamp as collected_at,
-                    dr.frs_at_dispatch,
-                    b.batch_id,
-                    p.product_name,
-                    b.quantity,
-                    b.unit_value,
+                    dr.distributor_id, dr.dispatch_id, dr.dispatch_timestamp as dispatched_at, dr.collected_timestamp as collected_at,
+                    dr.frs_at_dispatch, b.batch_id, p.product_name, b.quantity, b.unit_value,
                     EXTRACT(EPOCH FROM (dr.collected_timestamp - dr.dispatch_timestamp)) / 86400 as collection_delay_days,
-                    EXTRACT(MONTH FROM dr.dispatch_timestamp) as month,
-                    EXTRACT(YEAR FROM dr.dispatch_timestamp) as year
+                    EXTRACT(MONTH FROM dr.dispatch_timestamp) as month, EXTRACT(YEAR FROM dr.dispatch_timestamp) as year
                 FROM dispatch_records dr
                 JOIN batches b ON dr.batch_id = b.batch_id
                 JOIN products p ON b.product_id = p.product_id
                 WHERE dr.dispatch_timestamp IS NOT NULL
                 ORDER BY dr.dispatch_timestamp DESC
             `),
-
-            // All returns for this manager
+            // [3] All returns
             pool.query(`
                 SELECT
-                    dr.distributor_id,
-                    rr.return_id,
-                    rr.decision,
-                    rr.created_at,
-                    b.quantity,
-                    b.unit_value,
-                    EXTRACT(MONTH FROM rr.created_at) as month,
-                    EXTRACT(YEAR FROM rr.created_at) as year
+                    dr.distributor_id, rr.return_id, rr.decision, rr.created_at, b.quantity, b.unit_value,
+                    EXTRACT(MONTH FROM rr.created_at) as month, EXTRACT(YEAR FROM rr.created_at) as year
                 FROM return_records rr
                 JOIN dispatch_records dr ON rr.batch_id = dr.batch_id
                 JOIN batches b ON rr.batch_id = b.batch_id
             `),
-
-            // All clearances for this manager
+            // [4] All clearances
             pool.query(`
                 SELECT
-                    cr.distributor_id,
-                    cr.clearance_id,
-                    cr.cleared_at,
-                    b.quantity,
-                    b.unit_value,
-                    EXTRACT(MONTH FROM cr.cleared_at) as month,
-                    EXTRACT(YEAR FROM cr.cleared_at) as year
+                    cr.distributor_id, cr.clearance_id, cr.cleared_at, b.quantity, b.unit_value,
+                    EXTRACT(MONTH FROM cr.cleared_at) as month, EXTRACT(YEAR FROM cr.cleared_at) as year
                 FROM clearance_records cr
                 JOIN batches b ON cr.batch_id = b.batch_id
             `),
-
-            // All latest scorecards
+            // [5] All latest scorecards
             pool.query(`
                 SELECT DISTINCT ON (distributor_id) distributor_id, performance_score
                 FROM distributor_scorecards
                 ORDER BY distributor_id, last_updated_at DESC
             `),
-
-            // Manager name
-            pool.query('SELECT full_name FROM users WHERE user_id = $1', [userId])
+            // [6] Manager name
+            pool.query('SELECT full_name FROM users WHERE user_id = $1', [userId]),
+            // [7] Field misses count
+            pool.query(`
+                SELECT COALESCE(r.distributor_id, dr.distributor_id) as distributor_id, COUNT(*) as miss_count
+                FROM report_line_items li
+                JOIN sales_rep_reports r ON li.report_id = r.report_id
+                LEFT JOIN distributor_records dr ON r.distributor_name = dr.distributor_name
+                WHERE li.distributor_miss_flagged = true
+                GROUP BY 1
+            `)
         ]);
+
+        const [systemStatsRes, distributorsRes, allDispatchesRes, allReturnsRes, allClearancesRes, allScorecardsRes, userRes, fieldMissRes] = results;
 
         // STEP 2: Process System Stats
         const stats = systemStatsRes.rows[0];
@@ -112,39 +90,53 @@ exports.getMyDistributors = async (req, res) => {
         const systemAvgCollectionDelay = parseFloat(stats.system_avg_delay) || 0;
         const systemAvgFrsAtDispatch = parseFloat(stats.system_avg_frs) || 0;
 
-        // STEP 3: Map data into lookup dictionaries for O(1) access
+        // STEP 3: Map data into lookup dictionaries
         const dispatchesByDist = {};
         allDispatchesRes.rows.forEach(row => {
-            if (!dispatchesByDist[row.distributor_id]) dispatchesByDist[row.distributor_id] = [];
-            dispatchesByDist[row.distributor_id].push(row);
+            const id = String(row.distributor_id);
+            if (!dispatchesByDist[id]) dispatchesByDist[id] = [];
+            dispatchesByDist[id].push(row);
         });
 
         const returnsByDist = {};
         allReturnsRes.rows.forEach(row => {
-            if (!returnsByDist[row.distributor_id]) returnsByDist[row.distributor_id] = [];
-            returnsByDist[row.distributor_id].push(row);
+            const id = String(row.distributor_id);
+            if (!returnsByDist[id]) returnsByDist[id] = [];
+            returnsByDist[id].push(row);
         });
 
         const clearancesByDist = {};
         allClearancesRes.rows.forEach(row => {
-            if (!clearancesByDist[row.distributor_id]) clearancesByDist[row.distributor_id] = [];
-            clearancesByDist[row.distributor_id].push(row);
+            const id = String(row.distributor_id);
+            if (!clearancesByDist[id]) clearancesByDist[id] = [];
+            clearancesByDist[id].push(row);
         });
 
         const scorecardsMap = {};
         allScorecardsRes.rows.forEach(row => {
-            scorecardsMap[row.distributor_id] = parseFloat(row.performance_score);
+            scorecardsMap[String(row.distributor_id)] = parseFloat(row.performance_score);
+        });
+
+        const missesMap = {};
+        fieldMissRes.rows.forEach(row => {
+            missesMap[String(row.distributor_id)] = parseInt(row.miss_count) || 0;
         });
 
         // STEP 4: Build Profiles
         const processedDistributors = [];
         for (const dist of distributorsRes.rows) {
-            const managerDispatches = dispatchesByDist[dist.distributor_id] || [];
-            const managerReturns = returnsByDist[dist.distributor_id] || [];
-            const managerClearances = clearancesByDist[dist.distributor_id] || [];
-            const overallScore = scorecardsMap[dist.distributor_id] || 0;
+            const distIdKey = String(dist.distributor_id);
+            const managerDispatches = dispatchesByDist[distIdKey] || [];
+            const managerReturns = returnsByDist[distIdKey] || [];
+            const managerClearances = clearancesByDist[distIdKey] || [];
+            const baseScore = scorecardsMap[distIdKey] || 0;
+            const missCount = missesMap[distIdKey] || 0;
 
             if (managerDispatches.length === 0) continue;
+
+            // Apply live miss penalty to overallScore for this view
+            const livePenalty = Math.min(missCount * 5, 20);
+            const overallScore = Math.max(0, baseScore - livePenalty);
 
             const profile = buildRelationshipProfile({
                 distributorId: dist.distributor_id,
@@ -156,7 +148,8 @@ exports.getMyDistributors = async (req, res) => {
                 systemAvgReturnRate,
                 systemAvgCollectionDelay,
                 systemAvgFrsAtDispatch,
-                overallScore
+                overallScore,
+                missCount
             });
 
             if (profile) processedDistributors.push(profile);

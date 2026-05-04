@@ -81,7 +81,8 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
             isEmptyShelf: false,
             movementSpeedRaw: 2,
             shelfAvailability: 'in_stock',
-            empty_shelf_reason: ''
+            empty_shelf_reason: '',
+            distributor_miss_flagged: false
           };
         });
         setLineItems(initialItems);
@@ -94,10 +95,16 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
   };
 
   const handleLineItemChange = (sku, field, value) => {
-    setLineItems(prev => ({
-      ...prev,
-      [sku]: { ...prev[sku], [field]: value }
-    }));
+    setLineItems(prev => {
+      const newItem = { ...prev[sku], [field]: value };
+      
+      // Auto-set miss flag based on reason
+      if (field === 'empty_shelf_reason') {
+        newItem.distributor_miss_flagged = (value === 'not_delivered');
+      }
+      
+      return { ...prev, [sku]: newItem };
+    });
   };
 
   const toggleProductSelection = (sku) => {

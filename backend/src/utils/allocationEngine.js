@@ -9,6 +9,10 @@ async function calculateAllocationScores({ batchProductId, distributors }) {
     const totalReportsRes = await db.query(`SELECT COUNT(*) as cnt FROM sales_rep_reports`);
     const fallbackMode = parseInt(totalReportsRes.rows[0].cnt) === 0;
 
+    // Resolve the actual SKU/Barcode for this product once to match rep reports
+    const productRes = await db.query(`SELECT ean13_barcode FROM products WHERE product_id = $1`, [batchProductId]);
+    const targetSku = productRes.rows[0]?.ean13_barcode || String(batchProductId);
+
     const scored = await Promise.all(distributors.map(async (dist) => {
         // 1. PERFORMANCE SCORE from distributor_scorecards
         const perfRes = await db.query(`
@@ -22,38 +26,50 @@ async function calculateAllocationScores({ batchProductId, distributors }) {
             ? parseFloat(perfRes.rows[0].overall_score)
             : 50;
 
-        // 2. SALES VELOCITY SCORE — use distributor's own region + batch product_id
+        // 2. SALES VELOCITY SCORE — strictly product-specific
         let velocityScore = 50;
         let velocityDefaulted = false;
         let isOOS = false;
 
         if (!fallbackMode) {
+            // Get product category first for fallback
+            const catRes = await db.query(`SELECT category FROM report_line_items WHERE sku = $1 LIMIT 1`, [targetSku]);
+            const category = catRes.rows[0]?.category;
+
             const velRes = await db.query(`
                 SELECT 
                     AVG(li.movement_score_final) as avg_movement,
-                    COUNT(CASE WHEN li.shelf_availability = 'out_of_stock' OR li.is_empty_shelf = true THEN 1 END) as oos_count
+                    COUNT(CASE 
+                        WHEN li.shelf_availability = 'out_of_stock' 
+                        OR (li.is_empty_shelf = true AND (li.empty_shelf_reason = 'sold_out' OR li.empty_shelf_reason IS NULL))
+                        THEN 1 END) as demand_surge_count,
+                    (SELECT AVG(li2.movement_score_final) 
+                     FROM sales_rep_reports r2
+                     JOIN report_line_items li2 ON r2.report_id = li2.report_id
+                     WHERE r2.region = $1 AND li2.category = $3
+                     AND r2.submitted_at >= NOW() - INTERVAL '30 days') as cat_avg
                 FROM sales_rep_reports r
                 JOIN report_line_items li ON r.report_id = li.report_id
                 WHERE r.region = $1
                   AND li.sku = $2
                   AND r.submitted_at >= NOW() - INTERVAL '30 days'
-            `, [dist.region, String(batchProductId)]);
+            `, [dist.region, targetSku, category]);
 
             const avg = velRes.rows[0]?.avg_movement ? parseFloat(velRes.rows[0].avg_movement) : null;
-            const oosCount = parseInt(velRes.rows[0]?.oos_count || 0);
+            const catAvg = velRes.rows[0]?.cat_avg ? parseFloat(velRes.rows[0].cat_avg) : null;
+            const demandSurgeCount = parseInt(velRes.rows[0]?.demand_surge_count || 0);
 
-            if (oosCount > 0) {
-                velocityScore = 100; // Priority 1: Stock out
+            if (demandSurgeCount > 0) {
+                velocityScore = 100; // Priority 1: High Demand Stock out for THIS specific product
                 isOOS = true;
-            } else if (avg === null) {
+            } else if (avg !== null) {
+                velocityScore = avg >= 2.5 ? 100 : (avg >= 1.5 ? 70 : 30);
+            } else if (catAvg !== null) {
+                // FALLBACK: Category Velocity boost
+                velocityScore = catAvg >= 2.5 ? 85 : (catAvg >= 1.5 ? 60 : 25);
+            } else {
                 velocityScore = 50;
                 velocityDefaulted = true;
-            } else if (avg >= 2.5) {
-                velocityScore = 100; // Priority 2: Fast movement
-            } else if (avg >= 1.5) {
-                velocityScore = 60;
-            } else {
-                velocityScore = 20;
             }
         }
 
@@ -73,9 +89,9 @@ async function calculateAllocationScores({ batchProductId, distributors }) {
         // 4. ALLOCATION SCORE
         let allocationScore;
         if (fallbackMode) {
-            allocationScore = (performanceScore * 0.615) + (urgencyScore * 0.385);
+            allocationScore = (performanceScore * 0.60) + (urgencyScore * 0.40);
         } else {
-            allocationScore = (performanceScore * 0.40) + (velocityScore * 0.35) + (urgencyScore * 0.25);
+            allocationScore = (performanceScore * 0.30) + (velocityScore * 0.50) + (urgencyScore * 0.20);
         }
 
         return {

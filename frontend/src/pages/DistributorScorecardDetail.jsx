@@ -62,6 +62,9 @@ const DistributorScorecardDetail = () => {
       if (v >= 60) return '#f59e0b';
       return '#ef4444';
     }
+    if (type === 'miss') {
+      return v > 0 ? '#ef4444' : '#64748b';
+    }
     return '#1e293b';
   };
 
@@ -82,13 +85,13 @@ const DistributorScorecardDetail = () => {
     { period: 'Live', score: parseFloat(metrics.overallScore) }
   ];
 
-  const metricCards = [
-    { label: 'Overall Score', value: metrics.overallScore, suffix: '', type: 'overall', note: 'Composite score' },
-    { label: 'Avg FRS at Dispatch', value: metrics.avgFrsAtDispatch, suffix: '', type: 'frs', note: 'Higher is better' },
-    { label: 'Return Rate', value: metrics.returnRate, suffix: '%', type: 'return', note: 'Lower is better' },
-    { label: 'Rejection Rate', value: metrics.returnRejectionRate, suffix: '%', type: 'rejection', note: 'Lower is better' },
-    { label: 'Avg Collection Delay', value: metrics.avgCollectionDelayDays, suffix: 'd', type: 'delay', note: 'Lower is better' },
-  ];
+    const metricCards = [
+      { label: 'Overall Score', value: metrics.overallScore, suffix: '', type: 'overall', note: 'Composite performance' },
+      { label: 'Avg FRS at Dispatch', value: metrics.avgFrsAtDispatch, suffix: '', type: 'frs', note: 'Higher is better' },
+      { label: 'Return Rate', value: metrics.returnRate, suffix: '%', type: 'return', note: 'Lower is better' },
+      { label: 'Avg Collection Delay', value: metrics.avgCollectionDelayDays, suffix: 'd', type: 'delay', note: 'Lower is better' },
+      { label: 'Field-Reported Misses', value: metrics.missCount || 0, suffix: '', type: 'miss', note: 'Deductions applied' },
+    ];
 
   return (
     <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', padding: '40px 5%', fontFamily: 'sans-serif' }}>
