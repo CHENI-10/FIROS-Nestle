@@ -128,7 +128,6 @@ const SalesRepLogin = ({ onLoginSuccess }) => {
                   'Login'
                 )}
               </button>
-              <p style={{ textAlign: 'center', fontSize: '10px', color: '#8b5a2b', marginTop: '10px', opacity: 0.5 }}>v1.2 - Synchronized</p>
             </form>
           </div>
         </div>

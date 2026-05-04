@@ -80,7 +80,8 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
             category: p.category,
             isEmptyShelf: false,
             movementSpeedRaw: 2,
-            shelfAvailability: 'in_stock'
+            shelfAvailability: 'in_stock',
+            empty_shelf_reason: ''
           };
         });
         setLineItems(initialItems);
@@ -296,7 +297,7 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ fontSize: '11px', color: '#444' }}><span style={{ fontWeight: 'bold', color: '#22c55e' }}>FAST:</span> Shelf significantly more empty than last visit</div>
-            <div style={{ fontSize: '11px', color: '#444' }}><span style={{ fontWeight: 'bold', color: '#f59e0b' }}>NORMAL:</span> Some movement, partially restocked</div>
+            <div style={{ fontSize: '11px', color: '#444' }}><span style={{ fontWeight: 'bold', color: '#f59e0b' }}>MODERATE:</span> Some movement, partially restocked</div>
             <div style={{ fontSize: '11px', color: '#444' }}><span style={{ fontWeight: 'bold', color: '#ef4444' }}>SLOW:</span> Same stock as last visit, little or no change</div>
           </div>
         </div>
@@ -323,24 +324,42 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
                 🚨 Flag as Empty Shelf
               </label>
 
-              <div style={{ overflow: 'hidden', maxHeight: isErr ? '0px' : '200px', opacity: isErr ? 0 : 1, transition: 'all 0.4s ease', marginTop: isErr ? '0' : '16px' }}>
-                <div style={{ marginBottom: '16px' }}>
-                  <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px', fontWeight: 'bold', letterSpacing: '0.5px' }}>SELLING SPEED (since last visit)</div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => handleLineItemChange(item.sku, 'movementSpeedRaw', 1)} style={getPillStyle(item.movementSpeedRaw === 1, 'warn')}>Slow</button>
-                    <button onClick={() => handleLineItemChange(item.sku, 'movementSpeedRaw', 2)} style={getPillStyle(item.movementSpeedRaw === 2, 'good')}>Normal</button>
-                    <button onClick={() => handleLineItemChange(item.sku, 'movementSpeedRaw', 3)} style={getPillStyle(item.movementSpeedRaw === 3, 'good')}>Fast</button>
-                  </div>
-                </div>
+              <div style={{ overflow: 'hidden', maxHeight: isErr ? '500px' : '200px', opacity: 1, transition: 'all 0.4s ease', marginTop: '16px' }}>
+                {!isErr ? (
+                  <>
+                    <div style={{ marginBottom: '16px' }}>
+                      <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px', fontWeight: 'bold', letterSpacing: '0.5px' }}>SELLING SPEED (since last visit)</div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => handleLineItemChange(item.sku, 'movementSpeedRaw', 1)} style={getPillStyle(item.movementSpeedRaw === 1, 'warn')}>Slow</button>
+                        <button onClick={() => handleLineItemChange(item.sku, 'movementSpeedRaw', 2)} style={getPillStyle(item.movementSpeedRaw === 2, 'good')}>Moderate</button>
+                        <button onClick={() => handleLineItemChange(item.sku, 'movementSpeedRaw', 3)} style={getPillStyle(item.movementSpeedRaw === 3, 'good')}>Fast</button>
+                      </div>
+                    </div>
 
-                <div>
-                  <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px', fontWeight: 'bold', letterSpacing: '0.5px' }}>CURRENT STOCK (right now)</div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => handleLineItemChange(item.sku, 'shelfAvailability', 'low')} style={getPillStyle(item.shelfAvailability === 'low', 'err')}>Low</button>
-                    <button onClick={() => handleLineItemChange(item.sku, 'shelfAvailability', 'in_stock')} style={getPillStyle(item.shelfAvailability === 'in_stock', 'warn')}>Med</button>
-                    <button onClick={() => handleLineItemChange(item.sku, 'shelfAvailability', 'high')} style={getPillStyle(item.shelfAvailability === 'high', 'good')}>High</button>
+                    <div style={{ marginBottom: '16px' }}>
+                      <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px', fontWeight: 'bold', letterSpacing: '0.5px' }}>CURRENT STOCK (right now)</div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => handleLineItemChange(item.sku, 'shelfAvailability', 'low')} style={getPillStyle(item.shelfAvailability === 'low', 'err')}>Low</button>
+                        <button onClick={() => handleLineItemChange(item.sku, 'shelfAvailability', 'in_stock')} style={getPillStyle(item.shelfAvailability === 'in_stock', 'warn')}>Med</button>
+                        <button onClick={() => handleLineItemChange(item.sku, 'shelfAvailability', 'high')} style={getPillStyle(item.shelfAvailability === 'high', 'good')}>High</button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px', fontWeight: 'bold', letterSpacing: '0.5px', textTransform: 'uppercase' }}>WHY IS THE SHELF EMPTY?</div>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                      <button onClick={() => handleLineItemChange(item.sku, 'empty_shelf_reason', 'sold_out')} style={getPillStyle(item.empty_shelf_reason === 'sold_out', 'good')}>🔥 Sold Out</button>
+                      <button onClick={() => handleLineItemChange(item.sku, 'empty_shelf_reason', 'not_delivered')} style={getPillStyle(item.empty_shelf_reason === 'not_delivered', 'err')}>🚛 Not Delivered</button>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.4', fontStyle: 'italic', marginBottom: '12px' }}>
+                      {item.empty_shelf_reason === 'sold_out' && "Customers bought it all (High Demand)"}
+                      {item.empty_shelf_reason === 'not_delivered' && "Distributor missed delivery (Supply Gap)"}
+                      {!item.empty_shelf_reason && "Please select a reason to proceed"}
+                    </div>
+                    {!item.empty_shelf_reason && <div style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold', marginBottom: '12px' }}>⚠️ Reason selector required</div>}
                   </div>
-                </div>
+                )}
               </div>
             </div>
           );
@@ -348,7 +367,20 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
 
         <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
           <button style={{ ...btnSecondary, flex: 1 }} onClick={() => setStep(2)}>Products</button>
-          <button style={{ ...btnPrimary, flex: 2 }} onClick={() => setStep(4)}>Review &rarr;</button>
+          <button 
+            style={{ ...btnPrimary, flex: 2, opacity: productsArray.some(p => p.isEmptyShelf && !p.empty_shelf_reason) ? 0.5 : 1 }} 
+            onClick={() => {
+              const invalid = productsArray.some(p => p.isEmptyShelf && !p.empty_shelf_reason);
+              if (invalid) {
+                alert("Please select a reason for all empty shelves.");
+                return;
+              }
+              setStep(4);
+            }} 
+            disabled={productsArray.some(p => p.isEmptyShelf && !p.empty_shelf_reason)}
+          >
+            Review &rarr;
+          </button>
         </div>
       </div>
     );
@@ -401,12 +433,16 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
           <div style={{ marginBottom: '24px' }}>
             <h4 style={{ color: '#D32F2F', fontSize: '13px', borderBottom: '2px solid #FFCDD2', paddingBottom: '8px', textTransform: 'uppercase' }}>🚨 Action Required</h4>
             {emptyProducts.map(p => (
-              <div key={p.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', padding: '12px 0', borderBottom: '1px solid #eee' }}>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <img src={getProductImage(p.productName)} alt="" style={{ width: '30px', height: '30px', marginRight: '10px', objectFit: 'contain' }} />
-                  <span style={{ fontWeight: 'bold', color: '#333' }}>{p.productName}</span>
+              <div key={p.sku} style={{ display: 'flex', padding: '12px 0', borderBottom: '1px solid #eee' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <img src={getProductImage(p.productName)} alt="" style={{ width: '30px', height: '30px', marginRight: '10px', objectFit: 'contain' }} />
+                      <span style={{ fontWeight: 'bold', color: '#333' }}>{p.productName}</span>
+                    </div>
+                    <span style={{ fontSize: '11px', color: '#D32F2F', fontWeight: 'bold' }}>{p.empty_shelf_reason?.replace(/_/g, ' ').toUpperCase()}</span>
+                  </div>
                 </div>
-                <button style={{ backgroundColor: '#D32F2F', color: '#fff', border: 'none', borderRadius: '20px', padding: '6px 12px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>Restock</button>
               </div>
             ))}
           </div>
@@ -415,12 +451,14 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
         <div>
           <h4 style={{ color: '#8B5E3C', fontSize: '13px', borderBottom: '2px solid #E8DDD0', paddingBottom: '8px', textTransform: 'uppercase' }}>Available Stock</h4>
           {availableProducts.map(p => (
-            <div key={p.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', padding: '12px 0', borderBottom: '1px solid #eee' }}>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <img src={getProductImage(p.productName)} alt="" style={{ width: '30px', height: '30px', marginRight: '10px', objectFit: 'contain' }} />
-                <span style={{ color: '#444' }}>{p.productName}</span>
+            <div key={p.sku} style={{ padding: '12px 0', borderBottom: '1px solid #eee' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <img src={getProductImage(p.productName)} alt="" style={{ width: '30px', height: '30px', marginRight: '10px', objectFit: 'contain' }} />
+                  <span style={{ color: '#444' }}>{p.productName}</span>
+                </div>
+                <div style={{ color: '#4CAF50', fontWeight: 'bold', fontSize: '12px' }}>✓ Audited</div>
               </div>
-              <div style={{ color: '#4CAF50', fontWeight: 'bold', fontSize: '12px' }}>✓ Audited</div>
             </div>
           ))}
         </div>

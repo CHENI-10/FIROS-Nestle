@@ -46,15 +46,25 @@ const submitReport = async (req, res) => {
 
         const childQuery = `
             INSERT INTO report_line_items 
-            (report_id, sku, product_name, category, movement_speed_raw, movement_score_final, shelf_availability, is_empty_shelf, urgency_bonus_applied)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            (report_id, sku, product_name, category, movement_speed_raw, movement_score_final, shelf_availability, is_empty_shelf, urgency_bonus_applied, empty_shelf_reason, distributor_miss_flagged)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         `;
 
         for (const item of lineItems) {
             let movementScoreFinal = item.movementSpeedRaw;
             let urgencyBonusApplied = false;
+            let distributorMissFlagged = false;
 
-            if (item.isEmptyShelf || item.shelfAvailability === 'out_of_stock') {
+            if (item.isEmptyShelf) {
+                if (item.empty_shelf_reason === 'sold_out') {
+                    movementScoreFinal = item.movementSpeedRaw + 1;
+                    urgencyBonusApplied = true;
+                } else if (item.empty_shelf_reason === 'not_delivered') {
+                    movementScoreFinal = item.movementSpeedRaw;
+                    urgencyBonusApplied = false;
+                    distributorMissFlagged = true;
+                }
+            } else if (item.shelfAvailability === 'out_of_stock') {
                 movementScoreFinal = item.movementSpeedRaw + 1;
                 urgencyBonusApplied = true;
             }
@@ -68,7 +78,9 @@ const submitReport = async (req, res) => {
                 movementScoreFinal,
                 item.shelfAvailability,
                 item.isEmptyShelf,
-                urgencyBonusApplied
+                urgencyBonusApplied,
+                item.empty_shelf_reason || null,
+                distributorMissFlagged
             ];
 
             await client.query(childQuery, childValues);

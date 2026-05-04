@@ -15,6 +15,24 @@ body {
   min-height: calc(100vh / 0.9); /* Compensates for zoom to fill physical screen */
   display: flex;
   flex-direction: column;
+  cursor: default; /* Prevents text cursor on background */
+  user-select: none; /* Prevents accidental text selection highlighting */
+}
+
+/* Allow text selection only in inputs and specific content areas if needed */
+input, textarea, [contenteditable="true"] {
+  user-select: text;
+  cursor: text;
+}
+
+/* Ensure interactive elements feel correct */
+button, a, .clickable {
+  cursor: pointer;
+}
+
+/* Remove the blue tap highlight on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
 code {

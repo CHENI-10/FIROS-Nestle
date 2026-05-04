@@ -134,7 +134,7 @@ exports.getMarketPulse = async (req, res) => {
             let speed = 'slow';
             let icon = '🐢';
             if (score >= 2.5) { speed = 'fast'; icon = '🔥'; }
-            else if (score >= 1.5) { speed = 'normal'; icon = '⚡'; }
+            else if (score >= 1.5) { speed = 'moderate'; icon = '⚡'; }
 
             skuToRegions[v.sku].regions[v.region] = {
                 region: v.region,
@@ -170,7 +170,7 @@ exports.getMarketPulse = async (req, res) => {
             const hasFastSpeed = regionArray.some(r => r.speed === 'fast');
 
             let priority = 'normal';
-            let priority_label = 'NORMAL — Dispatch by FRS';
+            let priority_label = 'MODERATE — Dispatch by FRS';
             let priority_color = '#94a3b8';
 
             if (hasEmptyShelf && hasFastSpeed) {
@@ -193,7 +193,7 @@ exports.getMarketPulse = async (req, res) => {
                 alert_text = `No urgent demand signal for ${item.productName}. Dispatch based on FRS score.`;
             }
 
-            const speedOrder = { 'fast': 1, 'normal': 2, 'slow': 3, 'no_data': 4 };
+            const speedOrder = { 'fast': 1, 'moderate': 2, 'slow': 3, 'no_data': 4 };
             regionArray.sort((a, b) => {
                 if (speedOrder[a.speed] !== speedOrder[b.speed]) return speedOrder[a.speed] - speedOrder[b.speed];
                 if (b.avgScore !== a.avgScore) {

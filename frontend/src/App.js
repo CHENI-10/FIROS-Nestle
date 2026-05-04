@@ -16,6 +16,7 @@ import MarketIntelligenceReportDetail from './pages/MarketIntelligenceReportDeta
 import DistributorScorecard from './pages/DistributorScorecard';
 import DistributorScorecardDetail from './pages/DistributorScorecardDetail';
 import IdentityVerification from './pages/IdentityVerification';
+import RepRegionalIntelligence from './pages/RepRegionalIntelligence';
 import RootCauseAnalytics from './pages/RootCauseAnalytics';
 import MyDistributors from './pages/MyDistributors';
 
@@ -42,17 +43,21 @@ const App = () => {
   const [salesRepToken, setSalesRepToken] = useState(null);
   const [salesRepUser, setSalesRepUser] = useState(null);
   const [verifiedRep, setVerifiedRep] = useState(null);
+  // Controls whether the Regional Intelligence screen has been seen
+  const [repPassedIntelligence, setRepPassedIntelligence] = useState(false);
 
   const handleSalesRepLogin = (token, user) => {
     setSalesRepToken(token);
     setSalesRepUser(user);
-    setVerifiedRep(null); // Reset verification on new login
+    setVerifiedRep(null);
+    setRepPassedIntelligence(false); // Reset on new login
   };
 
   const handleSalesRepLogout = () => {
     setSalesRepToken(null);
     setSalesRepUser(null);
     setVerifiedRep(null);
+    setRepPassedIntelligence(false);
   };
 
   return (
@@ -74,18 +79,48 @@ const App = () => {
         <Route 
           path="/market-intelligence" 
           element={
-            !salesRepToken ? (
-              <Navigate to="/salesrep" replace />
-            ) : !verifiedRep ? (
-              <IdentityVerification token={salesRepToken} onVerified={(rep) => setVerifiedRep(rep)} onLogout={handleSalesRepLogout} />
-            ) : (
-              <MarketIntelligence 
-                token={salesRepToken} 
-                user={salesRepUser} 
-                verifiedRep={verifiedRep}
-                onLogout={handleSalesRepLogout} 
-              />
-            )
+            (() => {
+              // 1. Must be logged in
+              if (!salesRepToken) {
+                return <Navigate to="/salesrep" replace />;
+              }
+              
+              // 2. Must verify identity (Work ID)
+              if (!verifiedRep) {
+                return (
+                  <IdentityVerification
+                    token={salesRepToken}
+                    onVerified={(rep) => { 
+                      setVerifiedRep(rep); 
+                      setRepPassedIntelligence(false); 
+                    }}
+                    onLogout={handleSalesRepLogout}
+                  />
+                );
+              }
+              
+              // 3. Must see Regional Intelligence
+              if (!repPassedIntelligence) {
+                return (
+                  <RepRegionalIntelligence
+                    token={salesRepToken}
+                    verifiedRep={verifiedRep}
+                    onProceed={() => setRepPassedIntelligence(true)}
+                    onLogout={handleSalesRepLogout}
+                  />
+                );
+              }
+              
+              // 4. Finally, the actual Form
+              return (
+                <MarketIntelligence
+                  token={salesRepToken}
+                  user={salesRepUser}
+                  verifiedRep={verifiedRep}
+                  onLogout={handleSalesRepLogout}
+                />
+              );
+            })()
           } 
         />
 

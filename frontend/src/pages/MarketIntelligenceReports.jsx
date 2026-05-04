@@ -34,14 +34,14 @@ const MarketIntelligenceReports = () => {
   const getSpeedFill = (speed) => {
     if (speed === 'out_of_stock') return '#dc2626'; // High-alert red
     if (speed === 'fast') return '#22c55e';
-    if (speed === 'normal') return '#f59e0b';
+    if (speed === 'moderate') return '#f59e0b';
     if (speed === 'slow') return '#ef4444';
     return '#e2e8f0';
   };
 
   const getSpeedLabel = (speed) => {
     if (speed === 'fast') return 'Fast';
-    if (speed === 'normal') return 'Normal';
+    if (speed === 'moderate') return 'Moderate';
     if (speed === 'slow') return 'Slow';
     return 'No data';
   };
@@ -246,13 +246,15 @@ const MarketIntelligenceReports = () => {
                               <div style={{ height: '100%', width: `${r.barWidth}%`, backgroundColor: getSpeedFill(r.speed), transition: 'width 0.5s ease-in-out' }}></div>
                             </div>
 
-                            <div style={{ width: '85px', display: 'flex', justifyContent: 'flex-end', alignItems: 'baseline', gap: '6px' }}>
-                              <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569', textAlign: 'right' }}>
-                                {getSpeedLabel(r.speed)}
-                              </span>
-                              <span style={{ fontSize: '11px', color: '#94a3b8', minWidth: '20px', textAlign: 'right' }}>
-                                · {r.avgScore !== null ? r.avgScore : '—'}
-                              </span>
+                            <div style={{ width: '100px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-end', gap: '2px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'baseline', gap: '6px' }}>
+                                <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569', textAlign: 'right' }}>
+                                  {getSpeedLabel(r.speed)}
+                                </span>
+                                <span style={{ fontSize: '11px', color: '#94a3b8', minWidth: '20px', textAlign: 'right' }}>
+                                  · {r.avgScore !== null ? r.avgScore : '—'}
+                                </span>
+                              </div>
                             </div>
                           </div>
                           {r.empty_shelf_count > 0 && (

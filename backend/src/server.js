@@ -48,6 +48,7 @@ app.use('/api/scorecard', require('./routes/scorecardRoutes'));
 app.use('/api/allocation', require('./routes/allocationRoutes'));
 app.use('/api/root-cause', require('./routes/rootCauseRoutes'));
 app.use('/api/my-distributors', require('./routes/myDistributorsRoutes'));
+app.use('/api/rep-intelligence', require('./routes/repIntelligenceRoutes'));
 
 // Serve React frontend in production
 if (process.env.NODE_ENV === 'production') {

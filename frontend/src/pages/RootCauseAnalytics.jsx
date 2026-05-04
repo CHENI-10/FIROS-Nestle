@@ -17,6 +17,8 @@ const RootCauseAnalytics = () => {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     });
 
+    const [selectedPeriod, setSelectedPeriod] = useState(null); // null, 30, 60, 90
+
     const [expandedBatches, setExpandedBatches] = useState({});
 
     useEffect(() => {
@@ -24,8 +26,15 @@ const RootCauseAnalytics = () => {
             setLoading(true);
             setError(null);
             try {
-                const [year, month] = currentMonthStr.split('-');
-                const res = await fetch(`/api/root-cause?month=${parseInt(month)}&year=${year}`, {
+                let url = '/api/root-cause';
+                if (selectedPeriod) {
+                    url += `?period=${selectedPeriod}`;
+                } else {
+                    const [year, month] = currentMonthStr.split('-');
+                    url += `?month=${parseInt(month)}&year=${year}`;
+                }
+
+                const res = await fetch(url, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
@@ -59,7 +68,7 @@ const RootCauseAnalytics = () => {
         };
 
         fetchData();
-    }, [currentMonthStr, token, navigate]);
+    }, [currentMonthStr, selectedPeriod, token, navigate]);
 
     const handleExport = () => {
         if (!data || !data.rootCauses) return;
@@ -90,7 +99,9 @@ const RootCauseAnalytics = () => {
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `root-cause-${data.month}-${data.year}-${data.managerName.replace(/\\s+/g, '_')}.csv`);
+        const pLabel = (data.periodLabel || 'Report').replace(/\s+/g, '-');
+        const mName = (data.managerName || 'Manager').replace(/\s+/g, '_');
+        link.setAttribute("download", `root-cause-${pLabel}-${mName}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -103,33 +114,25 @@ const RootCauseAnalytics = () => {
         }));
     };
 
-    const handleMonthChange = (direction) => {
-        if (!data || !data.availableMonths) return;
-        const currentIdx = data.availableMonths.findIndex(m => m.month === data.month && m.year === data.year);
-        if (currentIdx === -1) return;
 
-        const newIdx = currentIdx + direction;
-        if (newIdx >= 0 && newIdx < data.availableMonths.length) {
-            const nextMonth = data.availableMonths[newIdx];
-            setCurrentMonthStr(`${nextMonth.year}-${String(nextMonth.month).padStart(2, '0')}`);
-        }
-    };
+
+    const theme = sessionStorage.getItem('theme') || 'light';
 
     if (loading) {
-        return <div style={styles.container}>Loading analytics...</div>;
+        return <div className={`dashboard-container ${theme}`} style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ color: 'var(--text-main)', fontSize: '18px' }}>Loading analytics...</div>
+        </div>;
     }
 
     if (error) {
-        return <div style={styles.container}>Error: {error}</div>;
+        return <div className={`dashboard-container ${theme}`} style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ color: '#ef4444', fontSize: '18px' }}>Error: {error}</div>
+        </div>;
     }
 
     if (!data) return null;
 
-    const currentIdx = data.availableMonths.findIndex(m => m.month === data.month && m.year === data.year);
-    const hasPrev = currentIdx > 0;
-    const hasNext = currentIdx < data.availableMonths.length - 1;
 
-    const theme = sessionStorage.getItem('theme') || 'light';
 
     const getAtRiskCount = () => {
         if (!liveImpact) return 0;
@@ -145,12 +148,24 @@ const RootCauseAnalytics = () => {
         }
     };
 
-    // Chart Data
-    const chartData = data.rootCauses.map(rc => ({
-        name: rc.category,
-        value: rc.count,
-        color: rc.color
-    }));
+    const getTrendBadge = (val, isFailures = false) => {
+        if (val === 0 || val === undefined || val === null || isNaN(val)) return null;
+        const isPositive = val > 0; // "Positive" delta means more failures, which is BAD
+        const color = isPositive ? '#ef4444' : '#22c55e';
+        const icon = isPositive ? '↑' : '↓';
+        const absVal = Math.abs(val);
+        const text = isPositive ? `${absVal} more` : `${absVal} fewer`;
+        
+        return (
+            <span style={{ 
+                ...styles.deltaBadge, 
+                backgroundColor: isPositive ? '#fee2e2' : '#dcfce7', 
+                color 
+            }}>
+                {icon} {text} {isFailures ? 'failures' : ''}
+            </span>
+        );
+    };
 
     return (
         <div className={`dashboard-container ${theme}`} style={{ minHeight: '100vh' }}>
@@ -172,55 +187,83 @@ const RootCauseAnalytics = () => {
                     </div>
                 </div>
 
-                {/* Navigation */}
-                <div style={styles.navRow}>
-                    <button
-                        onClick={() => handleMonthChange(-1)}
-                        disabled={!hasPrev}
-                        style={{ ...styles.navBtn, opacity: hasPrev ? 1 : 0.4 }}
-                    >
-                        &larr; Previous
-                    </button>
-                    <div style={styles.monthBadgeContainer}>
-                        <span style={styles.monthLabel}>{data.monthLabel}</span>
-                        {currentIdx === data.availableMonths.length - 1 && (
-                            <span style={styles.currentBadge}>Current Month</span>
-                        )}
+                {/* Navigation & Period Selection */}
+                <div style={styles.navSection}>
+                    <div style={styles.periodTabs}>
+                        <button 
+                            style={{ ...styles.tabBtn, ...(selectedPeriod === null ? styles.activeTab : {}) }}
+                            onClick={() => setSelectedPeriod(null)}
+                        >
+                            Monthly View
+                        </button>
+                        {[30, 60, 90].map(p => (
+                            <button 
+                                key={p}
+                                style={{ ...styles.tabBtn, ...(selectedPeriod === p ? styles.activeTab : {}) }}
+                                onClick={() => setSelectedPeriod(p)}
+                            >
+                                Last {p} Days
+                            </button>
+                        ))}
                     </div>
-                    <button
-                        onClick={() => handleMonthChange(1)}
-                        disabled={!hasNext}
-                        style={{ ...styles.navBtn, opacity: hasNext ? 1 : 0.4 }}
-                    >
-                        Next &rarr;
-                    </button>
+
+                    {!selectedPeriod && (
+                        <div style={styles.navRow}>
+                            <div style={styles.monthBadgeContainer}>
+                                <select 
+                                    value={`${data.year}-${String(data.month).padStart(2, '0')}`}
+                                    onChange={(e) => {
+                                        setCurrentMonthStr(e.target.value);
+                                        setSelectedPeriod(null);
+                                    }}
+                                    style={styles.monthSelect}
+                                >
+                                    {data.availableMonths.map(m => (
+                                        <option key={`${m.year}-${m.month}`} value={`${m.year}-${String(m.month).padStart(2, '0')}`}>
+                                            {m.label} {m.year === new Date().getFullYear() && m.month === new Date().getMonth() + 1 ? '(Current)' : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {selectedPeriod && (
+                        <div style={styles.periodHeader}>
+                            <span style={styles.monthLabel}>{data.periodLabel}</span>
+                            <span style={styles.periodSub}>({new Date(new Date().setDate(new Date().getDate() - selectedPeriod)).toLocaleDateString()} - Today)</span>
+                        </div>
+                    )}
                 </div>
 
                 {data.summary.totalDispatched === 0 && data.summary.totalFailed === 0 ? (
                     /* Empty State */
                     <div style={styles.card}>
-                        <h3 style={{ marginTop: 0 }}>No batch failure data for {data.monthLabel}.</h3>
-                        <p>Either no batches were cleared or returned this month, or you had no dispatches recorded.</p>
+                        <h3 style={{ marginTop: 0, color: 'var(--text-main)' }}>No batch failure data for {data.periodLabel}.</h3>
+                        <p style={{ color: 'var(--text-muted)' }}>Either no batches were cleared or returned in this period, or you had no dispatches recorded.</p>
                     </div>
                 ) : (
                     <>
-                        {/* SECTION 1: MY MONTH AT A GLANCE */}
+                        {/* SECTION 1: PERIOD AT A GLANCE */}
                         <div style={styles.section}>
                             <div style={styles.statsGrid}>
                                 <div style={{ ...styles.statCard, backgroundColor: 'var(--card-bg)', borderTop: '4px solid #3b82f6' }}>
                                     <div style={{ ...styles.statLabel, color: '#3b82f6' }}>DISPATCHED</div>
                                     <div style={{ ...styles.statValue, color: 'var(--text-main)' }}>{data.summary.totalDispatched}</div>
-                                    <div style={styles.statSub}>this month</div>
+                                    <div style={styles.statSub}>in period</div>
                                 </div>
                                 <div style={{ ...styles.statCard, backgroundColor: 'var(--card-bg)', borderTop: '4px solid #f59e0b' }}>
                                     <div style={{ ...styles.statLabel, color: '#f59e0b' }}>CLEARED</div>
                                     <div style={{ ...styles.statValue, color: 'var(--text-main)' }}>{data.summary.totalCleared}</div>
-                                    <div style={styles.statSub}>this month</div>
+                                    <div style={styles.statSub}>in period</div>
                                 </div>
                                 <div style={{ ...styles.statCard, backgroundColor: 'var(--card-bg)', borderTop: '4px solid #ef4444' }}>
                                     <div style={{ ...styles.statLabel, color: '#ef4444' }}>RETURNED</div>
                                     <div style={{ ...styles.statValue, color: 'var(--text-main)' }}>{data.summary.totalReturned}</div>
-                                    <div style={styles.statSub}>this month</div>
+                                    <div style={styles.statSub}>
+                                        in period
+                                        {getTrendBadge(data.summary.comparison?.failuresDelta, true)}
+                                    </div>
                                 </div>
                                 <div 
                                     style={{ 
@@ -241,8 +284,11 @@ const RootCauseAnalytics = () => {
                                 <div style={styles.comparisonRow}>
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                            <strong>Your failure rate:</strong>
-                                            <span style={{ color: 'var(--text-main)' }}>{data.summary.failureRate}%</span>
+                                            <strong style={{ color: 'var(--text-main)' }}>Your failure rate:</strong>
+                                            <span style={{ color: 'var(--text-main)' }}>
+                                                {data.summary.failureRate}%
+                                                {getTrendBadge(data.summary.comparison?.failureRateDelta)}
+                                            </span>
                                         </div>
                                         <div style={styles.barBg}>
                                             <div style={{ ...styles.barFill, width: `${Math.min(data.summary.failureRate, 100)}%`, backgroundColor: '#3b82f6' }} />
@@ -261,11 +307,14 @@ const RootCauseAnalytics = () => {
                                 <div style={{ marginTop: '16px', color: 'var(--text-muted)', fontSize: '14px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
                                     {data.summary.failureRate < data.summary.systemAvgFailureRate ? (
                                         <span>
-                                            ✅ You're performing better than average this month. Your main area to watch is <strong>{data.rootCauses.sort((a,b) => b.count - a.count)[0]?.category}</strong>.
+                                            ✅ You're performing better than average. 
+                                            {data.summary.comparison?.failuresDelta < 0 && " Plus, failures are decreasing vs previous period!"}
+                                            {" Your main area to watch is "}
+                                            <strong>{data.rootCauses.sort((a,b) => b.count - a.count)[0]?.category}</strong>.
                                         </span>
                                     ) : (
                                         <span>
-                                            Your failure rate is above average this month. Focus on <strong>{data.rootCauses.sort((a,b) => b.count - a.count)[0]?.category}</strong> — it accounts for {data.rootCauses.sort((a,b) => b.count - a.count)[0]?.percentage}% of your failures.
+                                            Your failure rate is above average. Focus on <strong>{data.rootCauses.sort((a,b) => b.count - a.count)[0]?.category}</strong> — it accounts for {data.rootCauses.sort((a,b) => b.count - a.count)[0]?.percentage}% of your failures.
                                         </span>
                                     )}
                                 </div>
@@ -277,8 +326,8 @@ const RootCauseAnalytics = () => {
                             <h2 style={styles.sectionTitle}>Why Your Batches Failed</h2>
                             {data.summary.totalFailed === 0 ? (
                                 <div style={{ ...styles.card, backgroundColor: '#dcfce7', borderColor: '#bbf7d0' }}>
-                                    <strong>✅ No batch failures this month.</strong><br />
-                                    All your dispatches resolved successfully.
+                                    <strong style={{ color: '#166534' }}>✅ No batch failures in this period.</strong><br />
+                                    <span style={{ color: '#166534' }}>All your dispatches resolved successfully.</span>
                                 </div>
                             ) : (
                                 <div style={styles.card}>
@@ -293,13 +342,21 @@ const RootCauseAnalytics = () => {
                                             };
                                             const barColor = colors[catName] || '#94a3b8';
                                             const hasBatches = rc.count > 0;
+                                            
+                                            // Get category delta
+                                            let delta = 0;
+                                            if (catName === 'Temperature-Driven') delta = data.summary.comparison?.tempFailuresDelta;
+                                            if (catName === 'Long Storage') delta = data.summary.comparison?.longStorageDelta;
 
                                             return (
                                                 <div key={catName} style={{ opacity: hasBatches ? 1 : 0.5 }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{catName}</span>
+                                                        <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>
+                                                            {catName}
+                                                            {getTrendBadge(delta)}
+                                                        </span>
                                                         <span style={{ color: 'var(--text-muted)' }}>
-                                                            {hasBatches ? `${rc.count} batches (${rc.percentage}%)` : '(empty — no batches this month)'}
+                                                            {hasBatches ? `${rc.count} batches (${rc.percentage}%)` : '(empty)'}
                                                         </span>
                                                     </div>
                                                     <div style={styles.barBg}>
@@ -340,7 +397,7 @@ const RootCauseAnalytics = () => {
                                                     </div>
                                                 ) : (
                                                     <div style={{ color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: '8px' }}>
-                                                        No recurring pattern this month
+                                                        No recurring pattern in this period
                                                     </div>
                                                 )}
                                                 <p style={{ margin: '0 0 12px 0', color: 'var(--text-main)' }}>{rc.patternText}</p>
@@ -388,11 +445,6 @@ const RootCauseAnalytics = () => {
                                                         );
                                                     })}
                                                 </div>
-                                                {rc.batches.length > 0 && (
-                                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
-                                                        {rc.batches.length} failures detected this month.
-                                                    </div>
-                                                )}
                                             </div>
 
                                             {/* Zone Breakdown (Temperature Only) */}
@@ -464,12 +516,12 @@ const RootCauseAnalytics = () => {
                                 {data.recurringProblemProducts.length > 0 && (
                                     <div style={styles.section}>
                                         <h2 style={{ ...styles.sectionTitle, marginBottom: '4px' }}>Your Recurring Problem Products</h2>
-                                        <p style={styles.sectionSubtitle}>SKUs appearing in 3 or more failed batches this month</p>
+                                        <p style={styles.sectionSubtitle}>SKUs appearing in 3 or more failed batches in this period</p>
                                         <div style={{ display: 'grid', gap: '16px' }}>
                                             {data.recurringProblemProducts.map(rp => (
                                                 <div key={rp.sku} style={styles.card}>
                                                     <div style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--text-main)' }}>{rp.productName}</div>
-                                                    <div style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '8px' }}>{rp.failureCount} failures this month</div>
+                                                    <div style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '8px' }}>{rp.failureCount} failures detected</div>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                                         <div style={{ flex: 1, backgroundColor: 'var(--hover-bg)', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
                                                             <div style={{ width: `${Math.min((rp.failureCount / 10) * 100, 100)}%`, backgroundColor: rp.severity === 'high' ? '#ef4444' : '#f59e0b', height: '100%' }} />
@@ -487,14 +539,14 @@ const RootCauseAnalytics = () => {
                                 {/* SECTION 5: LIVE WAREHOUSE IMPACT */}
                                 <div style={styles.section} id="live-impact-section">
                                     <h2 style={{ ...styles.sectionTitle, marginBottom: '4px' }}>What This Means For Your Warehouse Right Now</h2>
-                                    <p style={styles.sectionSubtitle}>Based on last month's patterns, these current batches may be at risk</p>
+                                    <p style={styles.sectionSubtitle}>Based on patterns detected, these current batches may be at risk</p>
                                     
                                     {!liveImpact || (liveImpact.atRiskInZones.length === 0 && liveImpact.approachingStorageLimit.length === 0 && liveImpact.collectionDelays.length === 0) ? (
                                         <div style={{ ...styles.card, backgroundColor: '#dcfce7', borderColor: '#22c55e', display: 'flex', alignItems: 'center', gap: '12px' }}>
                                             <span style={{ fontSize: '24px' }}>✅</span>
                                             <div>
-                                                <strong>No immediate threats detected.</strong><br />
-                                                No current batches are showing signs of repeating last month's failure patterns.
+                                                <strong style={{ color: '#166534' }}>No immediate threats detected.</strong><br />
+                                                <span style={{ color: '#166534' }}>No current batches are showing signs of repeating these failure patterns.</span>
                                             </div>
                                         </div>
                                     ) : (
@@ -508,8 +560,8 @@ const RootCauseAnalytics = () => {
                                                         <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12px' }}>
                                                             <span style={{ fontSize: '20px' }}>{hasBatches ? '⚡' : '✅'}</span>
                                                             <div>
-                                                                <div style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--text-main)' }}>ZONE {pz.zone} — Your Problem Zone</div>
-                                                                <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Caused {pz.tempFailureCount} temperature failures last month.</div>
+                                                                <div style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--text-main)' }}>ZONE {pz.zone} — Problem Area</div>
+                                                                <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Caused {pz.tempFailureCount} temperature failures recently.</div>
                                                             </div>
                                                         </div>
 
@@ -530,7 +582,7 @@ const RootCauseAnalytics = () => {
                                                                 <div style={{ ...styles.actionBox, marginTop: '16px', backgroundColor: '#fff7ed', color: '#9a3412', border: '1px solid #ffedd5' }}>
                                                                     <span style={{ fontSize: '18px' }}>💡</span>
                                                                     <div style={{ fontSize: '13px' }}>
-                                                                        You have {batches.length} batches in Zone {pz.zone} right now. Consider moving <strong>{batches[0]?.product_name}</strong> to dispatch priority before its risk increases.
+                                                                        You have {batches.length} batches in Zone {pz.zone} right now. Consider moving <strong>{batches[0]?.product_name}</strong> to dispatch priority.
                                                                     </div>
                                                                 </div>
                                                             </>
@@ -554,7 +606,7 @@ const RootCauseAnalytics = () => {
                                                         </div>
                                                     </div>
                                                     
-                                                    <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', margin: '12px 0 8px 0' }}>APPROACHING 120 DAYS NOW:</div>
+                                                    <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', margin: '12px 0 8px 0' }}>APPROACHING LIMIT NOW:</div>
                                                     {liveImpact.approachingStorageLimit.slice(0, 3).map(b => (
                                                         <div key={b.batch_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
                                                             <div style={{ fontSize: '14px', color: 'var(--text-main)' }}>{b.product_name}</div>
@@ -564,44 +616,6 @@ const RootCauseAnalytics = () => {
                                                             </div>
                                                         </div>
                                                     ))}
-                                                    <div style={{ ...styles.actionBox, marginTop: '16px', backgroundColor: '#fff7ed', color: '#9a3412', border: '1px solid #ffedd5' }}>
-                                                        <span style={{ fontSize: '18px' }}>💡</span>
-                                                        <div style={{ fontSize: '13px' }}>
-                                                            <strong>{liveImpact.approachingStorageLimit[0]?.product_name}</strong> has been in storage {Math.floor(liveImpact.approachingStorageLimit[0]?.days_in_warehouse)} days — near the threshold that caused failures last month.
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Collection Delay Risk */}
-                                            {liveImpact.collectionDelays.length > 0 && (
-                                                <div style={{ ...styles.card, borderLeft: '4px solid #f59e0b' }}>
-                                                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12px' }}>
-                                                        <span style={{ fontSize: '20px' }}>⚡</span>
-                                                        <div>
-                                                            <div style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--text-main)' }}>COLLECTION DELAY RISK</div>
-                                                            <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Active dispatches waiting for collection.</div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', margin: '12px 0 8px 0' }}>WAITING FOR COLLECTION:</div>
-                                                    {liveImpact.collectionDelays.slice(0, 3).map(d => (
-                                                        <div key={d.dispatch_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
-                                                            <div style={{ fontSize: '14px', color: 'var(--text-main)' }}>
-                                                                <strong>{d.distributor_name}</strong><br />
-                                                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{d.product_name}</span>
-                                                            </div>
-                                                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: d.days_waiting > 14 ? '#ef4444' : '#f59e0b' }}>
-                                                                {Math.floor(d.days_waiting)} days
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                    <div style={{ ...styles.actionBox, marginTop: '16px', backgroundColor: '#fff7ed', color: '#9a3412', border: '1px solid #ffedd5' }}>
-                                                        <span style={{ fontSize: '18px' }}>💡</span>
-                                                        <div style={{ fontSize: '13px' }}>
-                                                            <strong>{liveImpact.collectionDelays[0]?.distributor_name}</strong> has dispatches waiting {Math.floor(liveImpact.collectionDelays[0]?.days_waiting)} days. This approaching the 14-day delay pattern.
-                                                        </div>
-                                                    </div>
                                                 </div>
                                             )}
                                         </div>
@@ -611,7 +625,7 @@ const RootCauseAnalytics = () => {
                                 {/* SECTION 6: HOW YOU COMPARE */}
                                 <div style={styles.section}>
                                     <h2 style={{ ...styles.sectionTitle, marginBottom: '4px' }}>How You Compare to System Average</h2>
-                                    <p style={styles.sectionSubtitle}>Based on all managers this month</p>
+                                    <p style={styles.sectionSubtitle}>Based on all managers in this period</p>
                                     <div style={{ ...styles.card, overflowX: 'auto' }}>
                                         <table style={styles.table}>
                                             <thead>
@@ -710,13 +724,13 @@ const styles = {
         fontSize: '16px'
     },
     exportBtn: {
-        backgroundColor: 'var(--hover-bg)',
-        border: '1px solid var(--border-color)',
+        backgroundColor: '#3b82f6',
+        border: 'none',
         padding: '8px 16px',
         borderRadius: '6px',
         cursor: 'pointer',
         fontWeight: 'bold',
-        color: 'var(--text-main)'
+        color: 'white'
     },
     secondaryBtn: {
         backgroundColor: 'var(--hover-bg)',
@@ -730,11 +744,49 @@ const styles = {
         alignItems: 'center',
         gap: '8px'
     },
+    navSection: {
+        marginBottom: '32px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px'
+    },
+    periodTabs: {
+        display: 'flex',
+        gap: '8px',
+        backgroundColor: 'var(--hover-bg)',
+        padding: '4px',
+        borderRadius: '8px',
+        alignSelf: 'flex-start'
+    },
+    tabBtn: {
+        padding: '6px 16px',
+        borderRadius: '6px',
+        border: 'none',
+        background: 'none',
+        cursor: 'pointer',
+        fontSize: '14px',
+        color: 'var(--text-muted)',
+        fontWeight: 'bold',
+        transition: 'all 0.2s'
+    },
+    activeTab: {
+        backgroundColor: 'var(--card-bg)',
+        color: '#3b82f6',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+    },
+    periodHeader: {
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: '12px'
+    },
+    periodSub: {
+        fontSize: '14px',
+        color: 'var(--text-muted)'
+    },
     navRow: {
         display: 'flex',
         alignItems: 'center',
-        gap: '16px',
-        marginBottom: '32px'
+        gap: '16px'
     },
     navBtn: {
         background: 'none',
@@ -748,6 +800,18 @@ const styles = {
         display: 'flex',
         alignItems: 'center',
         gap: '8px'
+    },
+    monthSelect: {
+        padding: '8px 16px',
+        borderRadius: '8px',
+        border: '1px solid var(--border-color)',
+        backgroundColor: 'var(--card-bg)',
+        color: 'var(--text-main)',
+        fontSize: '18px',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        outline: 'none',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
     },
     monthLabel: {
         fontSize: '18px',
@@ -803,8 +867,11 @@ const styles = {
     },
     statSub: {
         fontSize: '12px',
-        opacity: 0.8,
-        color: 'var(--text-muted)'
+        color: 'var(--text-muted)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '4px'
     },
     card: {
         backgroundColor: 'var(--card-bg)',
@@ -828,17 +895,17 @@ const styles = {
         height: '100%',
         borderRadius: '4px'
     },
+    deltaBadge: {
+        padding: '2px 8px',
+        borderRadius: '4px',
+        fontSize: '11px',
+        fontWeight: 'bold'
+    },
     statusBadge: {
         padding: '4px 12px',
         borderRadius: '16px',
         fontSize: '14px',
         fontWeight: 'bold'
-    },
-    legendRow: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        padding: '8px 0',
-        borderBottom: '1px solid var(--border-color)'
     },
     riskBadge: {
         padding: '2px 8px',

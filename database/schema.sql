@@ -378,7 +378,10 @@ CREATE TABLE report_line_items (
     shelf_availability VARCHAR(20) NOT NULL
         CHECK (shelf_availability IN ('in_stock','low','out_of_stock')),
     is_empty_shelf BOOLEAN NOT NULL DEFAULT FALSE,
-    urgency_bonus_applied BOOLEAN NOT NULL DEFAULT FALSE
+    urgency_bonus_applied BOOLEAN NOT NULL DEFAULT FALSE,
+    empty_shelf_reason VARCHAR,
+    distributor_miss_flagged BOOLEAN DEFAULT false,
+    estimated_units_on_shelf VARCHAR
 );
 
 
