@@ -1,2 +1,0 @@
--- Seed data is included in schema.sql for Sprint 1
--- Will be separated in future sprints

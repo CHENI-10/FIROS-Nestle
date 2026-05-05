@@ -11,7 +11,7 @@ exports.getAllocationForBatch = async (req, res) => {
 
         // Fetch batch with product info (product_id used as SKU identifier)
         const batchRes = await db.query(`
-            SELECT b.batch_id, b.product_id, p.product_name, fs.frs_score
+            SELECT b.batch_id, b.product_id, p.product_name, fs.frs_score, fs.risk_band
             FROM batches b
             JOIN products p ON b.product_id = p.product_id
             LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
@@ -33,7 +33,8 @@ exports.getAllocationForBatch = async (req, res) => {
 
         const ranked = await calculateAllocationScores({
             batchProductId: batch.product_id,
-            distributors: distRes.rows
+            distributors: distRes.rows,
+            riskBand: batch.risk_band || 'high'
         });
 
         const recommendation = ranked[0] || null;
@@ -72,12 +73,12 @@ exports.getAllocationForBatch = async (req, res) => {
 exports.getBatchQueue = async (req, res) => {
     try {
         const batchesRes = await db.query(`
-            SELECT b.batch_id, b.product_id, p.product_name, fs.frs_score
+            SELECT b.batch_id, b.product_id, p.product_name, fs.frs_score, fs.risk_band
             FROM batches b
             JOIN products p ON b.product_id = p.product_id
             JOIN freshness_scores fs ON b.batch_id = fs.batch_id
             WHERE b.status = 'in_storage'
-              AND fs.risk_band = 'high'
+              AND fs.risk_band IN ('high', 'medium')
             ORDER BY fs.frs_score ASC
         `);
 
@@ -90,7 +91,8 @@ exports.getBatchQueue = async (req, res) => {
             batchSku: String(b.product_id),
             batchProductName: b.product_name,
             batchFrs: b.frs_score,
-            batchProductId: b.product_id
+            batchProductId: b.product_id,
+            riskBand: b.risk_band
         }));
 
         const results = await resolveMultiBatchAllocation(batches);

@@ -306,8 +306,8 @@ const getLiveImpact = async (req, res) => {
                 fs.frs_score
             FROM batches b
             LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
-            AND fs.calculated_at = (
-                SELECT MAX(calculated_at)
+            AND fs.last_calculated_at = (
+                SELECT MAX(last_calculated_at)
                 FROM freshness_scores
                 WHERE batch_id = b.batch_id
             )
@@ -334,8 +334,8 @@ const getLiveImpact = async (req, res) => {
                 fs.frs_score
             FROM batches b
             LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
-            AND fs.calculated_at = (
-                SELECT MAX(calculated_at)
+            AND fs.last_calculated_at = (
+                SELECT MAX(last_calculated_at)
                 FROM freshness_scores
                 WHERE batch_id = b.batch_id
             )

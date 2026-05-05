@@ -4,7 +4,7 @@ const db = require('../config/db');
  * Scores all distributors for a given batch product_id (used as SKU identifier).
  * Returns a ranked list from best to worst.
  */
-async function calculateAllocationScores({ batchProductId, distributors }) {
+async function calculateAllocationScores({ batchProductId, distributors, riskBand = 'high' }) {
     // Check if any sales rep reports exist at all (for fallback mode detection)
     const totalReportsRes = await db.query(`SELECT COUNT(*) as cnt FROM sales_rep_reports`);
     const fallbackMode = parseInt(totalReportsRes.rows[0].cnt) === 0;
@@ -13,8 +13,9 @@ async function calculateAllocationScores({ batchProductId, distributors }) {
     const productRes = await db.query(`SELECT ean13_barcode FROM products WHERE product_id = $1`, [batchProductId]);
     const targetSku = productRes.rows[0]?.ean13_barcode || String(batchProductId);
 
+    // Track if ANY distributor has an OOS for this product (needed for Medium Risk decision)
     const scored = await Promise.all(distributors.map(async (dist) => {
-        // 1. PERFORMANCE SCORE from distributor_scorecards
+        // 1. PERFORMANCE SCORE
         const perfRes = await db.query(`
             SELECT performance_score as overall_score
             FROM distributor_scorecards
@@ -22,17 +23,13 @@ async function calculateAllocationScores({ batchProductId, distributors }) {
             ORDER BY last_updated_at DESC
             LIMIT 1
         `, [dist.distributor_id]);
-        const performanceScore = perfRes.rows.length > 0
-            ? parseFloat(perfRes.rows[0].overall_score)
-            : 50;
+        const performanceScore = perfRes.rows.length > 0 ? parseFloat(perfRes.rows[0].overall_score) : 50;
 
-        // 2. SALES VELOCITY SCORE — strictly product-specific
+        // 2. SALES VELOCITY / DEMO DATA
         let velocityScore = 50;
-        let velocityDefaulted = false;
         let isOOS = false;
 
         if (!fallbackMode) {
-            // Get product category first for fallback
             const catRes = await db.query(`SELECT category FROM report_line_items WHERE sku = $1 LIMIT 1`, [targetSku]);
             const category = catRes.rows[0]?.category;
 
@@ -43,15 +40,13 @@ async function calculateAllocationScores({ batchProductId, distributors }) {
                         WHEN li.shelf_availability = 'out_of_stock' 
                         OR (li.is_empty_shelf = true AND (li.empty_shelf_reason = 'sold_out' OR li.empty_shelf_reason IS NULL))
                         THEN 1 END) as demand_surge_count,
-                    (SELECT AVG(li2.movement_score_final) 
-                     FROM sales_rep_reports r2
+                    (SELECT AVG(li2.movement_score_final) FROM sales_rep_reports r2
                      JOIN report_line_items li2 ON r2.report_id = li2.report_id
                      WHERE r2.region = $1 AND li2.category = $3
                      AND r2.submitted_at >= NOW() - INTERVAL '30 days') as cat_avg
                 FROM sales_rep_reports r
                 JOIN report_line_items li ON r.report_id = li.report_id
-                WHERE r.region = $1
-                  AND li.sku = $2
+                WHERE r.region = $1 AND li.sku = $2
                   AND r.submitted_at >= NOW() - INTERVAL '30 days'
             `, [dist.region, targetSku, category]);
 
@@ -60,69 +55,58 @@ async function calculateAllocationScores({ batchProductId, distributors }) {
             const demandSurgeCount = parseInt(velRes.rows[0]?.demand_surge_count || 0);
 
             if (demandSurgeCount > 0) {
-                velocityScore = 100; // Priority 1: High Demand Stock out for THIS specific product
+                velocityScore = 100;
                 isOOS = true;
             } else if (avg !== null) {
                 velocityScore = avg >= 2.5 ? 100 : (avg >= 1.5 ? 70 : 30);
             } else if (catAvg !== null) {
-                // FALLBACK: Category Velocity boost
                 velocityScore = catAvg >= 2.5 ? 85 : (catAvg >= 1.5 ? 60 : 25);
-            } else {
-                velocityScore = 50;
-                velocityDefaulted = true;
             }
         }
 
-        // 3. VISIT URGENCY SCORE
+        // 3. VISIT URGENCY
         let urgencyScore = 50;
         if (dist.next_visit_date) {
-            const today = new Date();
-            const visitDate = new Date(dist.next_visit_date);
-            const days = Math.round((visitDate - today) / (1000 * 60 * 60 * 24));
-            if (days <= 0) {
-                urgencyScore = 100; // overdue visit
-            } else {
-                urgencyScore = Math.max(0, Math.min(100, 100 - days));
-            }
+            const days = Math.round((new Date(dist.next_visit_date) - new Date()) / (1000 * 60 * 60 * 24));
+            urgencyScore = days <= 0 ? 100 : Math.max(0, Math.min(100, 100 - days));
         }
 
-        // 4. ALLOCATION SCORE
+        return {
+            distId: dist.distributor_id,
+            distName: dist.distributor_name,
+            region: dist.region,
+            scores: { performanceScore, velocityScore, urgencyScore, isOOS }
+        };
+    }));
+
+    // Check if there's any OOS for Medium Risk batches
+    const anyOOS = scored.some(s => s.scores.isOOS);
+
+    const finalized = scored.map(s => {
         let allocationScore;
-        if (fallbackMode) {
-            allocationScore = (performanceScore * 0.60) + (urgencyScore * 0.40);
+        const { performanceScore, velocityScore, urgencyScore, isOOS } = s.scores;
+
+        if (riskBand === 'medium' && !anyOOS) {
+            // STANDARD MODE: No empty shelf? Just follow visit schedule (100% Urgency)
+            allocationScore = urgencyScore;
         } else {
+            // EMERGENCY MODE (High Risk OR Medium with OOS): Use Smart Score
             allocationScore = (performanceScore * 0.30) + (velocityScore * 0.50) + (urgencyScore * 0.20);
         }
 
         return {
-            distributorId: dist.distributor_id,
-            distributorName: dist.distributor_name,
-            distributorRegion: dist.region,
+            distributorId: s.distId,
+            distributorName: s.distName,
+            distributorRegion: s.region,
             allocationScore: parseFloat(allocationScore.toFixed(2)),
-            breakdown: {
-                performanceScore: parseFloat(performanceScore.toFixed(1)),
-                velocityScore: parseFloat(velocityScore.toFixed(1)),
-                urgencyScore: parseFloat(urgencyScore.toFixed(1)),
-                velocityDefaulted,
-                isOOS,
-                fallbackMode
-            },
+            breakdown: { ...s.scores, fallbackMode, anyOOS },
             isRecommended: false
         };
-    }));
-
-    // Sort: allocationScore DESC → performanceScore DESC → distributorId ASC (consistent tiebreak)
-    scored.sort((a, b) => {
-        if (b.allocationScore !== a.allocationScore) return b.allocationScore - a.allocationScore;
-        if (b.breakdown.performanceScore !== a.breakdown.performanceScore) return b.breakdown.performanceScore - a.breakdown.performanceScore;
-        return a.distributorId - b.distributorId; // stable final tiebreak
     });
 
-    if (scored.length > 0) {
-        scored[0].isRecommended = true;
-    }
-
-    return scored;
+    finalized.sort((a, b) => b.allocationScore - a.allocationScore || b.breakdown.performanceScore - a.breakdown.performanceScore);
+    if (finalized.length > 0) finalized[0].isRecommended = true;
+    return finalized;
 }
 
 /**
@@ -149,7 +133,8 @@ async function resolveMultiBatchAllocation(batches) {
     for (const batch of sorted) {
         const ranked = await calculateAllocationScores({
             batchProductId: batch.batchProductId,
-            distributors
+            distributors,
+            riskBand: batch.riskBand || 'high'
         });
 
         // Pick highest-scored distributor not yet allocated

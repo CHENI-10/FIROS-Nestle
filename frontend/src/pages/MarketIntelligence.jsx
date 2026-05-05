@@ -29,12 +29,30 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
   const [selectedSkus, setSelectedSkus] = useState([]);
   const [allDistributors, setAllDistributors] = useState([]);
 
+  const [intelligencePulse, setIntelligencePulse] = useState(null);
+
   useEffect(() => {
-    if (token) {
+    if (token && verifiedRep) {
       fetchProducts();
       fetchDistributors();
+      fetchIntelligencePulse();
     }
-  }, [token]);
+  }, [token, verifiedRep]);
+
+  const fetchIntelligencePulse = async () => {
+    if (!verifiedRep) return;
+    try {
+      const response = await fetch(`/api/rep-intelligence?region=${verifiedRep.region}&repWorkId=${verifiedRep.repWorkId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setIntelligencePulse(data);
+      }
+    } catch (e) {
+      console.error('Error fetching intelligence pulse:', e);
+    }
+  };
 
   useEffect(() => {
     if (verifiedRep && verifiedRep.region) {
@@ -156,6 +174,7 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
           setSelectedSkus([]);
           setSuccess(false);
           fetchProducts();
+          fetchIntelligencePulse();
         }, 3000);
       } else {
         alert('Failed to submit audit');
@@ -203,8 +222,64 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
     return { flex: 1, padding: '10px 4px', fontSize: '13px', fontWeight: isActive ? 'bold' : 'normal', borderRadius: '20px', backgroundColor: bg, color, border, cursor: 'pointer', transition: 'all 0.2s ease', textAlign: 'center' };
   };
 
+  const renderIntelligencePulse = () => {
+    if (!intelligencePulse) return null;
+
+    return (
+      <div style={{ ...cardStyle, background: 'linear-gradient(135deg, #FFF8F0 0%, #FFF 100%)', border: '1px solid #E8DDD0', marginBottom: '24px', boxShadow: '0 8px 24px rgba(139, 94, 60, 0.1)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+          <div style={{ fontSize: '24px', marginRight: '12px', animation: 'pulse 2s infinite' }}>✨</div>
+          <h4 style={{ margin: 0, color: '#8B5E3C', fontSize: '18px', fontWeight: '900' }}>{intelligencePulse.greeting}</h4>
+        </div>
+
+        {/* FOCUS ITEMS */}
+        {intelligencePulse.focusItems?.length > 0 && (
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#8B5E3C', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Today's Focus</div>
+            {intelligencePulse.focusItems.map((item, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px', backgroundColor: '#FFF', padding: '10px', borderRadius: '8px', border: '1px solid #F3E5D8', fontSize: '13px', color: '#5C3D2E', fontWeight: '500' }}>
+                <span style={{ color: '#4CAF50' }}>●</span> {item}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* WAREHOUSE SYNERGY */}
+        {intelligencePulse.warehouseSynergy?.length > 0 && (
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#8B5E3C', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Warehouse-to-Field Sync</div>
+            {intelligencePulse.warehouseSynergy.map((alert, idx) => (
+              <div key={idx} style={{ fontSize: '12px', padding: '8px 12px', backgroundColor: alert.status?.includes('CRITICAL') ? '#FFF1F0' : '#F0F9FF', borderRadius: '8px', border: alert.status?.includes('CRITICAL') ? '1px solid #FFA39E' : '1px solid #BAE7FF', color: alert.status?.includes('CRITICAL') ? '#CF1322' : '#0050B3', marginBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                <span><strong>{alert.product}</strong> arriving at {alert.distributor?.split(' ')[0]}</span>
+                <span style={{ fontWeight: '900' }}>{alert.urgency}%</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* REGIONAL TRENDS */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {intelligencePulse.regionalTrends?.booming?.length > 0 && (
+            <div style={{ flex: 1, backgroundColor: '#F6FFED', border: '1px solid #B7EB8F', padding: '8px', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '10px', color: '#389E0D', fontWeight: 'bold' }}>🔥 BOOMING</div>
+              <div style={{ fontSize: '12px', color: '#237804', fontWeight: '900' }}>{intelligencePulse.regionalTrends.booming[0]}</div>
+            </div>
+          )}
+          {intelligencePulse.regionalTrends?.dipping?.length > 0 && (
+            <div style={{ flex: 1, backgroundColor: '#FFF7E6', border: '1px solid #FFE7BA', padding: '8px', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '10px', color: '#D46B08', fontWeight: 'bold' }}>📉 DIPPING</div>
+              <div style={{ fontSize: '12px', color: '#AD4E00', fontWeight: '900' }}>{intelligencePulse.regionalTrends.dipping[0]}</div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderStep1 = () => (
     <div style={contentStyle}>
+      {renderIntelligencePulse()}
+
       <h3 style={{ color: '#8B5E3C', marginTop: 0, fontSize: '22px' }}>Retailer Selection</h3>
       <p style={{ fontSize: '13px', color: '#666', marginBottom: '24px' }}>Select the outlet to begin your shelf check audit.</p>
 

@@ -122,44 +122,87 @@ const RepRegionalIntelligence = ({ token, verifiedRep, onProceed, onLogout }) =>
             </div>
           )}
 
-          {/* ── SLOW MOVERS ───────────────────────────────────────────────── */}
-          {!loading && !error && data?.slowMovers?.length > 0 && (
+          {/* ── TODAY'S PULSE (PERSONALIZED FOCUS) ─────────────────────────── */}
+          {!loading && !error && data?.focusItems?.length > 0 && (
             <div className="intel-section" style={s.section}>
-              <div style={s.sectionTitle}>🐢 Slow Movers in {repRegion}</div>
-              <div style={s.sectionSub}>Products moving slowly based on recent field reports from your region</div>
-
-              {data.slowMovers.map(item => (
-                <div key={item.sku} style={s.slowCard}>
-                  <div style={{ fontSize: '14px', fontWeight: '700', color: '#92400e', marginBottom: '4px' }}>
-                    {item.productName}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#b45309', marginBottom: '6px' }}>
-                    🐢 Slow · Avg score: {Number(item.avgScore).toFixed(1)} · Reported {item.timesReported} time(s) in the last 30 days
-                  </div>
-                  <div style={s.contextualMsgWarm}>
-                    Pay attention to this product on your next visit and update the movement speed if it has changed.
+              <div style={s.sectionTitle}>✨ Today's Strategic Focus</div>
+              <div style={s.sectionSub}>Actionable priorities based on your history and warehouse needs</div>
+              
+              {data.focusItems.map((item, idx) => (
+                <div key={idx} style={s.focusCard}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div style={{ backgroundColor: '#22c55e', width: '8px', height: '8px', borderRadius: '50%' }} />
+                    <div style={{ fontSize: '14px', color: '#1e293b', fontWeight: '600' }}>{item}</div>
                   </div>
                 </div>
               ))}
             </div>
           )}
 
-          {/* ── EMPTY SHELF ALERTS ────────────────────────────────────────── */}
-          {!loading && !error && data?.emptyShelfAlerts?.length > 0 && (
+          {/* ── WAREHOUSE SYNERGY ─────────────────────────────────────────── */}
+          {!loading && !error && data?.warehouseSynergy?.length > 0 && (
             <div className="intel-section" style={s.section}>
-              <div style={s.sectionTitle}>🚨 Empty Shelf Reports — Last 7 Days</div>
-              <div style={s.sectionSub}>Products reported empty in {repRegion} recently</div>
+              <div style={s.sectionTitle}>🚛 Warehouse-to-Field Sync</div>
+              <div style={s.sectionSub}>High-priority stock arriving at your distributors now</div>
 
-              {data.emptyShelfAlerts.map(item => (
-                <div key={item.sku} style={s.emptyCard}>
-                  <div style={{ fontSize: '14px', fontWeight: '700', color: '#991b1b', marginBottom: '3px' }}>
-                    {item.productName}
+              {data.warehouseSynergy.map((alert, idx) => (
+                <div key={idx} style={{
+                  ...s.alertCard,
+                  backgroundColor: alert.status?.includes('CRITICAL') ? '#fff1f0' : '#f0f9ff',
+                  borderColor: alert.status?.includes('CRITICAL') ? '#ffa39e' : '#bae7ff'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: '700', color: alert.status?.includes('CRITICAL') ? '#cf1322' : '#0050b3' }}>
+                        {alert.product}
+                      </div>
+                      <div style={{ fontSize: '12px', color: alert.status?.includes('CRITICAL') ? '#f5222d' : '#096dd9' }}>
+                        Arriving at {alert.distributor?.split(' ')[0]}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '16px', fontWeight: '900', color: alert.status?.includes('CRITICAL') ? '#cf1322' : '#0050b3' }}>
+                      {alert.urgency}%
+                    </div>
                   </div>
-                  <div style={{ fontSize: '12px', color: '#b91c1c' }}>
-                    Reported empty {item.emptyCount} time(s)
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── REGIONAL TRENDS ───────────────────────────────────────────── */}
+          {!loading && !error && data?.regionalTrends && (
+            <div className="intel-section" style={s.section}>
+              <div style={s.sectionTitle}>📈 Regional Market Trends</div>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                {data.regionalTrends.booming?.length > 0 && (
+                  <div style={{ ...s.trendCard, backgroundColor: '#f6ffed', borderColor: '#b7eb8f' }}>
+                    <div style={{ fontSize: '10px', color: '#389e0d', fontWeight: 'bold' }}>🔥 BOOMING</div>
+                    <div style={{ fontSize: '13px', color: '#237804', fontWeight: '800' }}>{data.regionalTrends.booming[0]}</div>
                   </div>
-                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>
-                    Last: {timeAgo(item.lastReported)}
+                )}
+                {data.regionalTrends.dipping?.length > 0 && (
+                  <div style={{ ...s.trendCard, backgroundColor: '#fff7e6', borderColor: '#ffe7ba' }}>
+                    <div style={{ fontSize: '10px', color: '#d46b08', fontWeight: 'bold' }}>📉 DIPPING</div>
+                    <div style={{ fontSize: '13px', color: '#ad4e00', fontWeight: '800' }}>{data.regionalTrends.dipping[0]}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── PERSONAL REMINDERS ────────────────────────────────────────── */}
+          {!loading && !error && data?.personalReminders?.length > 0 && (
+            <div className="intel-section" style={s.section}>
+              <div style={s.sectionTitle}>🕒 Audit Flashbacks</div>
+              <div style={s.sectionSub}>Follow-up on stockouts you reported recently</div>
+
+              {data.personalReminders.map((rem, idx) => (
+                <div key={idx} style={s.remCard}>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>
+                    {rem.product} was OOS at <span style={{ color: '#1a3a5c' }}>{rem.retailer}</span>
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                    Reported {timeAgo(rem.date)}
                   </div>
                 </div>
               ))}
@@ -354,6 +397,28 @@ const s = {
   skeletonBase: {
     backgroundColor: '#e2e8f0',
     animation: 'pulse 1.5s ease-in-out infinite'
+  },
+  focusCard: {
+    backgroundColor: '#fff',
+    borderRadius: '12px',
+    padding: '14px 16px',
+    marginBottom: '10px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
+    border: '1px solid #f1f5f9'
+  },
+  trendCard: {
+    flex: 1,
+    padding: '12px',
+    borderRadius: '10px',
+    border: '1px solid #eee',
+    textAlign: 'center'
+  },
+  remCard: {
+    backgroundColor: '#fff',
+    borderRadius: '8px',
+    padding: '12px',
+    marginBottom: '8px',
+    border: '1px solid #e2e8f0'
   },
   ctaWrap: {
     position: 'sticky',
