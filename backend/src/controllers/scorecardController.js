@@ -1,37 +1,15 @@
 const db = require('../config/db');
+const { calculateLiveMetrics } = require('../utils/scoreCalculator');
 
 const calcMetrics = (row) => {
-    const td = parseInt(row.total_dispatches) || 0;
-    const tr = parseInt(row.total_returns) || 0;
-    const rejectedReturns = parseInt(row.rejected_returns) || 0;
-    const avgFrs = parseFloat(row.avg_frs_at_dispatch) || 0;
-    const avgDelay = parseFloat(row.avg_collection_delay_days) || 0;
-
-    const returnRate = td > 0 ? (tr / td) * 100 : 0;
-    const returnRejectionRate = tr > 0 ? (rejectedReturns / tr) * 100 : 0;
-
-    // New weighted formula (100 pts total)
-    const frs_score = (avgFrs / 100) * 40;
-    const return_penalty = Math.min(returnRate, 100) / 100 * 25;
-    const rejection_penalty = Math.min(returnRejectionRate, 100) / 100 * 15;
-    const delay_penalty = Math.min(avgDelay / 14, 1) * 20;
-
-    const missCount = parseInt(row.miss_count) || 0;
-    const missPenalty = Math.min(missCount * 5, 20); // Penalty of 5 per miss, max 20
-
-    let overallScore = frs_score + (25 - return_penalty) + (15 - rejection_penalty) + (20 - delay_penalty) - missPenalty;
-    overallScore = Math.max(0, Math.min(100, overallScore));
-
-    return {
-        totalDispatches: td,
-        totalReturns: tr,
-        missCount,
-        avgFrsAtDispatch: avgFrs.toFixed(1),
-        returnRate: returnRate.toFixed(1),
-        returnRejectionRate: returnRejectionRate.toFixed(1),
-        avgCollectionDelayDays: avgDelay.toFixed(1),
-        overallScore: overallScore.toFixed(1)
-    };
+    return calculateLiveMetrics({
+        totalDispatches: parseInt(row.total_dispatches) || 0,
+        avgFrsAtDispatch: parseFloat(row.avg_frs_at_dispatch) || 0,
+        avgCollectionDelayDays: parseFloat(row.avg_collection_delay_days) || 0,
+        totalReturns: parseInt(row.total_returns) || 0,
+        rejectedReturns: parseInt(row.rejected_returns) || 0,
+        missCount: parseInt(row.miss_count) || 0
+    });
 };
 
 exports.getAllScorecards = async (req, res) => {
@@ -161,6 +139,7 @@ exports.getScorecardDetail = async (req, res) => {
         `, [distId]);
 
         const dispRow = { ...dispRes.rows[0], ...retRes.rows[0], ...missRes.rows[0] };
+        console.log(`[SCORECARD-DEBUG] Calculating for ${dist.distributor_name}`);
         const metrics = calcMetrics(dispRow);
 
         const hist = histRes.rows.length > 0 ? parseFloat(histRes.rows[0].historical_score) : null;

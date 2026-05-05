@@ -5,6 +5,8 @@
  * Return Rate, Collection Delay, and FRS at Dispatch.
  */
 
+const { calculateLiveMetrics } = require('./scoreCalculator');
+
 const buildRelationshipProfile = ({
     distributorId,
     distributorName,
@@ -15,7 +17,7 @@ const buildRelationshipProfile = ({
     systemAvgReturnRate, // for comparison
     systemAvgCollectionDelay,
     systemAvgFrsAtDispatch,
-    overallScore,         // from distributor_scorecards
+    overallScore: storedScore,         // from distributor_scorecards
     missCount             // from sales rep audits
 }) => {
     // 1. BASIC METRICS
@@ -37,10 +39,23 @@ const buildRelationshipProfile = ({
     const collectedRecords = managerDispatches.filter(d => d.collected_at !== null);
     const avgCollectionDelay = collectedRecords.length > 0
         ? parseFloat((collectedRecords.reduce((sum, d) => sum + parseFloat(d.collection_delay_days || 0), 0) / collectedRecords.length).toFixed(1))
-        : null;
+        : 0;
 
     // FRS at Dispatch
     const avgFrsAtDispatch = parseFloat((managerDispatches.reduce((sum, d) => sum + parseInt(d.frs_at_dispatch || 0), 0) / totalDispatches).toFixed(1));
+
+    // 1.1 LIVE SCORE CALCULATION (Unified Sync)
+    const rejectedReturnsCount = managerReturns.filter(r => r.decision === 'rejected').length;
+    const liveMetrics = calculateLiveMetrics({
+        totalDispatches,
+        avgFrsAtDispatch,
+        avgCollectionDelayDays: avgCollectionDelay,
+        totalReturns,
+        rejectedReturns: rejectedReturnsCount,
+        missCount
+    });
+
+    const liveScore = parseFloat(liveMetrics.overallScore);
 
     // 2. HEALTH SIGNALS
     
@@ -87,25 +102,29 @@ const buildRelationshipProfile = ({
     }
 
     // 3. OVERALL RELATIONSHIP HEALTH
-    const poorWarningCount = [returnSignal, delaySignal, frsSignal, missSignal].filter(s => s.signal === 'poor' || s.signal === 'warning').length;
-    const poorCount = [returnSignal, delaySignal, frsSignal, missSignal].filter(s => s.signal === 'poor').length;
-
+    // 3. OVERALL RELATIONSHIP HEALTH (Traffic Light System based on Score)
+    const overallScore = liveScore;
     let health = 'Excellent';
-    let healthColor = '#22c55e';
+    let healthColor = '#22c55e'; // Green
     let badge = '⭐ Top Partner';
 
-    if (poorCount >= 2 || missCount >= 3) {
-        health = 'Poor';
-        healthColor = '#ef4444';
-        badge = '🚨 Requires Review';
-    } else if (poorCount === 1 || poorWarningCount >= 2 || missCount > 0) {
-        health = 'Fair';
-        healthColor = '#f59e0b';
-        badge = '⚠ Needs Attention';
-    } else if (poorWarningCount === 1) {
-        health = 'Good';
+    if (overallScore >= 80) {
+        health = 'Excellent';
         healthColor = '#22c55e';
-        badge = '✅ Performing Well';
+        badge = '⭐ Top Partner';
+    } else if (overallScore >= 60) {
+        health = 'Fair';
+        healthColor = '#f59e0b'; // Gold/Amber
+        badge = '📊 Stable Partner';
+    } else {
+        health = 'Poor';
+        healthColor = '#ef4444'; // Red
+        badge = '🚨 Requires Review';
+    }
+
+    // Override badge if there are critical field misses
+    if (missCount >= 3 && overallScore >= 60) {
+        badge = '⚠️ Field Audit Alert';
     }
 
     // 4. PLAIN ENGLISH SUMMARY

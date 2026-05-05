@@ -35,6 +35,11 @@ const DistributorScorecardDetail = () => {
   if (!data) return <div style={{ padding: '60px', textAlign: 'center', fontFamily: 'sans-serif', color: '#64748b' }}>Distributor not found.</div>;
 
   const { distributorName, region, metrics, historicalTrend, recentDispatches, recentReturns, regionMovementSpeeds } = data;
+  
+  // Safe fallbacks for counts to prevent NaN
+  const safeTotalDispatches = parseInt(metrics.totalDispatches) || 0;
+  const safeTotalReturns = parseInt(metrics.totalReturns) || 0;
+  const successfullySent = safeTotalDispatches - safeTotalReturns;
 
   const getColor = (value, type) => {
     const v = parseFloat(value);
@@ -150,12 +155,12 @@ const DistributorScorecardDetail = () => {
         {/* IMPACT SUMMARY */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
           <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Batches Cleared</div>
-            <div style={{ fontSize: '28px', fontWeight: '900', color: '#1e293b' }}>{metrics.totalDispatches - metrics.totalReturns}</div>
+            <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Batches Successfully Sent</div>
+            <div style={{ fontSize: '28px', fontWeight: '900', color: '#1e293b' }}>{successfullySent}</div>
           </div>
           <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
             <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Batches Returned</div>
-            <div style={{ fontSize: '28px', fontWeight: '900', color: '#ef4444' }}>{metrics.totalReturns}</div>
+            <div style={{ fontSize: '28px', fontWeight: '900', color: '#ef4444' }}>{safeTotalReturns}</div>
           </div>
         </div>
 

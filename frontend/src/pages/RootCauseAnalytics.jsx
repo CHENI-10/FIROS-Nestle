@@ -136,9 +136,9 @@ const RootCauseAnalytics = () => {
 
     const getAtRiskCount = () => {
         if (!liveImpact) return 0;
-        return (liveImpact.atRiskInZones?.length || 0) + 
-               (liveImpact.approachingStorageLimit?.length || 0) + 
-               (liveImpact.collectionDelays?.length || 0);
+        return (liveImpact.atRiskInZones?.length || 0) +
+            (liveImpact.approachingStorageLimit?.length || 0) +
+            (liveImpact.collectionDelays?.length || 0);
     };
 
     const scrollToLiveImpact = () => {
@@ -155,12 +155,12 @@ const RootCauseAnalytics = () => {
         const icon = isPositive ? '↑' : '↓';
         const absVal = Math.abs(val);
         const text = isPositive ? `${absVal} more` : `${absVal} fewer`;
-        
+
         return (
-            <span style={{ 
-                ...styles.deltaBadge, 
-                backgroundColor: isPositive ? '#fee2e2' : '#dcfce7', 
-                color 
+            <span style={{
+                ...styles.deltaBadge,
+                backgroundColor: isPositive ? '#fee2e2' : '#dcfce7',
+                color
             }}>
                 {icon} {text} {isFailures ? 'failures' : ''}
             </span>
@@ -177,7 +177,7 @@ const RootCauseAnalytics = () => {
                         <p style={styles.subtitle}>{data.managerName}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                        <button 
+                        <button
                             onClick={() => navigate('/dashboard')}
                             style={styles.secondaryBtn}
                         >
@@ -190,14 +190,14 @@ const RootCauseAnalytics = () => {
                 {/* Navigation & Period Selection */}
                 <div style={styles.navSection}>
                     <div style={styles.periodTabs}>
-                        <button 
+                        <button
                             style={{ ...styles.tabBtn, ...(selectedPeriod === null ? styles.activeTab : {}) }}
                             onClick={() => setSelectedPeriod(null)}
                         >
                             Monthly View
                         </button>
                         {[30, 60, 90].map(p => (
-                            <button 
+                            <button
                                 key={p}
                                 style={{ ...styles.tabBtn, ...(selectedPeriod === p ? styles.activeTab : {}) }}
                                 onClick={() => setSelectedPeriod(p)}
@@ -210,7 +210,7 @@ const RootCauseAnalytics = () => {
                     {!selectedPeriod && (
                         <div style={styles.navRow}>
                             <div style={styles.monthBadgeContainer}>
-                                <select 
+                                <select
                                     value={`${data.year}-${String(data.month).padStart(2, '0')}`}
                                     onChange={(e) => {
                                         setCurrentMonthStr(e.target.value);
@@ -227,7 +227,7 @@ const RootCauseAnalytics = () => {
                             </div>
                         </div>
                     )}
-                    
+
                     {selectedPeriod && (
                         <div style={styles.periodHeader}>
                             <span style={styles.monthLabel}>{data.periodLabel}</span>
@@ -265,10 +265,10 @@ const RootCauseAnalytics = () => {
                                         {getTrendBadge(data.summary.comparison?.failuresDelta, true)}
                                     </div>
                                 </div>
-                                <div 
-                                    style={{ 
-                                        ...styles.statCard, 
-                                        backgroundColor: 'var(--card-bg)', 
+                                <div
+                                    style={{
+                                        ...styles.statCard,
+                                        backgroundColor: 'var(--card-bg)',
                                         borderTop: `4px solid ${getAtRiskCount() > 0 ? '#f59e0b' : '#22c55e'}`,
                                         cursor: 'pointer'
                                     }}
@@ -297,7 +297,11 @@ const RootCauseAnalytics = () => {
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                                             <strong style={{ color: 'var(--text-muted)' }}>System average:</strong>
-                                            <span style={{ color: 'var(--text-muted)' }}>{data.summary.systemAvgFailureRate}%</span>
+                                            <span style={{ color: 'var(--text-muted)' }}>
+                                                {data.summary.systemAvgFailureRate === 0 || data.summary.systemAvgFailureRate === null
+                                                    ? "Not enough data"
+                                                    : `${data.summary.systemAvgFailureRate}%`}
+                                            </span>
                                         </div>
                                         <div style={styles.barBg}>
                                             <div style={{ ...styles.barFill, width: `${Math.min(data.summary.systemAvgFailureRate, 100)}%`, backgroundColor: '#cbd5e1' }} />
@@ -307,14 +311,14 @@ const RootCauseAnalytics = () => {
                                 <div style={{ marginTop: '16px', color: 'var(--text-muted)', fontSize: '14px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
                                     {data.summary.failureRate < data.summary.systemAvgFailureRate ? (
                                         <span>
-                                            ✅ You're performing better than average. 
+                                            ✅ You're performing better than average.
                                             {data.summary.comparison?.failuresDelta < 0 && " Plus, failures are decreasing vs previous period!"}
                                             {" Your main area to watch is "}
-                                            <strong>{data.rootCauses.sort((a,b) => b.count - a.count)[0]?.category}</strong>.
+                                            <strong>{data.rootCauses.sort((a, b) => b.count - a.count)[0]?.category}</strong>.
                                         </span>
                                     ) : (
                                         <span>
-                                            Your failure rate is above average. Focus on <strong>{data.rootCauses.sort((a,b) => b.count - a.count)[0]?.category}</strong> — it accounts for {data.rootCauses.sort((a,b) => b.count - a.count)[0]?.percentage}% of your failures.
+                                            Your failure rate is above average. Focus on <strong>{data.rootCauses.sort((a, b) => b.count - a.count)[0]?.category}</strong> — it accounts for {data.rootCauses.sort((a, b) => b.count - a.count)[0]?.percentage}% of your failures.
                                         </span>
                                     )}
                                 </div>
@@ -332,17 +336,18 @@ const RootCauseAnalytics = () => {
                             ) : (
                                 <div style={styles.card}>
                                     <div style={{ display: 'grid', gap: '20px' }}>
-                                        {['Temperature-Driven', 'Long Storage', 'Distributor Delay', 'Unclassified'].map(catName => {
+                                        {['Temperature-Driven', 'Long Storage', 'Distributor Delay', 'Market Saturation', 'Unclassified'].map(catName => {
                                             const rc = data.rootCauses.find(c => c.category === catName) || { category: catName, count: 0, percentage: 0, color: '#94a3b8' };
                                             const colors = {
                                                 'Temperature-Driven': '#ef4444',
                                                 'Long Storage': '#f59e0b',
                                                 'Distributor Delay': '#8b5cf6',
+                                                'Market Saturation': '#8b5cf6',
                                                 'Unclassified': '#94a3b8'
                                             };
                                             const barColor = colors[catName] || '#94a3b8';
                                             const hasBatches = rc.count > 0;
-                                            
+
                                             // Get category delta
                                             let delta = 0;
                                             if (catName === 'Temperature-Driven') delta = data.summary.comparison?.tempFailuresDelta;
@@ -360,10 +365,10 @@ const RootCauseAnalytics = () => {
                                                         </span>
                                                     </div>
                                                     <div style={styles.barBg}>
-                                                        <div style={{ 
-                                                            ...styles.barFill, 
-                                                            width: `${rc.percentage}%`, 
-                                                            backgroundColor: hasBatches ? barColor : '#e2e8f0' 
+                                                        <div style={{
+                                                            ...styles.barFill,
+                                                            width: `${rc.percentage}%`,
+                                                            backgroundColor: hasBatches ? barColor : '#e2e8f0'
                                                         }} />
                                                     </div>
                                                 </div>
@@ -407,12 +412,9 @@ const RootCauseAnalytics = () => {
                                                 <div style={{ marginBottom: '16px' }}>
                                                     <div style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '8px' }}>Products affected:</div>
                                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                                        {rc.affectedSkus.map(sku => {
-                                                            const count = rc.batches.filter(b => b.sku === sku).length;
-                                                            return (
-                                                                <span key={sku} style={styles.pillBadge}>{sku} ×{count}</span>
-                                                            );
-                                                        })}
+                                                        {rc.affectedSkus.map(skuObj => (
+                                                            <span key={skuObj.sku} style={styles.pillBadge}>{skuObj.productName} ×{skuObj.count}</span>
+                                                        ))}
                                                     </div>
                                                 </div>
                                             )}
@@ -426,8 +428,8 @@ const RootCauseAnalytics = () => {
                                                         const count = rc.batches.filter(b => parseInt(b.dispatch_day_of_week) === dow).length;
                                                         const isAffected = count > 0;
                                                         return (
-                                                            <div 
-                                                                key={day} 
+                                                            <div
+                                                                key={day}
                                                                 style={{
                                                                     padding: '4px 8px',
                                                                     borderRadius: '4px',
@@ -540,7 +542,7 @@ const RootCauseAnalytics = () => {
                                 <div style={styles.section} id="live-impact-section">
                                     <h2 style={{ ...styles.sectionTitle, marginBottom: '4px' }}>What This Means For Your Warehouse Right Now</h2>
                                     <p style={styles.sectionSubtitle}>Based on patterns detected, these current batches may be at risk</p>
-                                    
+
                                     {!liveImpact || (liveImpact.atRiskInZones.length === 0 && liveImpact.approachingStorageLimit.length === 0 && liveImpact.collectionDelays.length === 0) ? (
                                         <div style={{ ...styles.card, backgroundColor: '#dcfce7', borderColor: '#22c55e', display: 'flex', alignItems: 'center', gap: '12px' }}>
                                             <span style={{ fontSize: '24px' }}>✅</span>
@@ -605,7 +607,7 @@ const RootCauseAnalytics = () => {
                                                             <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Batches approaching 120-day storage limit.</div>
                                                         </div>
                                                     </div>
-                                                    
+
                                                     <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', margin: '12px 0 8px 0' }}>APPROACHING LIMIT NOW:</div>
                                                     {liveImpact.approachingStorageLimit.slice(0, 3).map(b => (
                                                         <div key={b.batch_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
@@ -621,47 +623,6 @@ const RootCauseAnalytics = () => {
                                         </div>
                                     )}
                                 </div>
-
-                                {/* SECTION 6: HOW YOU COMPARE */}
-                                <div style={styles.section}>
-                                    <h2 style={{ ...styles.sectionTitle, marginBottom: '4px' }}>How You Compare to System Average</h2>
-                                    <p style={styles.sectionSubtitle}>Based on all managers in this period</p>
-                                    <div style={{ ...styles.card, overflowX: 'auto' }}>
-                                        <table style={styles.table}>
-                                            <thead>
-                                                <tr>
-                                                    <th style={styles.th}>Metric</th>
-                                                    <th style={styles.th}>You</th>
-                                                    <th style={styles.th}>System Avg</th>
-                                                    <th style={styles.th}>Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <ComparisonRow
-                                                    label="Failure Rate"
-                                                    you={data.comparison.yourFailureRate}
-                                                    avg={data.comparison.systemAvgFailureRate}
-                                                    isPercentage={true}
-                                                />
-                                                <ComparisonRow
-                                                    label="Temp Failures"
-                                                    you={data.comparison.yourTempFailures}
-                                                    avg={data.comparison.systemAvgTempFailures}
-                                                />
-                                                <ComparisonRow
-                                                    label="Long Storage"
-                                                    you={data.comparison.yourLongStorage}
-                                                    avg={data.comparison.systemAvgLongStorage}
-                                                />
-                                                <ComparisonRow
-                                                    label="Distributor Delay"
-                                                    you={data.comparison.yourDistributorDelay}
-                                                    avg={data.comparison.systemAvgDistributorDelay}
-                                                />
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
                             </>
                         )}
                     </>
@@ -671,33 +632,7 @@ const RootCauseAnalytics = () => {
     );
 };
 
-const ComparisonRow = ({ label, you, avg, isPercentage = false }) => {
-    let status = '→';
-    let color = '#475569';
 
-    // Threshold calculation
-    const isWorse = you > (avg + (isPercentage ? 5 : 0.5));
-    const isBetter = you < (avg - (isPercentage ? 5 : 0.5));
-
-    if (isWorse) {
-        status = '⚠';
-        color = '#ef4444';
-    } else if (isBetter) {
-        status = '✅';
-        color = '#22c55e';
-    }
-
-    const formatVal = (v) => isPercentage ? `${v}%` : v;
-
-    return (
-        <tr>
-            <td style={{ ...styles.td, color: 'var(--text-main)' }}><strong>{label}</strong></td>
-            <td style={{ ...styles.td, color, fontWeight: 'bold' }}>{formatVal(you)}</td>
-            <td style={{ ...styles.td, color: 'var(--text-muted)' }}>{formatVal(avg)}</td>
-            <td style={styles.td}>{status}</td>
-        </tr>
-    );
-};
 
 const styles = {
     container: {

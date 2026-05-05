@@ -118,7 +118,7 @@ const MyDistributors = () => {
                 </style>
                 <div style={styles.quickNav}>
                     <div style={styles.quickNavLabel}>Quick Jump:</div>
-                    <div style={styles.quickNavList} className="hide-scrollbar">
+                    <div id="quickNavList" style={styles.quickNavList}>
                         {data.distributors.map(dist => (
                             <button 
                                 key={`nav-${dist.distributorId}`}
@@ -126,12 +126,9 @@ const MyDistributors = () => {
                                     const element = document.getElementById(`dist-card-${dist.distributorId}`);
                                     if (element) {
                                         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                        // Add a temporary highlight effect
-                                        element.style.outline = '3px solid var(--nestle-gold-main)';
-                                        element.style.outlineOffset = '4px';
+                                        element.style.boxShadow = `0 0 0 4px ${dist.healthColor}40`;
                                         setTimeout(() => {
-                                            element.style.outline = 'none';
-                                            element.style.outlineOffset = '0';
+                                            element.style.boxShadow = styles.distCard.boxShadow;
                                         }, 2000);
                                     }
                                 }}
@@ -144,7 +141,17 @@ const MyDistributors = () => {
                             </button>
                         ))}
                     </div>
-                    <div style={styles.navArrow}>→</div>
+                    <button 
+                        style={styles.navArrow}
+                        onClick={() => {
+                            const list = document.getElementById('quickNavList');
+                            if (list) {
+                                list.scrollBy({ left: 200, behavior: 'smooth' });
+                            }
+                        }}
+                    >
+                        →
+                    </button>
                 </div>
 
                 {/* Contract Insights Section */}
@@ -166,16 +173,17 @@ const MyDistributors = () => {
                                 <div style={styles.lossDivider}></div>
                                 <div style={{ display: 'flex', gap: '20px' }}>
                                     <div style={styles.lossStat}>
-                                        <div style={{ ...styles.lossValue, fontSize: '20px', color: '#fca5a5' }}>
+                                        <div style={{ ...styles.batchValue, color: '#ef4444' }}>
                                             {data.totalReturnsCount || 0} <span style={{ fontSize: '14px', opacity: 0.8 }}>Batches</span>
                                         </div>
-                                        <div style={styles.lossLabel}>{data.totalReturnsUnits || 0} Units Ret</div>
+                                        <div style={styles.lossLabel}>{data.totalReturnsUnits || 0} Units Returned</div>
                                     </div>
+                                    <div style={styles.lossDivider}></div>
                                     <div style={styles.lossStat}>
-                                        <div style={{ ...styles.lossValue, fontSize: '20px', color: '#fdba74' }}>
+                                        <div style={{ ...styles.batchValue, color: '#A67956' }}>
                                             {data.totalClearancesCount || 0} <span style={{ fontSize: '14px', opacity: 0.8 }}>Batches</span>
                                         </div>
-                                        <div style={styles.lossLabel}>{data.totalClearancesUnits || 0} Units Clr</div>
+                                        <div style={styles.lossLabel}>{data.totalClearancesUnits || 0} Emergency Cleared</div>
                                     </div>
                                 </div>
                             </div>
@@ -189,19 +197,19 @@ const MyDistributors = () => {
                             <h3 style={styles.panelHeading}>PORTFOLIO TREND</h3>
                             <div style={styles.trendRow}>
                                 <TrendStat
-                                    count={data.distributors.filter(d => d.performanceTrend === 'Improving').length}
+                                    count={data.portfolioTrend?.improving || 0}
                                     label="Improving"
                                     color="#22c55e"
                                     icon="📈"
                                 />
                                 <TrendStat
-                                    count={data.distributors.filter(d => d.performanceTrend === 'Stable').length}
+                                    count={data.portfolioTrend?.stable || 0}
                                     label="Stable"
                                     color="#3b82f6"
                                     icon="📊"
                                 />
                                 <TrendStat
-                                    count={data.distributors.filter(d => d.performanceTrend === 'Declining').length}
+                                    count={data.portfolioTrend?.declining || 0}
                                     label="Declining"
                                     color="#ef4444"
                                     icon="📉"
@@ -233,130 +241,177 @@ const MyDistributors = () => {
                     <SummaryStatCard
                         label="TOTAL UNITS LOST"
                         value={data.totalUnitsLost || 0}
-                        sub={`${data.totalReturnsUnits || 0} Returns + ${data.totalClearancesUnits || 0} Clearances`}
+                        sub={`${data.totalReturnsUnits || 0} Returns + ${data.totalClearancesUnits || 0} Emergency Clearances`}
                         status="poor"
                         icon="📦"
-                    />
-                    <SummaryStatCard
-                        label="TOP RELIABLE PARTNER"
-                        value={data.mostReliable?.distributorName || 'N/A'}
-                        sub={data.mostReliable ? `Health: ${data.mostReliable.health}` : 'Pending data'}
-                        status="good"
-                        icon="⭐"
-                    />
-                    <SummaryStatCard
-                        label="RELATIONSHIP RISK"
-                        value={data.mostProblematic?.distributorName || 'None'}
-                        sub={data.mostProblematic ? `Health: ${data.mostProblematic.health}` : 'Low risk profile'}
-                        status="poor"
-                        icon="🚨"
                     />
                 </div>
 
                 {/* Distributor List */}
-                <div style={styles.distributorList}>
-                    {data.distributors.map(dist => (
-                            <div 
-                                key={dist.distributorId} 
-                                id={`dist-card-${dist.distributorId}`}
-                                onClick={() => navigate(`/dashboard/scorecard/${dist.distributorId}`)}
-                                style={{ 
-                                    ...styles.distCard, 
-                                    borderLeft: `6px solid ${dist.healthColor}`,
-                                    cursor: 'pointer',
-                                    transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(-4px)';
-                                    e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.1)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = styles.distCard.boxShadow;
-                                }}
-                            >
-                                <div style={styles.distCardHeader}>
-                                    <div>
-                                        <h2 style={styles.distName}>{dist.distributorName}</h2>
-                                        <div style={styles.distRegion}>{dist.distributorRegion}</div>
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                                        <div style={{
-                                            ...styles.healthBadge,
-                                            backgroundColor: dist.healthColor + '20',
-                                            color: dist.healthColor,
-                                            border: `1px solid ${dist.healthColor}`
-                                        }}>
-                                            {dist.badge}
+            <div style={styles.content}>
+                {Object.entries(
+                    data.distributors.reduce((acc, dist) => {
+                        const region = dist.distributorRegion || 'Unassigned';
+                        if (!acc[region]) acc[region] = [];
+                        acc[region].push(dist);
+                        return acc;
+                    }, {})
+                ).map(([region, regionalDistributors]) => (
+                    <div key={region} style={{ marginBottom: '40px' }}>
+                        <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '15px', 
+                            marginBottom: '20px', 
+                            borderBottom: '2px solid rgba(0,0,0,0.05)', 
+                            paddingBottom: '10px' 
+                        }}>
+                            <h2 style={{ 
+                                fontSize: '18px', 
+                                color: '#1e293b', 
+                                margin: 0, 
+                                fontWeight: '800', 
+                                textTransform: 'uppercase', 
+                                letterSpacing: '1.5px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px'
+                            }}>
+                                <span style={{ color: '#A67956' }}>📍</span> {region} 
+                                <span style={{ 
+                                    color: '#64748b', 
+                                    fontSize: '12px', 
+                                    fontWeight: '500', 
+                                    backgroundColor: '#f1f5f9',
+                                    padding: '2px 8px',
+                                    borderRadius: '12px',
+                                    letterSpacing: '0'
+                                }}>
+                                    {regionalDistributors.length} Operators
+                                </span>
+                            </h2>
+                        </div>
+                        
+                        <div style={styles.distributorList}>
+                            {regionalDistributors.map(dist => (
+                                <div 
+                                    key={dist.distributorId} 
+                                    id={`dist-card-${dist.distributorId}`}
+                                    onClick={() => navigate(`/dashboard/scorecard/${dist.distributorId}`)}
+                                    style={{ 
+                                        ...styles.distCard, 
+                                        borderLeft: `8px solid ${dist.healthColor}`, // More prominent side color
+                                        cursor: 'pointer',
+                                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-4px)';
+                                        e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = styles.distCard.boxShadow;
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flex: 1, marginBottom: '20px' }}>
+                                        <div>
+                                            <h2 style={styles.distName}>{dist.distributorName}</h2>
                                         </div>
-                                        <div style={{
-                                            ...styles.trendBadge,
-                                            backgroundColor: dist.performanceTrend === 'Improving' ? '#f0fdf4' : dist.performanceTrend === 'Declining' ? '#fef2f2' : '#eff6ff',
-                                            color: dist.performanceTrend === 'Improving' ? '#166534' : dist.performanceTrend === 'Declining' ? '#991b1b' : '#1e40af',
-                                            border: `1px solid ${dist.performanceTrend === 'Improving' ? '#bbf7d0' : dist.performanceTrend === 'Declining' ? '#fecaca' : '#bfdbfe'}`
-                                        }}>
-                                            {dist.performanceTrend === 'Improving' ? '📈 Improving' : dist.performanceTrend === 'Declining' ? '📉 Declining' : '📊 Stable'}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Signal Pills */}
-                                <div style={styles.signalsRow}>
-                                    {dist.signals && (
-                                        <>
-                                            <SignalPill signal={dist.signals.returnSignal} labelPrefix="" />
-                                            <SignalPill signal={dist.signals.delaySignal} labelPrefix="Pickup Delay: " />
-                                            {dist.signals.missSignal && dist.signals.missSignal.value > 0 && (
-                                                <SignalPill signal={dist.signals.missSignal} labelPrefix="" />
-                                            )}
+                                        
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                            {/* Compact Score Badge */}
                                             <div style={{
-                                                ...styles.signalPill,
-                                                backgroundColor: '#fef2f2',
-                                                color: '#ef4444',
-                                                border: '1px solid #fecaca'
+                                                backgroundColor: `${dist.healthColor}08`,
+                                                border: `1.5px solid ${dist.healthColor}40`,
+                                                borderRadius: '12px',
+                                                padding: '6px 14px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                minWidth: '70px',
+                                                boxShadow: `0 2px 8px ${dist.healthColor}10`
                                             }}>
-                                                <span style={{ fontSize: '10px', marginRight: '4px' }}>📦</span>
-                                                <span style={{ fontWeight: '500' }}>Stock Loss: </span>
-                                                <span style={{ marginLeft: '6px', fontWeight: 'bold', opacity: 0.8 }}>
-                                                    {dist.totalUnitsLost} units ({dist.totalReturnsUnits} Ret / {dist.totalClearancesUnits} Clr)
-                                                </span>
+                                                <span style={{ fontSize: '9px', fontWeight: '900', color: dist.healthColor, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Score</span>
+                                                <span style={{ fontSize: '20px', fontWeight: '900', color: dist.healthColor, lineHeight: 1, marginTop: '2px' }}>{dist.overallScore}</span>
                                             </div>
-                                        </>
-                                    )}
-                                </div>
 
-                                <div style={styles.divider}></div>
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div style={styles.quickStatsSection}>
-                                        <div style={styles.smallStat}>
-                                            <span style={styles.smallLabel}>Return rate:</span>
-                                            <span style={{ ...styles.smallValue, color: dist.signals?.returnSignal?.color || 'var(--text-main)' }}>{dist.managerReturnRate}%</span>
+                                            {/* Performance Indicators */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                                                {dist.performanceTrend && (
+                                                    <div style={{
+                                                        ...styles.trendBadge,
+                                                        backgroundColor: dist.performanceTrend === 'Improving' ? '#f0fdf4' : dist.performanceTrend === 'Declining' ? '#fef2f2' : '#eff6ff',
+                                                        color: dist.performanceTrend === 'Improving' ? '#166534' : dist.performanceTrend === 'Declining' ? '#991b1b' : '#1e40af',
+                                                        border: `1px solid ${dist.performanceTrend === 'Improving' ? '#bbf7d0' : dist.performanceTrend === 'Declining' ? '#fecaca' : '#bfdbfe'},`,
+                                                        fontSize: '10px',
+                                                        padding: '3px 8px'
+                                                    }}>
+                                                        {dist.performanceTrend === 'Improving' ? '📈 Improving' : dist.performanceTrend === 'Declining' ? '📉 Declining' : '📊 Stable'}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                    <button 
-                                        style={{
-                                            backgroundColor: '#5c3a21',
-                                            color: 'white',
-                                            border: 'none',
-                                            padding: '8px 20px',
-                                            borderRadius: '8px',
-                                            fontSize: '12px',
-                                            fontWeight: 'bold',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        VIEW FULL CONTRACT INSIGHTS →
-                                    </button>
+
+                                    {/* Signal Pills */}
+                                    <div style={styles.signalsRow}>
+                                        {dist.signals && (
+                                            <>
+                                                <SignalPill signal={dist.signals.returnSignal} labelPrefix="" />
+                                                <SignalPill signal={dist.signals.delaySignal} labelPrefix="Pickup Delay: " />
+                                                {dist.signals.missSignal && dist.signals.missSignal.value > 0 && (
+                                                    <SignalPill signal={dist.signals.missSignal} labelPrefix="" />
+                                                )}
+                                                
+                                                {/* Units Returned Pill (Distributor-Responsible Metric) */}
+                                                <div style={{
+                                                    ...styles.signalPill,
+                                                    backgroundColor: dist.totalReturnsUnits > 0 ? '#fef2f2' : '#f0fdf4',
+                                                    color: dist.totalReturnsUnits > 0 ? '#ef4444' : '#166534',
+                                                    border: `1px solid ${dist.totalReturnsUnits > 0 ? '#fecaca' : '#bbf7d0'}`
+                                                }}>
+                                                    <span style={{ fontSize: '10px', marginRight: '4px' }}>📦</span>
+                                                    <span style={{ fontWeight: '500' }}>Units Returned: </span>
+                                                    <span style={{ marginLeft: '6px', fontWeight: 'bold', opacity: 0.8 }}>
+                                                        {dist.totalReturnsUnits} units
+                                                    </span>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+
+                                    <div style={styles.divider}></div>
+
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div style={styles.quickStatsSection}>
+                                            <div style={styles.smallStat}>
+                                                <span style={styles.smallLabel}>Return rate:</span>
+                                                <span style={{ ...styles.smallValue, color: dist.signals?.returnSignal?.color || 'var(--text-main)' }}>{dist.managerReturnRate}%</span>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            style={{
+                                                backgroundColor: '#5c3a21',
+                                                color: 'white',
+                                                border: 'none',
+                                                padding: '8px 20px',
+                                                borderRadius: '8px',
+                                                fontSize: '12px',
+                                                fontWeight: 'bold',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            VIEW FULL CONTRACT INSIGHTS →
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-
-
-
-                    ))}
-                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
+    </div>
     );
 };
 
@@ -406,119 +461,201 @@ const SignalPill = ({ signal, labelPrefix }) => (
 );
 
 const styles = {
-    mainContainer: { maxWidth: '1200px', margin: '0 auto' },
+    mainContainer: { maxWidth: '1200px', margin: '0 auto', paddingBottom: '60px' },
     header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' },
-    title: { fontSize: '26px', fontWeight: '800', color: 'var(--text-main)', margin: 0 },
-    subtitle: { color: 'var(--text-muted)', fontSize: '14px', margin: '4px 0 0 0' },
-    managerNameBadge: { backgroundColor: 'var(--card-bg)', padding: '10px 16px', borderRadius: '10px', border: '1px solid var(--border-color)', textAlign: 'right' },
+    title: { fontSize: '28px', fontWeight: '900', color: '#005696', margin: 0, letterSpacing: '-0.5px' },
+    subtitle: { color: '#64748b', fontSize: '15px', margin: '4px 0 0 0', fontWeight: '500' },
+    managerNameBadge: { 
+        backgroundColor: '#f8fafc', 
+        padding: '12px 20px', 
+        borderRadius: '14px', 
+        border: '1px solid #e2e8f0', 
+        textAlign: 'right',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+    },
     quickNav: {
-        backgroundColor: 'var(--card-bg)',
-        padding: '12px 20px',
-        borderRadius: '12px',
-        marginBottom: '24px',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(10px)',
+        padding: '16px 24px',
+        borderRadius: '16px',
+        marginBottom: '28px',
         display: 'flex',
         alignItems: 'center',
-        gap: '16px',
-        border: '1px solid var(--border-color)',
-        boxShadow: 'var(--shadow-sm)',
+        gap: '20px',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 4px 15px rgba(166, 121, 86, 0.08)',
         position: 'relative'
     },
-    quickNavLabel: { fontSize: '13px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', flexShrink: 0 },
+    quickNavLabel: { fontSize: '12px', fontWeight: '900', color: '#A67956', textTransform: 'uppercase', letterSpacing: '1px', whiteSpace: 'nowrap' },
     quickNavList: { 
         display: 'flex', 
-        gap: '8px', 
+        gap: '12px', 
         overflowX: 'auto', 
-        paddingRight: '40px',
-        scrollBehavior: 'smooth'
+        paddingRight: '60px',
+        scrollBehavior: 'smooth',
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none'
     },
     navArrow: {
         position: 'absolute',
-        right: '16px',
-        color: 'var(--text-muted)',
-        fontSize: '20px',
+        right: '12px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        backgroundColor: '#005696',
+        color: 'white',
+        width: '32px',
+        height: '32px',
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        boxShadow: '0 2px 8px rgba(0,86,150,0.3)',
+        zIndex: 5,
+        border: 'none',
+        fontSize: '18px',
         fontWeight: 'bold',
-        background: 'linear-gradient(to left, var(--card-bg) 60%, transparent)',
-        paddingLeft: '20px',
-        pointerEvents: 'none'
+        transition: 'transform 0.2s ease'
     },
     navChip: {
-        backgroundColor: 'var(--bg-main)',
-        border: '1px solid var(--border-color)',
-        padding: '6px 14px',
-        borderRadius: '8px',
+        backgroundColor: 'white',
+        border: '1px solid #e2e8f0',
+        padding: '10px 18px',
+        borderRadius: '12px',
         fontSize: '13px',
-        fontWeight: '600',
-        color: 'var(--text-main)',
+        fontWeight: '700',
+        color: '#334155',
         cursor: 'pointer',
         transition: 'all 0.2s ease',
         display: 'flex',
-        alignItems: 'center'
+        alignItems: 'center',
+        whiteSpace: 'nowrap',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
     },
     insightsPanel: {
-        backgroundColor: '#A67956',
-        backgroundImage: 'linear-gradient(135deg, #A67956 0%, #3D1C02 100%)',
-        borderRadius: '20px',
-        padding: '24px',
-        marginBottom: '32px',
-        color: 'white',
-        boxShadow: '0 10px 30px rgba(92, 58, 33, 0.3)',
-        border: '1px solid var(--nestle-gold-main)'
+        backgroundColor: '#FEF9F3', // Cream/Sand palette
+        borderRadius: '24px',
+        padding: '32px',
+        marginBottom: '40px',
+        color: '#1e293b',
+        boxShadow: '0 10px 40px rgba(166, 121, 86, 0.12)',
+        border: '1px solid #EADDCF',
+        position: 'relative',
+        overflow: 'hidden'
     },
-    insightsHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid rgba(200, 169, 110, 0.2)', paddingBottom: '12px' },
-    insightsTitle: { fontSize: '20px', fontWeight: '800', margin: 0, color: 'var(--nestle-gold-light)' },
-    insightsTag: { fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', backgroundColor: 'rgba(200, 169, 110, 0.2)', color: 'var(--nestle-gold-light)', padding: '4px 8px', borderRadius: '4px', letterSpacing: '1px' },
-    insightsGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' },
-    lossPanel: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '20px', border: '1px solid rgba(200, 169, 110, 0.1)' },
-    panelHeading: { fontSize: '11px', fontWeight: 'bold', color: 'var(--nestle-gold-main)', margin: '0 0 16px 0', letterSpacing: '1px' },
-    lossMainRow: { display: 'flex', alignItems: 'center', gap: '30px' },
+    insightsHeader: { 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: '24px', 
+        borderBottom: '1.5px solid #EADDCF', 
+        paddingBottom: '16px' 
+    },
+    insightsTitle: { fontSize: '24px', fontWeight: '900', margin: 0, color: '#8B5E3C', letterSpacing: '-0.5px' },
+    insightsTag: { 
+        fontSize: '10px', 
+        fontWeight: '900', 
+        textTransform: 'uppercase', 
+        backgroundColor: '#8B5E3C', 
+        color: 'white', 
+        padding: '6px 14px', 
+        borderRadius: '8px', 
+        letterSpacing: '1.5px' 
+    },
+    insightsGrid: { display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px' },
+    lossPanel: { 
+        backgroundColor: 'white', 
+        borderRadius: '20px', 
+        padding: '24px', 
+        border: '1px solid #EADDCF',
+        boxShadow: '0 4px 12px rgba(166, 121, 86, 0.04)'
+    },
+    panelHeading: { fontSize: '11px', fontWeight: '900', color: '#A67956', margin: '0 0 16px 0', letterSpacing: '1.2px', textTransform: 'uppercase' },
+    lossMainRow: { display: 'flex', alignItems: 'center', gap: '32px' },
     lossStat: { flex: 1 },
-    lossValue: { fontSize: '32px', fontWeight: '900', color: 'white' },
-    lossLabel: { fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginTop: '4px' },
-    lossFooter: { marginTop: '16px', fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' },
-    trendPanel: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '20px', border: '1px solid rgba(200, 169, 110, 0.1)' },
-    trendRow: { display: 'flex', justifyContent: 'space-between', gap: '12px' },
-    trendStat: { flex: 1, textAlign: 'center', padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid transparent' },
-    trendFooter: { marginTop: '16px', fontSize: '11px', color: 'rgba(255,255,255,0.4)', textAlign: 'center' },
-    summaryGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' },
-    summaryCard: { padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' },
-    sumCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' },
-    sumCardLabel: { fontSize: '10px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' },
-    sumCardValue: { fontSize: '22px', fontWeight: '900', margin: '4px 0' },
-    sumCardSub: { fontSize: '12px', color: 'var(--text-muted)' },
-    sumCardBadge: { marginTop: '10px', padding: '3px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold', color: 'white', display: 'inline-block', width: 'fit-content' },
-    trendBadge: { padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' },
-    distributorList: { display: 'flex', flexDirection: 'column', gap: '24px' },
-    distCard: { backgroundColor: 'var(--card-bg)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-color)' },
-    distCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' },
-    distName: { fontSize: '22px', fontWeight: '800', margin: 0, color: 'var(--text-main)' },
-    distRegion: { color: 'var(--text-muted)', fontSize: '14px', marginTop: '2px' },
-    healthBadge: { padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold' },
-    signalsRow: { display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' },
-    signalPill: { padding: '4px 12px', borderRadius: '30px', fontSize: '12px', display: 'flex', alignItems: 'center' },
-    divider: { height: '1px', backgroundColor: 'var(--border-color)', margin: '16px 0' },
-    plainEnglishText: { fontSize: '15px', lineHeight: '1.6', color: 'var(--text-main)', margin: 0, fontWeight: '400' },
-    sectionHeading: { fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '1px' },
-    quickStatsSection: { padding: '4px 0' },
-    statsGridRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginTop: '12px' },
-    smallStat: { display: 'flex', flexDirection: 'column', gap: '2px' },
-    smallLabel: { fontSize: '11px', color: 'var(--text-muted)' },
-    smallValue: { fontSize: '14px', fontWeight: 'bold', color: 'var(--text-main)' },
-    actionBox: { marginTop: '20px', padding: '12px 16px', borderRadius: '8px', display: 'flex', gap: '12px', alignItems: 'center' },
-    secondaryBtn: {
+    lossValue: { fontSize: '42px', fontWeight: '900', color: '#1e293b', lineHeight: 1 },
+    lossLabel: { fontSize: '14px', color: '#64748b', marginTop: '8px', fontWeight: '700' },
+    lossDivider: { width: '1.5px', height: '50px', backgroundColor: '#EADDCF' },
+    batchValue: { fontSize: '22px', fontWeight: '900', color: '#1e293b' }, // Darker for visibility
+    lossFooter: { marginTop: '20px', fontSize: '12px', color: '#8B5E3C', fontStyle: 'italic', borderTop: '1px solid #EADDCF', paddingTop: '12px', opacity: 0.8 },
+    trendPanel: { 
+        backgroundColor: 'white', 
+        borderRadius: '20px', 
+        padding: '24px', 
+        border: '1px solid #EADDCF'
+    },
+    trendRow: { display: 'flex', justifyContent: 'space-between', gap: '10px' },
+    trendStat: { 
+        flex: 1, 
+        textAlign: 'center', 
+        padding: '16px 8px', 
+        backgroundColor: '#FEF9F3', 
+        borderRadius: '16px', 
+        border: '1px solid #EADDCF',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+    },
+    trendFooter: { marginTop: '20px', fontSize: '11px', color: '#8B5E3C', textAlign: 'center', fontWeight: '600' },
+    summaryGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '40px' },
+    summaryCard: {
+        padding: '24px',
+        borderRadius: '24px',
+        position: 'relative',
+        transition: 'transform 0.2s ease',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+        backgroundColor: 'white',
+        border: '1px solid #f1f5f9'
+    },
+    sumCardHeader: { display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '12px', fontWeight: '800', letterSpacing: '0.5px', marginBottom: '12px' },
+    sumCardValue: { fontSize: '28px', fontWeight: '900', marginBottom: '4px', color: '#1e293b' },
+    sumCardSub: { fontSize: '13px', color: '#94a3b8', fontWeight: '500' },
+    sumCardBadge: { position: 'absolute', top: '16px', right: '16px', padding: '4px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', color: 'white', textTransform: 'uppercase' },
+    
+    distributorList: { display: 'grid', gridTemplateColumns: '1fr', gap: '20px' },
+    distCard: {
+        backgroundColor: 'white',
+        borderRadius: '22px',
+        padding: '28px',
+        border: '1px solid #f1f5f9',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
+        position: 'relative',
+        overflow: 'hidden'
+    },
+    distCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' },
+    distName: { fontSize: '20px', fontWeight: '800', color: '#1e293b', margin: 0 },
+    distRegion: { fontSize: '14px', color: '#94a3b8', fontWeight: '600', marginTop: '2px' },
+    healthBadge: { padding: '6px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: '800', textTransform: 'uppercase' },
+    trendBadge: { padding: '6px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: '700' },
+    signalsRow: { display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '24px' },
+    signalPill: {
+        display: 'flex',
+        alignItems: 'center',
         padding: '8px 16px',
-        borderRadius: '8px',
-        border: '1px solid var(--border-color)',
-        backgroundColor: 'var(--card-bg)',
-        color: 'var(--text-main)',
+        borderRadius: '12px',
         fontSize: '13px',
-        fontWeight: '600',
+        fontWeight: '700',
+        transition: 'all 0.2s ease'
+    },
+    divider: { height: '1.5px', backgroundColor: '#f1f5f9', margin: '0 0 20px 0' },
+    quickStatsSection: { display: 'flex', gap: '24px' },
+    smallStat: { display: 'flex', flexDirection: 'column' },
+    smallLabel: { fontSize: '11px', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' },
+    smallValue: { fontSize: '18px', fontWeight: '900', color: '#1e293b' },
+    secondaryBtn: {
+        padding: '10px 20px',
+        borderRadius: '12px',
+        border: '1px solid #e2e8f0',
+        backgroundColor: 'white',
+        color: '#64748b',
+        fontSize: '14px',
+        fontWeight: '700',
         cursor: 'pointer',
-        transition: 'all 0.2s ease',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+        transition: 'all 0.2s ease'
     },
     loadingContainer: { padding: '40px' },
-    skeletonCardSmall: { height: '120px', backgroundColor: 'var(--border-color)', borderRadius: '12px', animation: 'pulse 1.5s infinite' },
-    skeletonDistCard: { height: '350px', backgroundColor: 'var(--card-bg)', borderRadius: '16px', marginBottom: '24px', animation: 'pulse 1.5s infinite' }
+    skeletonTitle: { height: '30px', width: '300px', backgroundColor: '#e2e8f0', borderRadius: '8px', marginBottom: '10px' },
+    skeletonSubtitle: { height: '15px', width: '450px', backgroundColor: '#f1f5f9', borderRadius: '4px' },
+    skeletonCardSmall: { height: '140px', backgroundColor: 'white', borderRadius: '20px', border: '1px solid #f1f5f9' },
+    skeletonDistCard: { height: '220px', backgroundColor: 'white', borderRadius: '22px', marginBottom: '20px', border: '1px solid #f1f5f9' }
 };
 
 export default MyDistributors;

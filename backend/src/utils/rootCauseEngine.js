@@ -38,6 +38,15 @@ const categoriseBatch = (batch) => {
         }
     }
 
+    // 4. Market Saturation
+    if (batch.market_saturation_score !== null && batch.market_saturation_score !== undefined && batch.market_saturation_score < 1.5) {
+        return {
+            category: 'Market Saturation',
+            icon: '📉',
+            color: '#8b5cf6' // purple
+        };
+    }
+
     // 4. Unclassified
     return {
         category: 'Unclassified',
@@ -59,6 +68,7 @@ const detectPatterns = (categorisedBatches) => {
         'Temperature-Driven': [],
         'Long Storage': [],
         'Distributor Delay': [],
+        'Market Saturation': [],
         'Unclassified': []
     };
 
@@ -118,6 +128,12 @@ const detectPatterns = (categorisedBatches) => {
             patternText = `You dispatched ${mostFailedDayCount} of these on ${dayName} — consider checking Zone cooling before ${dayName} dispatches.`;
         }
 
+        const tempSkuCounts = {};
+        tempBatches.forEach(b => {
+            if (!tempSkuCounts[b.sku]) tempSkuCounts[b.sku] = { sku: b.sku, productName: b.productName, count: 0 };
+            tempSkuCounts[b.sku].count++;
+        });
+
         patterns.push({
             category: 'Temperature-Driven',
             icon: '🌡',
@@ -127,7 +143,7 @@ const detectPatterns = (categorisedBatches) => {
             patternDetected,
             patternText,
             suggestedAction,
-            affectedSkus: [...new Set(tempBatches.map(b => b.productName))],
+            affectedSkus: Object.values(tempSkuCounts),
             affectedZones: [...new Set(tempBatches.map(b => b.zone))]
         });
     }
@@ -167,6 +183,12 @@ const detectPatterns = (categorisedBatches) => {
             suggestedAction = getSuggestedAction('Long Storage', { sku: mostFailedSku });
         }
 
+        const lsSkuCounts = {};
+        longStorageBatches.forEach(b => {
+            if (!lsSkuCounts[b.sku]) lsSkuCounts[b.sku] = { sku: b.sku, productName: b.productName, count: 0 };
+            lsSkuCounts[b.sku].count++;
+        });
+
         patterns.push({
             category: 'Long Storage',
             icon: '📦',
@@ -176,7 +198,7 @@ const detectPatterns = (categorisedBatches) => {
             patternDetected,
             patternText,
             suggestedAction,
-            affectedSkus: [...new Set(longStorageBatches.map(b => b.productName))],
+            affectedSkus: Object.values(lsSkuCounts),
             affectedZones: [...new Set(longStorageBatches.map(b => b.zone))]
         });
     }
@@ -211,6 +233,12 @@ const detectPatterns = (categorisedBatches) => {
             suggestedAction = getSuggestedAction('Distributor Delay', { distributorName: mostDelayedDist });
         }
 
+        const ddSkuCounts = {};
+        delayBatches.forEach(b => {
+            if (!ddSkuCounts[b.sku]) ddSkuCounts[b.sku] = { sku: b.sku, productName: b.productName, count: 0 };
+            ddSkuCounts[b.sku].count++;
+        });
+
         patterns.push({
             category: 'Distributor Delay',
             icon: '🚛',
@@ -220,14 +248,56 @@ const detectPatterns = (categorisedBatches) => {
             patternDetected,
             patternText,
             suggestedAction,
-            affectedSkus: [...new Set(delayBatches.map(b => b.productName))],
+            affectedSkus: Object.values(ddSkuCounts),
             affectedZones: [...new Set(delayBatches.map(b => b.zone))]
         });
     }
 
-    // 4. Unclassified
+    // 4. Pattern Detection for MARKET SATURATION
+    const satBatches = categories['Market Saturation'];
+    if (satBatches && satBatches.length > 0) {
+        let patternDetected = true; // By definition, it's a pattern if it fires
+        
+        // Group by product & region
+        let mostAffectedSku = null;
+        let mostAffectedRegion = null;
+        if (satBatches.length > 0) {
+            mostAffectedSku = satBatches[0].productName;
+            mostAffectedRegion = satBatches[0].distributorRegion || 'the region';
+        }
+
+        let patternText = `Field reports show ${mostAffectedSku} is moving slowly in ${mostAffectedRegion}. The warehouse risk may be driven by low market demand, not just storage conditions.`;
+        let suggestedAction = `Consider redirecting this SKU to a region where sales rep reports show faster movement before dispatch. Check the Market Pulse dashboard for regional demand data.`;
+
+        const satSkuCounts = {};
+        satBatches.forEach(b => {
+            if (!satSkuCounts[b.sku]) satSkuCounts[b.sku] = { sku: b.sku, productName: b.productName, count: 0 };
+            satSkuCounts[b.sku].count++;
+        });
+
+        patterns.push({
+            category: 'Market Saturation',
+            icon: '📉',
+            color: '#8b5cf6',
+            count: satBatches.length,
+            batches: satBatches,
+            patternDetected,
+            patternText,
+            suggestedAction,
+            affectedSkus: Object.values(satSkuCounts),
+            affectedZones: [...new Set(satBatches.map(b => b.zone))]
+        });
+    }
+
+    // 5. Unclassified
     const unclassifiedBatches = categories['Unclassified'];
-    if (unclassifiedBatches.length > 0) {
+    if (unclassifiedBatches && unclassifiedBatches.length > 0) {
+        const ucSkuCounts = {};
+        unclassifiedBatches.forEach(b => {
+            if (!ucSkuCounts[b.sku]) ucSkuCounts[b.sku] = { sku: b.sku, productName: b.productName, count: 0 };
+            ucSkuCounts[b.sku].count++;
+        });
+
         patterns.push({
             category: 'Unclassified',
             icon: '❓',
@@ -237,7 +307,7 @@ const detectPatterns = (categorisedBatches) => {
             patternDetected: false,
             patternText: "No recurring pattern this month",
             suggestedAction: getSuggestedAction('Unclassified'),
-            affectedSkus: [...new Set(unclassifiedBatches.map(b => b.productName))],
+            affectedSkus: Object.values(ucSkuCounts),
             affectedZones: [...new Set(unclassifiedBatches.map(b => b.zone))]
         });
     }
@@ -254,7 +324,10 @@ const detectPatterns = (categorisedBatches) => {
 const getSuggestedAction = (category, context = {}) => {
     switch (category) {
         case 'Temperature-Driven':
-            return `Review Zone ${context.zoneName || 'relevant zone'} cooling logs — particularly nights before your mid-week dispatches.`;
+            if (!context.zoneName || context.zoneName === 'undefined' || context.zoneName === 'null') {
+                return `Review cooling logs for the zone where these batches were stored.`;
+            }
+            return `Review Zone ${context.zoneName} cooling logs — particularly nights before your mid-week dispatches.`;
         case 'Long Storage':
             return `Increase dispatch frequency for ${context.sku || 'this product'} — consider prioritising it in your next dispatch queue.`;
         case 'Distributor Delay':

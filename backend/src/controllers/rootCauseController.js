@@ -72,7 +72,15 @@ const getRootCauseAnalytics = async (req, res) => {
                     dr.distributor_id,
                     d.distributor_name as "distributorName",
                     b.status,
-                    EXTRACT(DOW FROM dr.dispatch_timestamp) as dispatch_day_of_week
+                    EXTRACT(DOW FROM dr.dispatch_timestamp) as dispatch_day_of_week,
+                    (
+                        SELECT AVG(li.movement_score_final)
+                        FROM sales_rep_reports r
+                        JOIN report_line_items li ON r.report_id = li.report_id
+                        WHERE r.region = d.region
+                        AND li.sku = p.product_name || ' ' || p.pack_size
+                        AND r.submitted_at >= NOW() - INTERVAL '30 days'
+                    ) as market_saturation_score
                 FROM dispatch_records dr
                 JOIN batches b ON dr.batch_id = b.batch_id
                 JOIN products p ON b.product_id = p.product_id
@@ -136,10 +144,20 @@ const getRootCauseAnalytics = async (req, res) => {
                 fs.days_in_warehouse, 
                 fs.total_temp_breach_windows, 
                 dr.dispatch_timestamp as dispatched_at, 
-                dr.collected_timestamp as collected_at
+                dr.collected_timestamp as collected_at,
+                (
+                    SELECT AVG(li.movement_score_final)
+                    FROM sales_rep_reports r
+                    JOIN report_line_items li ON r.report_id = li.report_id
+                    WHERE r.region = d.region
+                    AND li.sku = p.product_name || ' ' || p.pack_size
+                    AND r.submitted_at >= NOW() - INTERVAL '30 days'
+                ) as market_saturation_score
             FROM dispatch_records dr
             JOIN batches b ON dr.batch_id = b.batch_id
             JOIN freshness_scores fs ON b.batch_id = fs.batch_id
+            JOIN distributor_records d ON dr.distributor_id = d.distributor_id
+            JOIN products p ON b.product_id = p.product_id
             WHERE dr.approved_by != $1
             AND b.status IN ('cleared', 'returned')
             AND dr.dispatch_timestamp >= $2 AND dr.dispatch_timestamp <= $3
@@ -173,7 +191,8 @@ const getRootCauseAnalytics = async (req, res) => {
             const formatted = {
                 ...b,
                 total_temp_breach_windows: parseInt(b.total_temp_breach_windows) || 0,
-                days_in_warehouse: parseInt(b.days_in_warehouse) || 0
+                days_in_warehouse: parseInt(b.days_in_warehouse) || 0,
+                market_saturation_score: b.market_saturation_score ? parseFloat(b.market_saturation_score) : null
             };
             const cat = categoriseBatch(formatted).category;
             if (cat === 'Temperature-Driven') sysTempFailures++;
@@ -305,7 +324,7 @@ const getLiveImpact = async (req, res) => {
                 b.risk_category,
                 fs.frs_score
             FROM batches b
-            LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
+            JOIN freshness_scores fs ON b.batch_id = fs.batch_id
             AND fs.last_calculated_at = (
                 SELECT MAX(last_calculated_at)
                 FROM freshness_scores
