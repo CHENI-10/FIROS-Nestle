@@ -256,132 +256,103 @@ const MyDistributors = () => {
                 {/* Distributor List */}
                 <div style={styles.distributorList}>
                     {data.distributors.map(dist => (
-                        <div 
-                            key={dist.distributorId} 
-                            id={`dist-card-${dist.distributorId}`}
-                            style={{ ...styles.distCard, borderLeft: `6px solid ${dist.healthColor}` }}
-                        >
-                            <div style={styles.distCardHeader}>
-                                <div>
-                                    <h2 style={styles.distName}>{dist.distributorName}</h2>
-                                    <div style={styles.distRegion}>{dist.distributorRegion}</div>
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                                    <div style={{
-                                        ...styles.healthBadge,
-                                        backgroundColor: dist.healthColor + '20',
-                                        color: dist.healthColor,
-                                        border: `1px solid ${dist.healthColor}`
-                                    }}>
-                                        {dist.badge}
+                            <div 
+                                key={dist.distributorId} 
+                                id={`dist-card-${dist.distributorId}`}
+                                onClick={() => navigate(`/dashboard/scorecard/${dist.distributorId}`)}
+                                style={{ 
+                                    ...styles.distCard, 
+                                    borderLeft: `6px solid ${dist.healthColor}`,
+                                    cursor: 'pointer',
+                                    transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-4px)';
+                                    e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.1)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = styles.distCard.boxShadow;
+                                }}
+                            >
+                                <div style={styles.distCardHeader}>
+                                    <div>
+                                        <h2 style={styles.distName}>{dist.distributorName}</h2>
+                                        <div style={styles.distRegion}>{dist.distributorRegion}</div>
                                     </div>
-                                    <div style={{
-                                        ...styles.trendBadge,
-                                        backgroundColor: dist.performanceTrend === 'Improving' ? '#f0fdf4' : dist.performanceTrend === 'Declining' ? '#fef2f2' : '#eff6ff',
-                                        color: dist.performanceTrend === 'Improving' ? '#166534' : dist.performanceTrend === 'Declining' ? '#991b1b' : '#1e40af',
-                                        border: `1px solid ${dist.performanceTrend === 'Improving' ? '#bbf7d0' : dist.performanceTrend === 'Declining' ? '#fecaca' : '#bfdbfe'}`
-                                    }}>
-                                        {dist.performanceTrend === 'Improving' ? '📈 Improving' : dist.performanceTrend === 'Declining' ? '📉 Declining' : '📊 Stable'}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Signal Pills */}
-                            <div style={styles.signalsRow}>
-                                {dist.signals && (
-                                    <>
-                                        <SignalPill signal={dist.signals.returnSignal} labelPrefix="" />
-                                        <SignalPill signal={dist.signals.delaySignal} labelPrefix="Pickup Delay: " />
-                                        {dist.signals.missSignal && dist.signals.missSignal.value > 0 && (
-                                            <SignalPill signal={dist.signals.missSignal} labelPrefix="" />
-                                        )}
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
                                         <div style={{
-                                            ...styles.signalPill,
-                                            backgroundColor: '#fef2f2',
-                                            color: '#ef4444',
-                                            border: '1px solid #fecaca'
+                                            ...styles.healthBadge,
+                                            backgroundColor: dist.healthColor + '20',
+                                            color: dist.healthColor,
+                                            border: `1px solid ${dist.healthColor}`
                                         }}>
-                                            <span style={{ fontSize: '10px', marginRight: '4px' }}>📦</span>
-                                            <span style={{ fontWeight: '500' }}>Stock Loss: </span>
-                                            <span style={{ marginLeft: '6px', fontWeight: 'bold', opacity: 0.8 }}>
-                                                {dist.totalUnitsLost} units ({dist.totalReturnsUnits} Ret / {dist.totalClearancesUnits} Clr)
-                                            </span>
+                                            {dist.badge}
                                         </div>
-                                    </>
-                                )}
-                            </div>
+                                        <div style={{
+                                            ...styles.trendBadge,
+                                            backgroundColor: dist.performanceTrend === 'Improving' ? '#f0fdf4' : dist.performanceTrend === 'Declining' ? '#fef2f2' : '#eff6ff',
+                                            color: dist.performanceTrend === 'Improving' ? '#166534' : dist.performanceTrend === 'Declining' ? '#991b1b' : '#1e40af',
+                                            border: `1px solid ${dist.performanceTrend === 'Improving' ? '#bbf7d0' : dist.performanceTrend === 'Declining' ? '#fecaca' : '#bfdbfe'}`
+                                        }}>
+                                            {dist.performanceTrend === 'Improving' ? '📈 Improving' : dist.performanceTrend === 'Declining' ? '📉 Declining' : '📊 Stable'}
+                                        </div>
+                                    </div>
+                                </div>
 
-                            <div style={styles.divider}></div>
+                                {/* Signal Pills */}
+                                <div style={styles.signalsRow}>
+                                    {dist.signals && (
+                                        <>
+                                            <SignalPill signal={dist.signals.returnSignal} labelPrefix="" />
+                                            <SignalPill signal={dist.signals.delaySignal} labelPrefix="Pickup Delay: " />
+                                            {dist.signals.missSignal && dist.signals.missSignal.value > 0 && (
+                                                <SignalPill signal={dist.signals.missSignal} labelPrefix="" />
+                                            )}
+                                            <div style={{
+                                                ...styles.signalPill,
+                                                backgroundColor: '#fef2f2',
+                                                color: '#ef4444',
+                                                border: '1px solid #fecaca'
+                                            }}>
+                                                <span style={{ fontSize: '10px', marginRight: '4px' }}>📦</span>
+                                                <span style={{ fontWeight: '500' }}>Stock Loss: </span>
+                                                <span style={{ marginLeft: '6px', fontWeight: 'bold', opacity: 0.8 }}>
+                                                    {dist.totalUnitsLost} units ({dist.totalReturnsUnits} Ret / {dist.totalClearancesUnits} Clr)
+                                                </span>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
 
-                            <div style={styles.summaryTextSection}>
-                                <p style={styles.plainEnglishText}>
-                                    {dist.plainEnglishSummary}
-                                </p>
-                            </div>
+                                <div style={styles.divider}></div>
 
-                            <div style={styles.divider}></div>
-
-                            <div style={styles.chartSection}>
-                                <h4 style={styles.sectionHeading}>YOUR HISTORY WITH THEM</h4>
-                                <div style={{ height: '200px', width: '100%', marginTop: '16px' }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={dist.monthlyHistory}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
-                                            <XAxis dataKey="label" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={{ stroke: 'var(--border-color)' }} />
-                                            <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={{ stroke: 'var(--border-color)' }} />
-                                            <Tooltip
-                                                contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-main)', fontSize: '12px' }}
-                                            />
-                                            <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                                            <Bar name="Dispatches" dataKey="dispatched" fill="#3b82f6" radius={[3, 3, 0, 0]} />
-                                            <Bar name="Returns" dataKey="returned" fill="#ef4444" radius={[3, 3, 0, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={styles.quickStatsSection}>
+                                        <div style={styles.smallStat}>
+                                            <span style={styles.smallLabel}>Return rate:</span>
+                                            <span style={{ ...styles.smallValue, color: dist.signals?.returnSignal?.color || 'var(--text-main)' }}>{dist.managerReturnRate}%</span>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        style={{
+                                            backgroundColor: '#5c3a21',
+                                            color: 'white',
+                                            border: 'none',
+                                            padding: '8px 20px',
+                                            borderRadius: '8px',
+                                            fontSize: '12px',
+                                            fontWeight: 'bold',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        VIEW FULL CONTRACT INSIGHTS →
+                                    </button>
                                 </div>
                             </div>
 
-                            <div style={styles.divider}></div>
 
-                            <div style={styles.quickStatsSection}>
-                                <h4 style={styles.sectionHeading}>QUICK STATS:</h4>
-                                <div style={styles.statsGridRow}>
-                                    <div style={styles.smallStat}>
-                                        <span style={styles.smallLabel}>Dispatches:</span>
-                                        <span style={styles.smallValue}>{dist.totalDispatches}</span>
-                                    </div>
-                                    <div style={styles.smallStat}>
-                                        <span style={styles.smallLabel}>Returns:</span>
-                                        <span style={styles.smallValue}>{dist.totalReturns}</span>
-                                    </div>
-                                    <div style={styles.smallStat}>
-                                        <span style={styles.smallLabel}>Return rate:</span>
-                                        <span style={{ ...styles.smallValue, color: dist.signals?.returnSignal?.color || 'var(--text-main)' }}>{dist.managerReturnRate}%</span>
-                                    </div>
-                                    <div style={styles.smallStat}>
-                                        <span style={styles.smallLabel}>Avg delay:</span>
-                                        <span style={{ ...styles.smallValue, color: dist.signals?.delaySignal?.color || 'var(--text-main)' }}>{dist.avgCollectionDelay || 'N/A'}d</span>
-                                    </div>
-                                    <div style={styles.smallStat}>
-                                        <span style={styles.smallLabel}>Avg FRS sent:</span>
-                                        <span style={{ ...styles.smallValue, color: dist.signals?.frsSignal?.color || 'var(--text-main)' }}>{dist.avgFrsAtDispatch}</span>
-                                    </div>
-                                    <div style={styles.smallStat}>
-                                        <span style={styles.smallLabel}>Distributor Performance Score:</span>
-                                        <span style={styles.smallValue}>{dist.overallScore || 'Pending'}</span>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <div style={{
-                                ...styles.actionBox,
-                                backgroundColor: dist.actionSeverity === 'critical' ? '#ef4444' : dist.actionSeverity === 'warning' ? '#f59e0b' : dist.actionSeverity === 'positive' ? '#22c55e' : '#1e3a5f'
-                            }}>
-                                <span style={{ fontSize: '18px' }}>💡</span>
-                                <p style={{ margin: 0, fontSize: '14px', fontWeight: '500', color: dist.actionSeverity === 'neutral' ? 'white' : '#0f172a' }}>
-                                    {dist.suggestedAction}
-                                </p>
-                            </div>
-                        </div>
                     ))}
                 </div>
             </div>
