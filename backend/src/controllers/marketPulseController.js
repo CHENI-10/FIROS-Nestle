@@ -250,12 +250,20 @@ exports.getMarketPulse = async (req, res) => {
             };
         });
 
+        const recentReportsRes = await db.query(`
+            SELECT COUNT(*) as recent_count
+            FROM sales_rep_reports
+            WHERE submitted_at >= NOW() - INTERVAL '7 days'
+        `);
+        const recentReportsCount = parseInt(recentReportsRes.rows[0].recent_count) || 0;
+
         res.json({
             generatedAt: new Date(),
             lastUpdated: new Date(),
             regionOverview,
             stockWithVelocity,
-            highDemandNotInStock
+            highDemandNotInStock,
+            recentReportsCount
         });
 
     } catch (error) {

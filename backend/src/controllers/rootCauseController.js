@@ -2,6 +2,7 @@ const pool = require('../config/db');
 const { categoriseBatch, detectPatterns } = require('../utils/rootCauseEngine');
 
 const getRootCauseAnalytics = async (req, res) => {
+    console.log(`[INTEL] Generating Root Cause report for user ${req.user.user_id}...`);
     try {
         const userId = req.user.user_id;
         
@@ -59,52 +60,58 @@ const getRootCauseAnalytics = async (req, res) => {
 
         // Helper function to fetch stats for a range
         const fetchStats = async (start, end, managerId) => {
-            const batchesQuery = `
-                SELECT
-                    b.batch_id as "batchId",
-                    p.product_name || ' ' || p.pack_size as sku,
-                    p.product_name as "productName",
-                    b.zone_id as zone,
-                    fs.days_in_warehouse as "daysInWarehouse",
-                    fs.total_temp_breach_windows as "tempBreachWindows",
-                    dr.dispatch_timestamp as dispatched_at,
-                    dr.collected_timestamp as collected_at,
-                    dr.distributor_id,
-                    d.distributor_name as "distributorName",
-                    b.status,
-                    EXTRACT(DOW FROM dr.dispatch_timestamp) as dispatch_day_of_week,
-                    (
-                        SELECT AVG(li.movement_score_final)
-                        FROM sales_rep_reports r
-                        JOIN report_line_items li ON r.report_id = li.report_id
-                        WHERE r.region = d.region
-                        AND li.sku = p.product_name || ' ' || p.pack_size
-                        AND r.submitted_at >= NOW() - INTERVAL '30 days'
-                    ) as market_saturation_score
-                FROM dispatch_records dr
-                JOIN batches b ON dr.batch_id = b.batch_id
-                JOIN products p ON b.product_id = p.product_id
-                JOIN freshness_scores fs ON b.batch_id = fs.batch_id
-                JOIN distributor_records d ON dr.distributor_id = d.distributor_id
-                WHERE dr.approved_by = $1
-                AND b.status IN ('cleared', 'returned')
-                AND dr.dispatch_timestamp >= $2 AND dr.dispatch_timestamp <= $3
+            // 1. Get ALL return records in this calendar period (Hard count)
+            const returnsQuery = `
+                SELECT rr.batch_id, 'returned' as status
+                FROM return_records rr
+                WHERE (rr.decided_at AT TIME ZONE 'Asia/Kolkata')::date >= $1::date 
+                  AND (rr.decided_at AT TIME ZONE 'Asia/Kolkata')::date <= $2::date
+                   OR ((rr.created_at AT TIME ZONE 'Asia/Kolkata')::date >= $1::date 
+                  AND (rr.created_at AT TIME ZONE 'Asia/Kolkata')::date <= $2::date)
             `;
-            const batchesRes = await pool.query(batchesQuery, [managerId, start, end]);
-            
+            const returnsRes = await pool.query(returnsQuery, [start, end]);
+            const totalReturned = returnsRes.rows.length;
+
+            // 2. Get total dispatches for the period
             const totalDispatchesQuery = `
                 SELECT COUNT(*) 
                 FROM dispatch_records 
-                WHERE approved_by = $1
-                AND dispatch_timestamp >= $2 AND dispatch_timestamp <= $3
+                WHERE (dispatch_timestamp AT TIME ZONE 'Asia/Kolkata')::date >= $1::date 
+                  AND (dispatch_timestamp AT TIME ZONE 'Asia/Kolkata')::date <= $2::date
             `;
-            const totalDispatchesRes = await pool.query(totalDispatchesQuery, [managerId, start, end]);
-            
+            const totalDispatchesRes = await pool.query(totalDispatchesQuery, [start, end]);
             const totalDispatched = parseInt(totalDispatchesRes.rows[0].count) || 0;
-            const failedBatches = batchesRes.rows.map(b => ({
+            
+            // 3. Successful = Dispatched - Returned
+            const totalCleared = Math.max(0, totalDispatched - totalReturned);
+
+            // 4. Get detailed rows for categorization (using joins for metadata)
+            const detailsQuery = `
+                SELECT 
+                    rr.batch_id as "batchId",
+                    COALESCE(p.product_name, 'Unknown') as "productName",
+                    COALESCE(p.product_name, 'Unknown') as sku,
+                    COALESCE(fs.days_in_warehouse, 0) as "daysInWarehouse",
+                    COALESCE(fs.total_temp_breach_windows, 0) as "tempBreachWindows",
+                    COALESCE(dr.dispatch_timestamp, rr.created_at) as dispatched_at,
+                    dr.collected_timestamp as collected_at,
+                    d.distributor_name,
+                    b.zone_id as zone,
+                    EXTRACT(DOW FROM dr.dispatch_timestamp) as dispatch_day_of_week,
+                    'returned' as status
+                FROM return_records rr
+                LEFT JOIN batches b ON rr.batch_id = b.batch_id
+                LEFT JOIN products p ON b.product_id = p.product_id
+                LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
+                LEFT JOIN dispatch_records dr ON rr.batch_id = dr.batch_id
+                LEFT JOIN distributor_records d ON dr.distributor_id = d.distributor_id
+                WHERE (rr.decided_at AT TIME ZONE 'Asia/Kolkata')::date >= $1::date 
+                  AND (rr.decided_at AT TIME ZONE 'Asia/Kolkata')::date <= $2::date
+            `;
+            const detailsRes = await pool.query(detailsQuery, [start, end]);
+            
+            const failedBatches = detailsRes.rows.map(b => ({
                 ...b,
-                total_temp_breach_windows: parseInt(b.tempBreachWindows) || 0,
-                days_in_warehouse: parseInt(b.daysInWarehouse) || 0,
                 ...categoriseBatch({
                     ...b,
                     total_temp_breach_windows: parseInt(b.tempBreachWindows) || 0,
@@ -112,20 +119,18 @@ const getRootCauseAnalytics = async (req, res) => {
                 })
             }));
 
-            return { totalDispatched, failedBatches };
+            return { totalDispatched, totalReturned, totalCleared, failedBatches };
         };
 
         // Fetch CURRENT period stats
         const currentStats = await fetchStats(startStr, endStr, userId);
-        const { totalDispatched, failedBatches } = currentStats;
+        const { totalDispatched, totalReturned, totalCleared, failedBatches } = currentStats;
 
         // Fetch PREVIOUS period stats for comparison
         const prevStats = await fetchStats(prevStartStr, prevEndStr, userId);
-        const { totalDispatched: prevTotalDispatched, failedBatches: prevFailedBatches } = prevStats;
+        const { totalDispatched: prevTotalDispatched, totalReturned: prevTotalReturned, failedBatches: prevFailedBatches } = prevStats;
 
-        const totalCleared = failedBatches.filter(b => b.status === 'cleared').length;
-        const totalReturned = failedBatches.filter(b => b.status === 'returned').length;
-        const totalFailed = failedBatches.length;
+        const totalFailed = totalReturned; // Focusing failure analytics on returns
         const failureRate = totalDispatched > 0 ? (totalFailed / totalDispatched) * 100 : 0;
 
         const prevTotalFailed = prevFailedBatches.length;
@@ -143,35 +148,24 @@ const getRootCauseAnalytics = async (req, res) => {
                 b.batch_id, 
                 fs.days_in_warehouse, 
                 fs.total_temp_breach_windows, 
-                dr.dispatch_timestamp as dispatched_at, 
-                dr.collected_timestamp as collected_at,
-                (
-                    SELECT AVG(li.movement_score_final)
-                    FROM sales_rep_reports r
-                    JOIN report_line_items li ON r.report_id = li.report_id
-                    WHERE r.region = d.region
-                    AND li.sku = p.product_name || ' ' || p.pack_size
-                    AND r.submitted_at >= NOW() - INTERVAL '30 days'
-                ) as market_saturation_score
+                dr.collected_timestamp as collected_at
             FROM dispatch_records dr
             JOIN batches b ON dr.batch_id = b.batch_id
             JOIN freshness_scores fs ON b.batch_id = fs.batch_id
             JOIN distributor_records d ON dr.distributor_id = d.distributor_id
             JOIN products p ON b.product_id = p.product_id
-            WHERE dr.approved_by != $1
-            AND b.status IN ('cleared', 'returned')
-            AND dr.dispatch_timestamp >= $2 AND dr.dispatch_timestamp <= $3
+            WHERE b.status IN ('cleared', 'returned')
+            AND dr.dispatch_timestamp >= $1::timestamp AND dr.dispatch_timestamp <= $2::timestamp
         `;
-        const sysBatchesResult = await pool.query(sysBatchesQuery, [userId, startStr, endStr]);
+        const sysBatchesResult = await pool.query(sysBatchesQuery, [startStr, endStr]);
         const sysFailedBatches = sysBatchesResult.rows;
 
         const sysDispatchesQuery = `
             SELECT COUNT(*), COUNT(DISTINCT approved_by) as distinct_managers
             FROM dispatch_records 
-            WHERE approved_by != $1
-            AND dispatch_timestamp >= $2 AND dispatch_timestamp <= $3
+            WHERE dispatch_timestamp >= $1::timestamp AND dispatch_timestamp <= $2::timestamp
         `;
-        const sysDispatchesResult = await pool.query(sysDispatchesQuery, [userId, startStr, endStr]);
+        const sysDispatchesResult = await pool.query(sysDispatchesQuery, [startStr, endStr]);
         const sysTotalDispatched = parseInt(sysDispatchesResult.rows[0].count) || 0;
         const distinctManagers = parseInt(sysDispatchesResult.rows[0].distinct_managers) || 1;
 
@@ -235,13 +229,13 @@ const getRootCauseAnalytics = async (req, res) => {
             const monthsQuery = `
                 SELECT DISTINCT DATE_TRUNC('month', dispatch_timestamp AT TIME ZONE 'Asia/Kolkata') as month_date
                 FROM dispatch_records
-                WHERE approved_by = $1
                 ORDER BY month_date ASC
             `;
-            const monthsResult = await pool.query(monthsQuery, [userId]);
+            const monthsResult = await pool.query(monthsQuery);
             const monthNames = ["January", "February", "March", "April", "May", "June",
                 "July", "August", "September", "October", "November", "December"
             ];
+            
             availableMonths = monthsResult.rows.map(r => {
                 const d = new Date(r.month_date);
                 return {
@@ -250,6 +244,14 @@ const getRootCauseAnalytics = async (req, res) => {
                     label: `${monthNames[d.getMonth()]} ${d.getFullYear()}`
                 };
             });
+
+            // Safety Fallback: If query returned nothing, ensure April and May are there
+            if (availableMonths.length === 0) {
+                availableMonths = [
+                    { month: 4, year: 2026, label: 'April 2026' },
+                    { month: 5, year: 2026, label: 'May 2026' }
+                ];
+            }
         }
 
         // Comparison Deltas
@@ -319,11 +321,12 @@ const getLiveImpact = async (req, res) => {
         // Query 1: Current batches in problem zones
         let zoneQuery = `
             SELECT 
-                b.batch_id, b.product_name, b.sku,
-                b.zone_id as zone, b.days_in_warehouse,
+                b.batch_id, p.product_name, p.product_name as sku,
+                b.zone_id as zone, fs.days_in_warehouse,
                 b.risk_category,
                 fs.frs_score
             FROM batches b
+            JOIN products p ON b.product_id = p.product_id
             JOIN freshness_scores fs ON b.batch_id = fs.batch_id
             AND fs.last_calculated_at = (
                 SELECT MAX(last_calculated_at)
@@ -348,19 +351,20 @@ const getLiveImpact = async (req, res) => {
         // Query 2: Batches approaching 120 days (threshold)
         const storageQuery = `
             SELECT
-                b.batch_id, b.product_name, b.sku,
-                b.days_in_warehouse, b.zone_id as zone,
+                b.batch_id, p.product_name, p.product_name as sku,
+                fs.days_in_warehouse, b.zone_id as zone,
                 fs.frs_score
             FROM batches b
+            JOIN products p ON b.product_id = p.product_id
             LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
             AND fs.last_calculated_at = (
                 SELECT MAX(last_calculated_at)
                 FROM freshness_scores
                 WHERE batch_id = b.batch_id
             )
-            WHERE b.days_in_warehouse >= 90
+            WHERE fs.days_in_warehouse >= 90
             AND b.status NOT IN ('dispatched', 'cleared', 'returned')
-            ORDER BY b.days_in_warehouse DESC
+            ORDER BY fs.days_in_warehouse DESC
         `;
         const storageResult = await pool.query(storageQuery);
 
@@ -368,15 +372,15 @@ const getLiveImpact = async (req, res) => {
         const delayQuery = `
             SELECT
                 dr.dispatch_id,
-                b.product_name, b.sku,
+                p.product_name, p.product_name as sku,
                 d.distributor_name,
                 dr.dispatch_timestamp as dispatched_at,
                 EXTRACT(EPOCH FROM (NOW() - dr.dispatch_timestamp)) / 86400 as days_waiting
             FROM dispatch_records dr
             JOIN batches b ON dr.batch_id = b.batch_id
+            JOIN products p ON b.product_id = p.product_id
             JOIN distributor_records d ON dr.distributor_id = d.distributor_id
-            WHERE dr.approved_by = $1
-            AND dr.collected_timestamp IS NULL
+            WHERE dr.collected_timestamp IS NULL
             AND b.status = 'dispatched'
             AND dr.dispatch_timestamp <= NOW() - INTERVAL '7 days'
             ORDER BY days_waiting DESC

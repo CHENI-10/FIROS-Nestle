@@ -351,9 +351,9 @@ CREATE TABLE sales_rep_reports (
     raw_notes        TEXT,
     notes            TEXT,
     status           VARCHAR(20)   DEFAULT 'new',
-    product_id       INTEGER,
-    movement_speed   VARCHAR,
-    movement_score   INTEGER,
+    product_id       INTEGER       NOT NULL REFERENCES products(product_id), -- Satisfies legacy FK
+    movement_speed   INTEGER       CHECK (movement_speed >= 1),             -- Satisfies legacy check
+    movement_score   INTEGER       NOT NULL CHECK (movement_score >= 1),    -- Satisfies legacy check
     shelf_availability VARCHAR,
     urgency_bonus    INTEGER       DEFAULT 0,
     reviewed_at      TIMESTAMP,

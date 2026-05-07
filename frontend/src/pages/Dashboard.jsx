@@ -424,40 +424,42 @@ const Dashboard = () => {
                         <span style={{ fontSize: '24px', color: '#60a5fa' }}>→</span>
                     </button>
 
-                    {role === 'manager' && (
+                    {(role === 'manager' || role === 'admin') && (
                         <>
-                            <button
-                                onClick={() => navigate('/dashboard/root-cause')}
-                                style={{
-                                    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-                                    color: 'white',
-                                    padding: '16px 24px',
-                                    border: '2px solid #8b5cf6',
-                                    borderRadius: '12px',
-                                    fontSize: '18px',
-                                    fontWeight: 'bold',
-                                    letterSpacing: '0.5px',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-                                    transition: 'all 0.3s ease'
-                                }}
-                                onMouseOver={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(-3px)';
-                                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
-                                }}
-                                onMouseOut={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
-                                }}
-                            >
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#c4b5fd' }}>
-                                    <span style={{ fontSize: '20px' }}>🔍</span> Root Cause Analytics
-                                </span>
-                                <span style={{ fontSize: '24px', color: '#c4b5fd' }}>→</span>
-                            </button>
+                            {role === 'manager' && (
+                                <button
+                                    onClick={() => navigate('/dashboard/root-cause')}
+                                    style={{
+                                        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                                        color: 'white',
+                                        padding: '16px 24px',
+                                        border: '2px solid #8b5cf6',
+                                        borderRadius: '12px',
+                                        fontSize: '18px',
+                                        fontWeight: 'bold',
+                                        letterSpacing: '0.5px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onMouseOver={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-3px)';
+                                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
+                                    }}
+                                    onMouseOut={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
+                                    }}
+                                >
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#c4b5fd' }}>
+                                        <span style={{ fontSize: '20px' }}>🔍</span> Root Cause Analytics
+                                    </span>
+                                    <span style={{ fontSize: '24px', color: '#c4b5fd' }}>→</span>
+                                </button>
+                            )}
 
                             <button
                                 onClick={() => navigate('/dashboard/my-distributors')}
@@ -487,7 +489,7 @@ const Dashboard = () => {
                                 }}
                             >
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#93c5fd' }}>
-                                    <span style={{ fontSize: '20px' }}>🤝</span> Distributor Scorecards
+                                    <span style={{ fontSize: '20px' }}>🤝</span> {role === 'admin' ? 'Contract Intelligence' : 'Distributor Scorecards'}
                                 </span>
                                 <span style={{ fontSize: '24px', color: '#93c5fd' }}>→</span>
                             </button>

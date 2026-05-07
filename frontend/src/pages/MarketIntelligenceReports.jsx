@@ -97,7 +97,10 @@ const MarketIntelligenceReports = () => {
     );
   }
 
-  const { regionOverview = [], stockWithVelocity = [], highDemandNotInStock = [], lastUpdated } = data || {};
+  // COMMAND METRICS (Pivoted to Procurement Gap)
+  const { regionOverview = [], highDemandNotInStock = [], lastUpdated, recentReportsCount = 0 } = data || {};
+  const urgentProcurementCount = highDemandNotInStock.filter(p => p.urgency_tier === 'high' || p.urgency_tier === 'medium').length;
+  const oosRegionsCount = new Set(highDemandNotInStock.flatMap(p => p.fast_regions.split(',').map(r => r.trim()))).size;
   const lastUpdateDate = lastUpdated ? new Date(lastUpdated).toLocaleTimeString() : new Date().toLocaleTimeString();
 
   return (
@@ -114,55 +117,59 @@ const MarketIntelligenceReports = () => {
         {/* HEADER */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <h1 style={{ color: '#1a3a5c', margin: '0 0 8px 0', fontSize: '28px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              Regional Market Pulse
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', backgroundColor: '#e2e8f0', padding: '4px 10px', borderRadius: '16px', border: '1px solid #cbd5e1', color: '#334155' }}>
+            <h1 style={{ color: '#1a3a5c', margin: '0 0 8px 0', fontSize: '28px', display: 'flex', alignItems: 'center', gap: '12px', fontWeight: '900' }}>
+              Market Supply Intelligence
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', backgroundColor: '#e2e8f0', padding: '4px 10px', borderRadius: '16px', border: '1px solid #cbd5e1', color: '#334155', fontWeight: 'bold' }}>
                 <span style={{ width: '8px', height: '8px', backgroundColor: '#22c55e', borderRadius: '50%', display: 'inline-block', boxShadow: '0 0 8px #22c55e' }}></span>
-                LIVE
+                STRATEGIC PULSE
               </span>
             </h1>
-            <p style={{ color: '#64748b', margin: 0, fontSize: '15px' }}>Where your stock is needed most</p>
+            <p style={{ color: '#64748b', margin: 0, fontSize: '15px' }}>Identifying critical supply gaps and procurement needs</p>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ color: '#64748b', fontSize: '13px', marginBottom: '4px' }}>
-              Last updated: {lastUpdateDate}
+              Sync Status: {lastUpdateDate}
             </div>
             <button 
               onClick={fetchMarketPulse}
-              style={{ backgroundColor: '#fff', border: '1px solid #cbd5e1', color: '#1e293b', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}
+              style={{ backgroundColor: '#fff', border: '1px solid #cbd5e1', color: '#1e293b', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto', fontWeight: 'bold' }}
             >
-              <span style={{ fontSize: '16px' }}>↻</span> Refresh
+              <span style={{ fontSize: '16px' }}>↻</span> Refresh Intelligence
             </button>
           </div>
         </div>
 
-        {/* CRITICAL STOCK-OUT ALERT BANNER */}
-        {stockWithVelocity.some(p => p.regions.some(r => r.speed === 'out_of_stock')) && (
-          <div style={{ backgroundColor: '#fee2e2', border: '1px solid #ef4444', borderRadius: '12px', padding: '16px 20px', marginBottom: '32px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.1)' }}>
-            <div style={{ fontSize: '24px' }}>🚨</div>
-            <div style={{ flex: 1 }}>
-              <h3 style={{ margin: 0, fontSize: '16px', color: '#991b1b', fontWeight: 'bold' }}>CRITICAL STOCK-OUT ALERTS</h3>
-              <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#b91c1c' }}>
-                Sales Reps are reporting empty shelves for: 
-                {stockWithVelocity
-                  .filter(p => p.regions.some(r => r.speed === 'out_of_stock'))
-                  .map(p => {
-                    const oosR = p.regions.filter(r => r.speed === 'out_of_stock').map(r => r.region);
-                    return ` ${p.productName} (${oosR.join(', ')})`;
-                  }).join(', ')}
-              </p>
+        {/* COMMAND SUMMARY CARDS */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '32px' }}>
+          <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderTop: '4px solid #ef4444' }}>
+            <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.5px' }}>Urgent Procurement Flags</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+              <div style={{ fontSize: '32px', fontWeight: '900', color: '#1e293b' }}>{urgentProcurementCount}</div>
+              <div style={{ fontSize: '14px', color: '#ef4444', fontWeight: 'bold' }}>Items</div>
             </div>
-            <button 
-              onClick={() => {
-                const firstOos = stockWithVelocity.find(p => p.regions.some(r => r.speed === 'out_of_stock'));
-                if (firstOos) document.getElementById(`product-card-${firstOos.sku}`)?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              style={{ backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-            >
-              View Alerts
-            </button>
+            <p style={{ fontSize: '12px', color: '#94a3b8', margin: '8px 0 0 0' }}>High demand but zero stock</p>
           </div>
-        )}
+
+          <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderTop: '4px solid #f59e0b' }}>
+            <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.5px' }}>Stock-Out Territories</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+              <div style={{ fontSize: '32px', fontWeight: '900', color: '#1e293b' }}>{oosRegionsCount}</div>
+              <div style={{ fontSize: '14px', color: '#f59e0b', fontWeight: 'bold' }}>Regions</div>
+            </div>
+            <p style={{ fontSize: '12px', color: '#94a3b8', margin: '8px 0 0 0' }}>Reporting lost sales opportunities</p>
+          </div>
+
+          <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderTop: '4px solid #3b82f6' }}>
+            <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.5px' }}>Intelligence Pulse</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+              <div style={{ fontSize: '32px', fontWeight: '900', color: '#1e293b' }}>{recentReportsCount}</div>
+              <div style={{ fontSize: '14px', color: '#3b82f6', fontWeight: 'bold' }}>Reports</div>
+            </div>
+            <p style={{ fontSize: '12px', color: '#94a3b8', margin: '8px 0 0 0' }}>Field data received in last 7 days</p>
+          </div>
+        </div>
+
+
 
         {/* SECTION 1: QUICK REGION SNAPSHOT */}
         <div style={{ marginBottom: '40px' }}>
@@ -178,140 +185,6 @@ const MarketIntelligenceReports = () => {
               ))}
             </div>
           </div>
-        </div>
-
-        {/* SECTION 2: YOUR STOCK - WHERE TO SEND IT */}
-        <div style={{ marginBottom: '40px' }}>
-          <h2 style={{ fontSize: '20px', color: '#1a3a5c', margin: '0 0 4px 0' }}>Your Current Stock — Where to Send It</h2>
-          <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 20px 0' }}>Based on field reports from the last 30 days</p>
-
-          {stockWithVelocity.length === 0 ? (
-            <div style={{ backgroundColor: '#fff', padding: '30px', textAlign: 'center', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#64748b' }}>
-              No active batches in the warehouse right now.
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '24px' }}>
-              {stockWithVelocity.map(product => {
-                const noDataRegions = product.regions.filter(r => r.speed === 'no_data').map(r => r.region);
-                const dataRegions = product.regions.filter(r => r.speed !== 'no_data');
-
-                return (
-                  <div 
-                    key={product.sku} 
-                    id={`product-card-${product.sku}`}
-                    style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', position: 'relative' }}
-                  >
-                    {/* A) Dispatch Priority Badge */}
-                    <div style={{ 
-                      display: 'inline-block', 
-                      padding: '4px 8px', 
-                      borderRadius: '4px', 
-                      fontSize: '11px', 
-                      fontWeight: 'bold', 
-                      marginBottom: '12px',
-                      backgroundColor: product.dispatch_priority === 'critical' ? '#fef2f2' : product.dispatch_priority === 'high' ? '#fef9c3' : '#f1f5f9',
-                      color: product.dispatch_priority === 'critical' ? '#991b1b' : product.dispatch_priority === 'high' ? '#854d0e' : '#64748b',
-                      border: `1px solid ${product.dispatch_priority === 'critical' ? '#ef4444' : product.dispatch_priority === 'high' ? '#f59e0b' : '#e2e8f0'}`
-                    }}>
-                      {product.dispatch_priority === 'critical' ? '🚨 CRITICAL' : product.dispatch_priority === 'high' ? '⚡ HIGH PRIORITY' : '→ NORMAL'}
-                    </div>
-                    
-                    {/* Card Header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-                      <div style={{ flex: 1, paddingRight: '12px' }}>
-                        <h3 style={{ margin: 0, fontSize: '22px', color: '#1e293b', lineHeight: '1.2' }}>{product.productName}</h3>
-                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>SKU: {product.sku}</div>
-                      </div>
-                      <div style={{ backgroundColor: '#f1f5f9', color: '#475569', padding: '6px 12px', borderRadius: '20px', fontSize: '13px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                        {product.batchCount} batches
-                      </div>
-                    </div>
-
-                    {/* Demand by Region Label */}
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#94a3b8', marginBottom: '12px' }}>
-                      Market Demand Signal:
-                    </div>
-
-                    {/* Region Rows */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
-                      {dataRegions.map(r => (
-                        <div key={r.region}>
-                          <div style={{ display: 'flex', alignItems: 'center', height: '24px' }}>
-                            <div style={{ width: '100px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '500', color: '#334155' }}>
-                              <span style={{ fontSize: '16px', width: '20px', textAlign: 'center' }}>{r.icon}</span>
-                              {r.region}
-                            </div>
-                            
-                            <div style={{ flex: 1, margin: '0 16px', backgroundColor: '#f1f5f9', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: `${r.barWidth}%`, backgroundColor: getSpeedFill(r.speed), transition: 'width 0.5s ease-in-out' }}></div>
-                            </div>
-
-                            <div style={{ width: '100px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-end', gap: '2px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'baseline', gap: '6px' }}>
-                                <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569', textAlign: 'right' }}>
-                                  {getSpeedLabel(r.speed)}
-                                </span>
-                                <span style={{ fontSize: '11px', color: '#94a3b8', minWidth: '20px', textAlign: 'right' }}>
-                                  · {r.avgScore !== null ? r.avgScore : '—'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          {r.empty_shelf_count > 0 && (
-                            <div style={{ marginLeft: '124px', color: '#ef4444', fontSize: '11px', marginTop: '2px' }}>
-                              ⚠ Empty shelf reported at {r.empty_shelf_count} outlets
-                            </div>
-                          )}
-                        </div>
-                      ))}
-
-                      {/* D) Collapse No Data Regions */}
-                      {noDataRegions.length > 0 && (
-                        <p style={{ fontSize: '11px', color: '#94a3b8', marginTop: '8px', fontStyle: 'italic' }}>
-                          No field data: {noDataRegions.join(', ')}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* E) Specific Alert Text */}
-                    <div style={{ backgroundColor: '#1e3a5f', color: '#ffffff', borderRadius: '6px', padding: '12px 16px', fontSize: '13px', lineHeight: '1.4', display: 'flex', gap: '10px' }}>
-                      <span style={{ fontSize: '16px' }}>💡</span>
-                      <div>{product.alert_text}</div>
-                    </div>
-
-                    {/* F) Dispatch Action Button */}
-                    {(product.dispatch_priority === 'critical' || product.dispatch_priority === 'high') && (
-                      <button
-                        onClick={() => {
-                          const targetUrl = `/dashboard/dispatch?sku=${product.sku}&region=${product.best_dispatch_region}`;
-                          // For now, since dispatch page might not exist, we'll alert and mock navigate
-                          console.log(`Navigating to ${targetUrl}`);
-                          alert(`Recommendation copied: Dispatch ${product.productName} to ${product.best_dispatch_region}. Proceed to Clearance/Dispatch.`);
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '10px',
-                          backgroundColor: '#22c55e',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          marginTop: '12px',
-                          transition: 'background 0.2s'
-                        }}
-                        onMouseOver={(e) => e.target.style.backgroundColor = '#16a34a'}
-                        onMouseOut={(e) => e.target.style.backgroundColor = '#22c55e'}
-                      >
-                        Dispatch to {product.best_dispatch_region} →
-                      </button>
-                    )}
-
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
 
         {/* SECTION 3: PRODUCTS WITH NO WAREHOUSE STOCK */}
@@ -386,9 +259,7 @@ const MarketIntelligenceReports = () => {
                     </div>
                   </div>
                   
-                  <div style={{ backgroundColor: '#f1f5f9', color: '#475569', padding: '4px 12px', borderRadius: '16px', fontSize: '12px', fontWeight: 'bold', border: '1px solid #e2e8f0' }}>
-                    0 batches
-                  </div>
+
                 </div>
               ))}
             </div>

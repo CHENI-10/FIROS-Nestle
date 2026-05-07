@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 
@@ -7,19 +7,18 @@ const RootCauseAnalytics = () => {
     const token = sessionStorage.getItem('token');
 
     const [data, setData] = useState(null);
-    const [liveImpact, setLiveImpact] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Default to current month, but keep track via state
     const [currentMonthStr, setCurrentMonthStr] = useState(() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     });
 
-    const [selectedPeriod, setSelectedPeriod] = useState(null); // null, 30, 60, 90
-
+    const [selectedPeriod, setSelectedPeriod] = useState(null);
     const [expandedBatches, setExpandedBatches] = useState({});
+    const [assignedActions, setAssignedActions] = useState({});
+    const reportRef = useRef(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -34,13 +33,14 @@ const RootCauseAnalytics = () => {
                     url += `?month=${parseInt(month)}&year=${year}`;
                 }
 
+                console.log(`[DEBUG] Fetching from URL: ${url}`);
                 const res = await fetch(url, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
                 if (!res.ok) {
                     if (res.status === 403 || res.status === 401) {
-                        navigate('/dashboard'); // Kick out if not manager
+                        navigate('/dashboard');
                         return;
                     }
                     throw new Error('Failed to fetch data');
@@ -48,16 +48,6 @@ const RootCauseAnalytics = () => {
 
                 const result = await res.json();
                 setData(result);
-
-                // Fetch live impact based on problem zones from the result
-                const problemZones = result.problemZones.map(pz => pz.zone).join(',');
-                const liveRes = await fetch(`/api/root-cause/live-impact?zones=${problemZones}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (liveRes.ok) {
-                    const liveData = await liveRes.json();
-                    setLiveImpact(liveData);
-                }
 
             } catch (err) {
                 console.error("Error fetching root cause data:", err);
@@ -71,40 +61,77 @@ const RootCauseAnalytics = () => {
     }, [currentMonthStr, selectedPeriod, token, navigate]);
 
     const handleExport = () => {
-        if (!data || !data.rootCauses) return;
+        if (!data) return;
+        const pLabel = data.periodLabel || 'Report';
+        const rootCauseRows = (data.rootCauses || []).filter(rc => rc.count > 0).map(rc => {
+            const batchRows = rc.batches.map(b => `
+                <tr>
+                    <td>${b.batchId}</td>
+                    <td>${b.productName}</td>
+                    <td>${new Date(b.dispatched_at).toLocaleDateString()}</td>
+                    <td>Zone ${b.zone}</td>
+                    <td>${b.distributor_name || b.distributorName || 'N/A'}</td>
+                    <td style="color:#dc2626;font-weight:700;">RETURNED</td>
+                </tr>`).join('');
+            return `
+                <div class="section">
+                    <div class="cat-header" style="border-left:5px solid ${rc.color};">
+                        <span>${rc.icon} <strong>${rc.category.toUpperCase()}</strong></span>
+                        <span class="badge">${rc.count} Batch${rc.count > 1 ? 'es' : ''} (${rc.percentage}%)</span>
+                    </div>
+                    ${rc.patternText ? `<p class="pattern">${rc.patternText}</p>` : ''}
+                    ${rc.suggestedAction ? `<div class="action">&#128161; <strong>Action Plan:</strong> ${rc.suggestedAction}</div>` : ''}
+                    <table>
+                        <thead><tr><th>Batch ID</th><th>Product</th><th>Dispatched</th><th>Zone</th><th>Distributor</th><th>Status</th></tr></thead>
+                        <tbody>${batchRows}</tbody>
+                    </table>
+                </div>`;
+        }).join('');
 
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Batch ID,Product,Zone,Days in WH,Temp Breaches,Root Cause,Dispatched At,Collected At,Distributor,Status\n";
-
-        data.rootCauses.forEach(rc => {
-            rc.batches.forEach(b => {
-                const dispDate = new Date(b.dispatched_at).toLocaleDateString();
-                const collDate = b.collected_at ? new Date(b.collected_at).toLocaleDateString() : 'N/A';
-                const row = [
-                    b.batchId,
-                    b.productName,
-                    b.zone,
-                    b.daysInWarehouse,
-                    b.tempBreachWindows,
-                    rc.category,
-                    dispDate,
-                    collDate,
-                    `"${b.distributorName || 'N/A'}"`,
-                    b.status
-                ];
-                csvContent += row.join(",") + "\n";
-            });
-        });
-
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        const pLabel = (data.periodLabel || 'Report').replace(/\s+/g, '-');
-        const mName = (data.managerName || 'Manager').replace(/\s+/g, '_');
-        link.setAttribute("download", `root-cause-${pLabel}-${mName}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const pw = window.open('', '_blank');
+        pw.document.write(`<!DOCTYPE html><html><head>
+            <title>Root Cause Intelligence - ${pLabel}</title>
+            <style>
+                *{margin:0;padding:0;box-sizing:border-box;}
+                body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:30px;background:#fff;}
+                .header{border-bottom:3px solid #1e40af;padding-bottom:14px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end;}
+                .title{font-size:22px;font-weight:900;color:#1e3a8a;}
+                .sub{font-size:12px;color:#64748b;margin-top:4px;}
+                .meta{font-size:11px;color:#94a3b8;text-align:right;}
+                .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+                .kpi{padding:14px;border-radius:8px;border:1px solid #e2e8f0;}
+                .kpi-label{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+                .kpi-value{font-size:30px;font-weight:900;line-height:1;}
+                .kpi-sub{font-size:11px;color:#94a3b8;margin-top:3px;}
+                .breakdown-title{font-size:10px;font-weight:800;letter-spacing:2px;color:#94a3b8;text-transform:uppercase;margin-bottom:14px;}
+                .section{margin-bottom:22px;page-break-inside:avoid;}
+                .cat-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:6px;margin-bottom:10px;}
+                .badge{font-size:11px;background:#e2e8f0;padding:3px 9px;border-radius:10px;font-weight:600;color:#475569;}
+                .pattern{font-size:12px;color:#334155;margin-bottom:8px;line-height:1.5;}
+                .action{background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;padding:9px 12px;margin-bottom:10px;font-size:12px;color:#3730a3;line-height:1.5;}
+                table{width:100%;border-collapse:collapse;font-size:12px;}
+                th{background:#f1f5f9;padding:8px 10px;text-align:left;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:#64748b;border-bottom:2px solid #e2e8f0;}
+                td{padding:9px 10px;border-bottom:1px solid #f1f5f9;color:#334155;font-weight:500;}
+                tr:last-child td{border-bottom:none;}
+                .footer{margin-top:28px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;text-align:center;}
+            </style></head><body>
+            <div class="header">
+                <div><div class="title">Root Cause Intelligence Report</div><div class="sub">Period: ${pLabel}</div></div>
+                <div class="meta">Generated: ${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'})}<br/>FIROS Warehouse Intelligence</div>
+            </div>
+            <div class="kpis">
+                <div class="kpi" style="border-top:4px solid #3b82f6;"><div class="kpi-label" style="color:#3b82f6;">Dispatched</div><div class="kpi-value">${data.summary.totalDispatched}</div><div class="kpi-sub">batches sent</div></div>
+                <div class="kpi" style="border-top:4px solid #10b981;"><div class="kpi-label" style="color:#10b981;">Successful</div><div class="kpi-value">${data.summary.totalCleared}</div><div class="kpi-sub">batches cleared</div></div>
+                <div class="kpi" style="border-top:4px solid #f43f5e;"><div class="kpi-label" style="color:#f43f5e;">Returned</div><div class="kpi-value">${data.summary.totalReturned}</div><div class="kpi-sub">batches returned</div></div>
+                <div class="kpi" style="border-top:4px solid #f59e0b;"><div class="kpi-label" style="color:#f59e0b;">Failure Rate</div><div class="kpi-value">${data.summary.totalDispatched > 0 ? Math.round((data.summary.totalReturned/data.summary.totalDispatched)*100) : 0}%</div><div class="kpi-sub">of dispatches</div></div>
+            </div>
+            <div class="breakdown-title">Loss Intelligence Breakdown</div>
+            ${rootCauseRows}
+            <div class="footer">Confidential — FIROS Warehouse Intelligence System &nbsp;|&nbsp; ${new Date().toLocaleString()}</div>
+        </body></html>`);
+        pw.document.close();
+        pw.focus();
+        setTimeout(() => pw.print(), 600);
     };
 
     const toggleBatches = (category) => {
@@ -114,87 +141,57 @@ const RootCauseAnalytics = () => {
         }));
     };
 
-
-
-    const theme = sessionStorage.getItem('theme') || 'light';
-
     if (loading) {
-        return <div className={`dashboard-container ${theme}`} style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <div style={{ color: 'var(--text-main)', fontSize: '18px' }}>Loading analytics...</div>
+        return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc', fontFamily: "'Outfit', sans-serif" }}>
+            <div style={{ color: '#64748b', fontSize: '18px', fontWeight: 'bold' }}>Scanning Intelligence Engine...</div>
         </div>;
     }
 
     if (error) {
-        return <div className={`dashboard-container ${theme}`} style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <div style={{ color: '#ef4444', fontSize: '18px' }}>Error: {error}</div>
+        return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc', fontFamily: "'Outfit', sans-serif" }}>
+            <div style={{ color: '#ef4444', fontSize: '18px', fontWeight: 'bold' }}>Error: {error}</div>
         </div>;
     }
 
     if (!data) return null;
 
-
-
-    const getAtRiskCount = () => {
-        if (!liveImpact) return 0;
-        return (liveImpact.atRiskInZones?.length || 0) +
-            (liveImpact.approachingStorageLimit?.length || 0) +
-            (liveImpact.collectionDelays?.length || 0);
-    };
-
-    const scrollToLiveImpact = () => {
-        const element = document.getElementById('live-impact-section');
-        if (element) {
-            element.scrollIntoView({ behavior: 'smooth' });
-        }
-    };
-
     const getTrendBadge = (val, isFailures = false) => {
-        if (val === 0 || val === undefined || val === null || isNaN(val)) return null;
-        const isPositive = val > 0; // "Positive" delta means more failures, which is BAD
-        const color = isPositive ? '#ef4444' : '#22c55e';
-        const icon = isPositive ? '↑' : '↓';
-        const absVal = Math.abs(val);
-        const text = isPositive ? `${absVal} more` : `${absVal} fewer`;
-
-        return (
-            <span style={{
-                ...styles.deltaBadge,
-                backgroundColor: isPositive ? '#fee2e2' : '#dcfce7',
-                color
-            }}>
-                {icon} {text} {isFailures ? 'failures' : ''}
-            </span>
-        );
+        return null; // Logic removed as per user request to declutter UI
     };
 
     return (
-        <div className={`dashboard-container ${theme}`} style={{ minHeight: '100vh' }}>
-            <div style={styles.container}>
+        <div style={{ backgroundColor: '#f1f5f9', minHeight: '100vh', fontFamily: "'Outfit', sans-serif", color: '#1e293b' }}>
+            {/* GOOGLE FONTS IMPORT */}
+            <style>
+                {`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');`}
+            </style>
+
+            <div style={styles.container} ref={reportRef}>
                 {/* Header */}
                 <div style={styles.header}>
                     <div>
-                        <h1 style={styles.title}> Root Cause Analytics</h1>
-                        <p style={styles.subtitle}>{data.managerName}</p>
+                        <h1 style={styles.title}>Root Cause Intelligence</h1>
+                        {/* <p style={styles.subtitle}>Strategic Analysis by {data.managerName}</p> */}
                     </div>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <button
                             onClick={() => navigate('/dashboard')}
                             style={styles.secondaryBtn}
                         >
-                            ← Back to Dashboard
+                            &larr; Back
                         </button>
-                        <button onClick={handleExport} style={styles.exportBtn}>Export Report</button>
+                        <button onClick={handleExport} style={styles.exportBtn}>Export Intel</button>
                     </div>
                 </div>
 
-                {/* Navigation & Period Selection */}
+                {/* Period Selection Row */}
                 <div style={styles.navSection}>
                     <div style={styles.periodTabs}>
                         <button
                             style={{ ...styles.tabBtn, ...(selectedPeriod === null ? styles.activeTab : {}) }}
                             onClick={() => setSelectedPeriod(null)}
                         >
-                            Monthly View
+                            Monthly Report
                         </button>
                         {[30, 60, 90].map(p => (
                             <button
@@ -202,29 +199,27 @@ const RootCauseAnalytics = () => {
                                 style={{ ...styles.tabBtn, ...(selectedPeriod === p ? styles.activeTab : {}) }}
                                 onClick={() => setSelectedPeriod(p)}
                             >
-                                Last {p} Days
+                                {p} Days
                             </button>
                         ))}
                     </div>
 
                     {!selectedPeriod && (
                         <div style={styles.navRow}>
-                            <div style={styles.monthBadgeContainer}>
-                                <select
-                                    value={`${data.year}-${String(data.month).padStart(2, '0')}`}
-                                    onChange={(e) => {
-                                        setCurrentMonthStr(e.target.value);
-                                        setSelectedPeriod(null);
-                                    }}
-                                    style={styles.monthSelect}
-                                >
-                                    {data.availableMonths.map(m => (
-                                        <option key={`${m.year}-${m.month}`} value={`${m.year}-${String(m.month).padStart(2, '0')}`}>
-                                            {m.label} {m.year === new Date().getFullYear() && m.month === new Date().getMonth() + 1 ? '(Current)' : ''}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            <select
+                                value={`${data.year}-${String(data.month).padStart(2, '0')}`}
+                                onChange={(e) => {
+                                    setCurrentMonthStr(e.target.value);
+                                    setSelectedPeriod(null);
+                                }}
+                                style={styles.monthSelect}
+                            >
+                                {data.availableMonths.map(m => (
+                                    <option key={`${m.year}-${m.month}`} value={`${m.year}-${String(m.month).padStart(2, '0')}`}>
+                                        {m.label} {m.year === new Date().getFullYear() && m.month === new Date().getMonth() + 1 ? '(Current)' : ''}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     )}
 
@@ -237,138 +232,83 @@ const RootCauseAnalytics = () => {
                 </div>
 
                 {data.summary.totalDispatched === 0 && data.summary.totalFailed === 0 ? (
-                    /* Empty State */
                     <div style={styles.card}>
-                        <h3 style={{ marginTop: 0, color: 'var(--text-main)' }}>No batch failure data for {data.periodLabel}.</h3>
-                        <p style={{ color: 'var(--text-muted)' }}>Either no batches were cleared or returned in this period, or you had no dispatches recorded.</p>
+                        <h3 style={{ marginTop: 0, color: '#64748b' }}>No data for {data.periodLabel}.</h3>
+                        <p style={{ color: '#94a3b8' }}>All operations are currently inactive for this timeframe.</p>
                     </div>
                 ) : (
                     <>
-                        {/* SECTION 1: PERIOD AT A GLANCE */}
-                        <div style={styles.section}>
-                            <div style={styles.statsGrid}>
-                                <div style={{ ...styles.statCard, backgroundColor: 'var(--card-bg)', borderTop: '4px solid #3b82f6' }}>
-                                    <div style={{ ...styles.statLabel, color: '#3b82f6' }}>DISPATCHED</div>
-                                    <div style={{ ...styles.statValue, color: 'var(--text-main)' }}>{data.summary.totalDispatched}</div>
-                                    <div style={styles.statSub}>in period</div>
-                                </div>
-                                <div style={{ ...styles.statCard, backgroundColor: 'var(--card-bg)', borderTop: '4px solid #f59e0b' }}>
-                                    <div style={{ ...styles.statLabel, color: '#f59e0b' }}>CLEARED</div>
-                                    <div style={{ ...styles.statValue, color: 'var(--text-main)' }}>{data.summary.totalCleared}</div>
-                                    <div style={styles.statSub}>in period</div>
-                                </div>
-                                <div style={{ ...styles.statCard, backgroundColor: 'var(--card-bg)', borderTop: '4px solid #ef4444' }}>
-                                    <div style={{ ...styles.statLabel, color: '#ef4444' }}>RETURNED</div>
-                                    <div style={{ ...styles.statValue, color: 'var(--text-main)' }}>{data.summary.totalReturned}</div>
-                                    <div style={styles.statSub}>
-                                        in period
-                                        {getTrendBadge(data.summary.comparison?.failuresDelta, true)}
-                                    </div>
-                                </div>
-                                <div
-                                    style={{
-                                        ...styles.statCard,
-                                        backgroundColor: 'var(--card-bg)',
-                                        borderTop: `4px solid ${getAtRiskCount() > 0 ? '#f59e0b' : '#22c55e'}`,
-                                        cursor: 'pointer'
-                                    }}
-                                    onClick={scrollToLiveImpact}
-                                >
-                                    <div style={{ ...styles.statLabel, color: getAtRiskCount() > 0 ? '#f59e0b' : '#22c55e' }}>CURRENTLY AT RISK</div>
-                                    <div style={{ ...styles.statValue, color: 'var(--text-main)' }}>{getAtRiskCount()}</div>
-                                    <div style={styles.statSub}>batches in problem areas</div>
+                        {/* SECTION 1: METRICS GRID */}
+                        <div style={styles.statsGrid}>
+                            <div style={{ ...styles.statCard, borderTop: '4px solid #3b82f6' }}>
+                                <div style={{ ...styles.statLabel, color: '#3b82f6' }}>DISPATCHED</div>
+                                <div style={styles.statValue}>{data.summary.totalDispatched}</div>
+                                <div style={styles.statSub}>batches sent</div>
+                            </div>
+                            <div style={{ ...styles.statCard, borderTop: '4px solid #10b981' }}>
+                                <div style={{ ...styles.statLabel, color: '#10b981' }}>SUCCESSFUL</div>
+                                <div style={styles.statValue}>{data.summary.totalCleared}</div>
+                                <div style={styles.statSub}>batches cleared</div>
+                            </div>
+                            <div style={{ ...styles.statCard, borderTop: '4px solid #f43f5e' }}>
+                                <div style={{ ...styles.statLabel, color: '#f43f5e' }}>RETURNED</div>
+                                <div style={styles.statValue}>{data.summary.totalReturned}</div>
+                                <div style={styles.statSub}>
+                                    batches returned
                                 </div>
                             </div>
 
-                            <div style={styles.card}>
-                                <div style={styles.comparisonRow}>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                            <strong style={{ color: 'var(--text-main)' }}>Your failure rate:</strong>
-                                            <span style={{ color: 'var(--text-main)' }}>
-                                                {data.summary.failureRate}%
-                                                {getTrendBadge(data.summary.comparison?.failureRateDelta)}
-                                            </span>
-                                        </div>
-                                        <div style={styles.barBg}>
-                                            <div style={{ ...styles.barFill, width: `${Math.min(data.summary.failureRate, 100)}%`, backgroundColor: '#3b82f6' }} />
-                                        </div>
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                            <strong style={{ color: 'var(--text-muted)' }}>System average:</strong>
-                                            <span style={{ color: 'var(--text-muted)' }}>
-                                                {data.summary.systemAvgFailureRate === 0 || data.summary.systemAvgFailureRate === null
-                                                    ? "Not enough data"
-                                                    : `${data.summary.systemAvgFailureRate}%`}
-                                            </span>
-                                        </div>
-                                        <div style={styles.barBg}>
-                                            <div style={{ ...styles.barFill, width: `${Math.min(data.summary.systemAvgFailureRate, 100)}%`, backgroundColor: '#cbd5e1' }} />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div style={{ marginTop: '16px', color: 'var(--text-muted)', fontSize: '14px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-                                    {data.summary.failureRate < data.summary.systemAvgFailureRate ? (
-                                        <span>
-                                            ✅ You're performing better than average.
-                                            {data.summary.comparison?.failuresDelta < 0 && " Plus, failures are decreasing vs previous period!"}
-                                            {" Your main area to watch is "}
-                                            <strong>{data.rootCauses.sort((a, b) => b.count - a.count)[0]?.category}</strong>.
-                                        </span>
-                                    ) : (
-                                        <span>
-                                            Your failure rate is above average. Focus on <strong>{data.rootCauses.sort((a, b) => b.count - a.count)[0]?.category}</strong> — it accounts for {data.rootCauses.sort((a, b) => b.count - a.count)[0]?.percentage}% of your failures.
-                                        </span>
-                                    )}
-                                </div>
+                            <div style={{ ...styles.statCard, borderTop: `4px solid ${data.summary.failureRate > 10 ? '#f43f5e' : data.summary.failureRate > 5 ? '#f59e0b' : '#10b981'}` }}>
+                                <div style={{ ...styles.statLabel, color: data.summary.failureRate > 10 ? '#f43f5e' : data.summary.failureRate > 5 ? '#f59e0b' : '#10b981' }}>FAILURE RATE</div>
+                                <div style={styles.statValue}>{data.summary.failureRate}%</div>
+                                <div style={styles.statSub}>of total dispatches</div>
                             </div>
                         </div>
 
-                        {/* SECTION 2: WHY YOUR BATCHES FAILED */}
+                        {/* SECTION 2: ROOT CAUSE CLASSIFICATION */}
                         <div style={styles.section}>
-                            <h2 style={styles.sectionTitle}>Why Your Batches Failed</h2>
+                            <h2 style={styles.sectionTitle}>Loss Intelligence Breakdown</h2>
                             {data.summary.totalFailed === 0 ? (
-                                <div style={{ ...styles.card, backgroundColor: '#dcfce7', borderColor: '#bbf7d0' }}>
-                                    <strong style={{ color: '#166534' }}>✅ No batch failures in this period.</strong><br />
-                                    <span style={{ color: '#166534' }}>All your dispatches resolved successfully.</span>
+                                <div style={{ ...styles.card, backgroundColor: '#f0fdf4', borderColor: '#bbf7d0', textAlign: 'center' }}>
+                                    <div style={{ fontSize: '32px', marginBottom: '12px' }}>🛡️</div>
+                                    <strong style={{ color: '#166534', fontSize: '18px' }}>Zero Batch Failures Detected</strong><br />
+                                    <span style={{ color: '#166534' }}>Your operational protocol is performing flawlessly in this period.</span>
                                 </div>
                             ) : (
                                 <div style={styles.card}>
-                                    <div style={{ display: 'grid', gap: '20px' }}>
-                                        {['Temperature-Driven', 'Long Storage', 'Distributor Delay', 'Market Saturation', 'Unclassified'].map(catName => {
-                                            const rc = data.rootCauses.find(c => c.category === catName) || { category: catName, count: 0, percentage: 0, color: '#94a3b8' };
+                                    <div style={{ display: 'grid', gap: '24px' }}>
+                                        {['Temperature-Driven', 'Long Storage', 'Distributor Delay', 'Unclassified'].map(catName => {
+                                            const rc = data.rootCauses.find(c => c.category === catName) || { category: catName, count: 0, percentage: 0 };
                                             const colors = {
-                                                'Temperature-Driven': '#ef4444',
+                                                'Temperature-Driven': '#f43f5e',
                                                 'Long Storage': '#f59e0b',
                                                 'Distributor Delay': '#8b5cf6',
-                                                'Market Saturation': '#8b5cf6',
+                                                'Market Saturation': '#3b82f6',
                                                 'Unclassified': '#94a3b8'
                                             };
                                             const barColor = colors[catName] || '#94a3b8';
                                             const hasBatches = rc.count > 0;
 
-                                            // Get category delta
                                             let delta = 0;
                                             if (catName === 'Temperature-Driven') delta = data.summary.comparison?.tempFailuresDelta;
                                             if (catName === 'Long Storage') delta = data.summary.comparison?.longStorageDelta;
 
                                             return (
-                                                <div key={catName} style={{ opacity: hasBatches ? 1 : 0.5 }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
-                                                        <span style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>
+                                                <div key={catName} style={{ opacity: hasBatches ? 1 : 0.4 }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                                        <span style={{ fontWeight: '800', color: '#1e293b', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                                             {catName}
-                                                            {getTrendBadge(delta)}
                                                         </span>
-                                                        <span style={{ color: 'var(--text-muted)' }}>
-                                                            {hasBatches ? `${rc.count} batches (${rc.percentage}%)` : '(empty)'}
+                                                        <span style={{ color: '#64748b', fontWeight: 'bold', fontSize: '13px' }}>
+                                                            {hasBatches ? `${rc.count} batches (${rc.percentage}%)` : '—'}
                                                         </span>
                                                     </div>
                                                     <div style={styles.barBg}>
                                                         <div style={{
                                                             ...styles.barFill,
                                                             width: `${rc.percentage}%`,
-                                                            backgroundColor: hasBatches ? barColor : '#e2e8f0'
+                                                            backgroundColor: barColor,
+                                                            boxShadow: `0 0 10px ${barColor}44`
                                                         }} />
                                                     </div>
                                                 </div>
@@ -379,251 +319,123 @@ const RootCauseAnalytics = () => {
                             )}
                         </div>
 
-                        {/* Rest of sections only show if there are failures */}
+                        {/* SECTION 3: DEEP DIVE PATTERNS */}
                         {data.summary.totalFailed > 0 && (
-                            <>
-                                {/* SECTION 3: PATTERN ANALYSIS */}
-                                <div style={styles.section}>
-                                    <h2 style={styles.sectionTitle}>Patterns Detected in Your Dispatches</h2>
-                                    {data.rootCauses.filter(rc => rc.count > 0).map(rc => (
-                                        <div key={rc.category} style={{ ...styles.card, borderLeft: `4px solid ${rc.color}`, marginBottom: '16px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                                                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)' }}>
-                                                    <span>{rc.icon}</span> {rc.category.toUpperCase()}
-                                                </h3>
-                                                <span style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>{rc.count} batches</span>
-                                            </div>
-                                            <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '0 0 16px 0' }} />
+                            <div style={styles.section}>
+                                <h2 style={styles.sectionTitle}>Diagnostic Patterns</h2>
+                                {data.rootCauses.filter(rc => rc.count > 0).map(rc => (
+                                    <div key={rc.category} style={{ ...styles.card, borderLeft: `6px solid ${rc.color}`, marginBottom: '24px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px', color: '#1e293b', fontSize: '18px', fontWeight: '900' }}>
+                                                <span style={{ fontSize: '24px' }}>{rc.icon}</span> {rc.category.toUpperCase()}
+                                            </h3>
+                                            <span style={styles.pillBadge}>{rc.count} Failed Batches</span>
+                                        </div>
 
-                                            <div style={{ marginBottom: '16px' }}>
-                                                {rc.patternDetected ? (
-                                                    <div style={{ ...styles.statusBadge, backgroundColor: '#fef3c7', color: '#b45309', display: 'inline-block', marginBottom: '8px' }}>
-                                                        ⚡ PATTERN DETECTED
-                                                    </div>
-                                                ) : (
-                                                    <div style={{ color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: '8px' }}>
-                                                        No recurring pattern in this period
-                                                    </div>
-                                                )}
-                                                <p style={{ margin: '0 0 12px 0', color: 'var(--text-main)' }}>{rc.patternText}</p>
-                                            </div>
-
-                                            {rc.affectedSkus.length > 0 && (
-                                                <div style={{ marginBottom: '16px' }}>
-                                                    <div style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '8px' }}>Products affected:</div>
-                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                                        {rc.affectedSkus.map(skuObj => (
-                                                            <span key={skuObj.sku} style={styles.pillBadge}>{skuObj.productName} ×{skuObj.count}</span>
-                                                        ))}
-                                                    </div>
+                                        <div style={{ marginBottom: '20px' }}>
+                                            {rc.patternDetected ? (
+                                                <div style={{ ...styles.statusBadge, backgroundColor: '#fff7ed', color: '#c2410c', display: 'inline-block', marginBottom: '12px' }}>
+                                                    ⚡ RECURRING ANOMALY DETECTED
                                                 </div>
+                                            ) : (
+                                                rc.category !== 'Unclassified' && (
+                                                    <div style={{ color: '#94a3b8', fontSize: '13px', fontStyle: 'italic', marginBottom: '12px' }}>
+                                                        Scattered failures — no central pattern identified
+                                                    </div>
+                                                )
                                             )}
+                                            {rc.category !== 'Unclassified' && (
+                                                <p style={{ margin: '0 0 16px 0', color: '#334155', lineHeight: '1.6', fontSize: '15px' }}>{rc.patternText}</p>
+                                            )}
+                                        </div>
 
-                                            {/* Day of Week Insight */}
-                                            <div style={{ marginBottom: '16px' }}>
-                                                <div style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '8px' }}>Day of week patterns:</div>
-                                                <div style={{ display: 'flex', gap: '4px' }}>
-                                                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, idx) => {
-                                                        const dow = idx === 6 ? 0 : idx + 1; // JS Day vs Postgres DOW (0=Sun)
-                                                        const count = rc.batches.filter(b => parseInt(b.dispatch_day_of_week) === dow).length;
-                                                        const isAffected = count > 0;
-                                                        return (
-                                                            <div
-                                                                key={day}
-                                                                style={{
-                                                                    padding: '4px 8px',
-                                                                    borderRadius: '4px',
-                                                                    fontSize: '11px',
-                                                                    fontWeight: 'bold',
-                                                                    backgroundColor: isAffected ? '#fee2e2' : 'var(--hover-bg)',
-                                                                    color: isAffected ? '#ef4444' : 'var(--text-muted)',
-                                                                    border: isAffected ? '1px solid #fecaca' : '1px solid var(--border-color)',
-                                                                    textAlign: 'center',
-                                                                    minWidth: '36px'
-                                                                }}
-                                                            >
-                                                                {day.toUpperCase()}{isAffected ? '🔴' : ''}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-
-                                            {/* Zone Breakdown (Temperature Only) */}
-                                            {rc.category === 'Temperature-Driven' && (
-                                                <div style={{ marginBottom: '16px', backgroundColor: 'var(--hover-bg)', padding: '12px', borderRadius: '8px' }}>
-                                                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '8px' }}>Zone Breakdown</div>
-                                                    {Object.entries(rc.batches.reduce((acc, b) => {
-                                                        acc[b.zone] = (acc[b.zone] || 0) + 1;
-                                                        return acc;
-                                                    }, {})).map(([zone, count]) => (
-                                                        <div key={zone} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-                                                            <span style={{ width: '60px', fontSize: '12px', color: 'var(--text-main)' }}>Zone {zone}</span>
-                                                            <div style={{ flex: 1, backgroundColor: 'var(--card-bg)', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
-                                                                <div style={{ width: `${(count / rc.count) * 100}%`, backgroundColor: '#ef4444', height: '100%' }} />
-                                                            </div>
-                                                            <span style={{ fontSize: '12px', color: 'var(--text-muted)', width: '60px' }}>{count} failures</span>
-                                                        </div>
+                                        {rc.affectedSkus.length > 0 && (
+                                            <div style={{ marginBottom: '20px' }}>
+                                                <div style={{ fontSize: '12px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '10px' }}>Impacted Products:</div>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                                    {rc.affectedSkus.map(skuObj => (
+                                                        <span key={skuObj.sku} style={styles.skuChip}>{skuObj.productName} ({skuObj.count})</span>
                                                     ))}
                                                 </div>
-                                            )}
+                                            </div>
+                                        )}
 
-                                            {rc.suggestedAction && (
-                                                <div style={styles.actionBox}>
-                                                    <span style={{ fontSize: '18px' }}>💡</span>
-                                                    <div>
-                                                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', marginBottom: '4px' }}>SUGGESTED ACTION</div>
-                                                        <div>{rc.suggestedAction}</div>
-                                                    </div>
+                                        {rc.suggestedAction && (
+                                            <div style={styles.actionBox}>
+                                                <div style={{ fontSize: '20px' }}>💡</div>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontSize: '11px', fontWeight: '900', color: '#6366f1', textTransform: 'uppercase', marginBottom: '4px' }}>Intelligence Action Plan</div>
+                                                    <div style={{ fontSize: '14px', color: '#312e81', fontWeight: '500' }}>{rc.suggestedAction}</div>
                                                 </div>
-                                            )}
-
-                                            <div style={{ marginTop: '16px' }}>
-                                                <button onClick={() => toggleBatches(rc.category)} style={styles.toggleBtn}>
-                                                    {expandedBatches[rc.category] ? 'Hide Affected Batches ▲' : 'View Affected Batches ▼'}
-                                                </button>
-
-                                                {expandedBatches[rc.category] && (
-                                                    <div style={{ overflowX: 'auto', marginTop: '12px' }}>
-                                                        <table style={styles.table}>
-                                                            <thead>
-                                                                <tr>
-                                                                    <th style={styles.th}>Batch ID</th>
-                                                                    <th style={styles.th}>Product</th>
-                                                                    <th style={styles.th}>Date</th>
-                                                                    <th style={styles.th}>Zone</th>
-                                                                    <th style={styles.th}>Status</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {rc.batches.map(b => (
-                                                                    <tr key={b.batchId}>
-                                                                        <td style={styles.td}>{b.batchId}</td>
-                                                                        <td style={styles.td}>{b.productName}</td>
-                                                                        <td style={styles.td}>{new Date(b.dispatched_at).toLocaleDateString()}</td>
-                                                                        <td style={styles.td}>{b.zone}</td>
-                                                                        <td style={styles.td}>{b.status}</td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
+                                                {rc.category === 'Temperature-Driven' && (
+                                                    <button
+                                                        onClick={() => setAssignedActions(prev => ({ ...prev, [rc.category]: !prev[rc.category] }))}
+                                                        style={{
+                                                            flexShrink: 0,
+                                                            padding: '8px 14px',
+                                                            borderRadius: '8px',
+                                                            border: 'none',
+                                                            cursor: 'pointer',
+                                                            fontSize: '12px',
+                                                            fontWeight: '700',
+                                                            transition: 'all 0.2s ease',
+                                                            backgroundColor: assignedActions[rc.category] ? '#dcfce7' : '#e0e7ff',
+                                                            color: assignedActions[rc.category] ? '#166534' : '#3730a3',
+                                                        }}
+                                                    >
+                                                        {assignedActions[rc.category] ? '✓ Assigned to Tech' : '🔧 Assign to Technician'}
+                                                    </button>
                                                 )}
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                        )}
 
-                                {/* SECTION 4: RECURRING PROBLEM PRODUCTS */}
-                                {data.recurringProblemProducts.length > 0 && (
-                                    <div style={styles.section}>
-                                        <h2 style={{ ...styles.sectionTitle, marginBottom: '4px' }}>Your Recurring Problem Products</h2>
-                                        <p style={styles.sectionSubtitle}>SKUs appearing in 3 or more failed batches in this period</p>
-                                        <div style={{ display: 'grid', gap: '16px' }}>
-                                            {data.recurringProblemProducts.map(rp => (
-                                                <div key={rp.sku} style={styles.card}>
-                                                    <div style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--text-main)' }}>{rp.productName}</div>
-                                                    <div style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '8px' }}>{rp.failureCount} failures detected</div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                        <div style={{ flex: 1, backgroundColor: 'var(--hover-bg)', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
-                                                            <div style={{ width: `${Math.min((rp.failureCount / 10) * 100, 100)}%`, backgroundColor: rp.severity === 'high' ? '#ef4444' : '#f59e0b', height: '100%' }} />
-                                                        </div>
-                                                        <span style={{ fontSize: '14px', color: rp.severity === 'high' ? '#ef4444' : '#f59e0b', fontWeight: 'bold' }}>
-                                                            {rp.severity === 'high' ? '🔴 High concern' : '🟡 Monitor closely'}
-                                                        </span>
-                                                    </div>
+                                        <div style={{ marginTop: '20px' }}>
+                                            <button onClick={() => toggleBatches(rc.category)} style={styles.toggleBtn}>
+                                                {expandedBatches[rc.category] ? 'Collapse List ▲' : 'Inspect Affected Batches ▼'}
+                                            </button>
+
+                                            {expandedBatches[rc.category] && (
+                                                <div style={{ overflowX: 'auto', marginTop: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                                    <table style={styles.table}>
+                                                        <thead>
+                                                            <tr>
+                                                                <th style={styles.th}>Batch ID</th>
+                                                                <th style={styles.th}>Product</th>
+                                                                <th style={styles.th}>Dispatched</th>
+                                                                <th style={styles.th}>Zone</th>
+                                                                {rc.category === 'Unclassified' && <th style={styles.th}>Distributor</th>}
+                                                                <th style={styles.th}>Status</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {rc.batches.map(b => (
+                                                                <tr key={b.batchId} style={styles.tr}>
+                                                                    <td style={{ ...styles.td, fontWeight: 'bold' }}>#{b.batchId}</td>
+                                                                    <td style={styles.td}>{b.productName}</td>
+                                                                    <td style={styles.td}>{new Date(b.dispatched_at).toLocaleDateString()}</td>
+                                                                    <td style={styles.td}>Zone {b.zone}</td>
+                                                                    {rc.category === 'Unclassified' && (
+                                                                        <td style={styles.td}>
+                                                                            <span style={{ color: '#6366f1', fontWeight: '600' }}>
+                                                                                {b.distributorName || b.distributor_name || 'Unknown'}
+                                                                            </span>
+                                                                        </td>
+                                                                    )}
+                                                                    <td style={styles.td}>
+                                                                        <span style={{ color: b.status === 'returned' ? '#f43f5e' : '#64748b', fontWeight: 'bold' }}>
+                                                                            {b.status.toUpperCase()}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
                                                 </div>
-                                            ))}
+                                            )}
                                         </div>
                                     </div>
-                                )}
-
-                                {/* SECTION 5: LIVE WAREHOUSE IMPACT */}
-                                <div style={styles.section} id="live-impact-section">
-                                    <h2 style={{ ...styles.sectionTitle, marginBottom: '4px' }}>What This Means For Your Warehouse Right Now</h2>
-                                    <p style={styles.sectionSubtitle}>Based on patterns detected, these current batches may be at risk</p>
-
-                                    {!liveImpact || (liveImpact.atRiskInZones.length === 0 && liveImpact.approachingStorageLimit.length === 0 && liveImpact.collectionDelays.length === 0) ? (
-                                        <div style={{ ...styles.card, backgroundColor: '#dcfce7', borderColor: '#22c55e', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <span style={{ fontSize: '24px' }}>✅</span>
-                                            <div>
-                                                <strong style={{ color: '#166534' }}>No immediate threats detected.</strong><br />
-                                                <span style={{ color: '#166534' }}>No current batches are showing signs of repeating these failure patterns.</span>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-                                            {/* Zone Risks */}
-                                            {data.problemZones.map(pz => {
-                                                const batches = liveImpact.atRiskInZones.filter(b => String(b.zone) === String(pz.zone));
-                                                const hasBatches = batches.length > 0;
-                                                return (
-                                                    <div key={pz.zone} style={{ ...styles.card, borderLeft: `4px solid ${hasBatches ? '#f59e0b' : '#22c55e'}` }}>
-                                                        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12px' }}>
-                                                            <span style={{ fontSize: '20px' }}>{hasBatches ? '⚡' : '✅'}</span>
-                                                            <div>
-                                                                <div style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--text-main)' }}>ZONE {pz.zone} — Problem Area</div>
-                                                                <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Caused {pz.tempFailureCount} temperature failures recently.</div>
-                                                            </div>
-                                                        </div>
-
-                                                        {hasBatches ? (
-                                                            <>
-                                                                <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', margin: '12px 0 8px 0' }}>CURRENTLY IN ZONE {pz.zone}:</div>
-                                                                {batches.map(b => (
-                                                                    <div key={b.batch_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
-                                                                        <div style={{ fontSize: '14px', color: 'var(--text-main)' }}>{b.product_name}</div>
-                                                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                                            <span style={{ ...styles.riskBadge, backgroundColor: b.risk_category === 'High Risk' ? '#fee2e2' : (b.risk_category === 'Medium Risk' ? '#fef3c7' : '#dcfce7'), color: b.risk_category === 'High Risk' ? '#ef4444' : (b.risk_category === 'Medium Risk' ? '#b45309' : '#166534') }}>
-                                                                                {b.risk_category}
-                                                                            </span>
-                                                                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>FRS {Math.round(b.frs_score)}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-                                                                <div style={{ ...styles.actionBox, marginTop: '16px', backgroundColor: '#fff7ed', color: '#9a3412', border: '1px solid #ffedd5' }}>
-                                                                    <span style={{ fontSize: '18px' }}>💡</span>
-                                                                    <div style={{ fontSize: '13px' }}>
-                                                                        You have {batches.length} batches in Zone {pz.zone} right now. Consider moving <strong>{batches[0]?.product_name}</strong> to dispatch priority.
-                                                                    </div>
-                                                                </div>
-                                                            </>
-                                                        ) : (
-                                                            <div style={{ fontSize: '14px', color: 'var(--text-muted)', marginTop: '12px' }}>
-                                                                No batches currently in this zone. No immediate action needed.
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-
-                                            {/* Storage Risk */}
-                                            {liveImpact.approachingStorageLimit.length > 0 && (
-                                                <div style={{ ...styles.card, borderLeft: '4px solid #f59e0b' }}>
-                                                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12px' }}>
-                                                        <span style={{ fontSize: '20px' }}>⚡</span>
-                                                        <div>
-                                                            <div style={{ fontWeight: 'bold', fontSize: '16px', color: 'var(--text-main)' }}>LONG STORAGE RISK</div>
-                                                            <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Batches approaching 120-day storage limit.</div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', margin: '12px 0 8px 0' }}>APPROACHING LIMIT NOW:</div>
-                                                    {liveImpact.approachingStorageLimit.slice(0, 3).map(b => (
-                                                        <div key={b.batch_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
-                                                            <div style={{ fontSize: '14px', color: 'var(--text-main)' }}>{b.product_name}</div>
-                                                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                                                <span style={{ fontSize: '14px', fontWeight: 'bold', color: b.days_in_warehouse > 110 ? '#ef4444' : '#f59e0b' }}>{Math.floor(b.days_in_warehouse)} days</span>
-                                                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>FRS {Math.round(b.frs_score)}</span>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </>
+                                ))}
+                            </div>
                         )}
                     </>
                 )}
@@ -632,214 +444,163 @@ const RootCauseAnalytics = () => {
     );
 };
 
-
-
 const styles = {
     container: {
-        padding: '24px',
-        maxWidth: '1200px',
+        padding: '40px 5%',
+        maxWidth: '1400px',
         margin: '0 auto',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     },
     header: {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: '24px',
+        marginBottom: '40px',
         flexWrap: 'wrap',
-        gap: '16px'
+        gap: '20px'
     },
     title: {
-        margin: '0 0 4px 0',
-        color: 'var(--text-main)'
+        margin: '0 0 6px 0',
+        fontSize: '32px',
+        fontWeight: '900',
+        color: '#1e3a8a',
+        letterSpacing: '-1px'
     },
     subtitle: {
         margin: 0,
-        color: 'var(--text-muted)',
-        fontSize: '16px'
+        color: '#64748b',
+        fontSize: '16px',
+        fontWeight: '500'
     },
     exportBtn: {
-        backgroundColor: '#3b82f6',
+        background: 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)',
         border: 'none',
-        padding: '8px 16px',
-        borderRadius: '6px',
+        padding: '12px 24px',
+        borderRadius: '10px',
         cursor: 'pointer',
-        fontWeight: 'bold',
-        color: 'white'
+        fontWeight: '900',
+        color: 'white',
+        fontSize: '14px',
+        boxShadow: '0 4px 12px rgba(30, 64, 175, 0.2)',
+        textTransform: 'uppercase',
+        letterSpacing: '1px'
     },
     secondaryBtn: {
-        backgroundColor: 'var(--hover-bg)',
-        border: '1px solid var(--border-color)',
-        padding: '8px 16px',
-        borderRadius: '6px',
+        backgroundColor: 'white',
+        border: '1px solid #e2e8f0',
+        padding: '12px 24px',
+        borderRadius: '10px',
         cursor: 'pointer',
-        fontWeight: 'bold',
-        color: 'var(--text-main)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px'
+        fontWeight: '800',
+        color: '#475569',
+        fontSize: '14px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
     },
     navSection: {
-        marginBottom: '32px',
+        marginBottom: '40px',
         display: 'flex',
-        flexDirection: 'column',
-        gap: '16px'
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '20px'
     },
     periodTabs: {
         display: 'flex',
-        gap: '8px',
-        backgroundColor: 'var(--hover-bg)',
-        padding: '4px',
-        borderRadius: '8px',
-        alignSelf: 'flex-start'
+        gap: '6px',
+        backgroundColor: '#e2e8f0',
+        padding: '6px',
+        borderRadius: '12px',
     },
     tabBtn: {
-        padding: '6px 16px',
-        borderRadius: '6px',
+        padding: '10px 20px',
+        borderRadius: '8px',
         border: 'none',
         background: 'none',
         cursor: 'pointer',
         fontSize: '14px',
-        color: 'var(--text-muted)',
-        fontWeight: 'bold',
-        transition: 'all 0.2s'
+        color: '#64748b',
+        fontWeight: '800',
+        transition: 'all 0.3s ease'
     },
     activeTab: {
-        backgroundColor: 'var(--card-bg)',
-        color: '#3b82f6',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-    },
-    periodHeader: {
-        display: 'flex',
-        alignItems: 'baseline',
-        gap: '12px'
-    },
-    periodSub: {
-        fontSize: '14px',
-        color: 'var(--text-muted)'
-    },
-    navRow: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px'
-    },
-    navBtn: {
-        background: 'none',
-        border: 'none',
-        color: '#3b82f6',
-        cursor: 'pointer',
-        fontWeight: 'bold',
-        padding: '4px 8px'
-    },
-    monthBadgeContainer: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px'
+        backgroundColor: 'white',
+        color: '#1e40af',
+        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
     },
     monthSelect: {
-        padding: '8px 16px',
-        borderRadius: '8px',
-        border: '1px solid var(--border-color)',
-        backgroundColor: 'var(--card-bg)',
-        color: 'var(--text-main)',
-        fontSize: '18px',
-        fontWeight: 'bold',
+        padding: '12px 24px',
+        borderRadius: '12px',
+        border: '1px solid #e2e8f0',
+        backgroundColor: 'white',
+        color: '#1e293b',
+        fontSize: '16px',
+        fontWeight: '900',
         cursor: 'pointer',
         outline: 'none',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-    },
-    monthLabel: {
-        fontSize: '18px',
-        fontWeight: 'bold',
-        color: 'var(--text-main)'
-    },
-    currentBadge: {
-        backgroundColor: '#e0e7ff',
-        color: '#4338ca',
-        fontSize: '12px',
-        padding: '2px 8px',
-        borderRadius: '12px',
-        fontWeight: 'bold'
+        boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
     },
     section: {
-        marginBottom: '40px'
+        marginBottom: '50px'
     },
     sectionTitle: {
-        fontSize: '20px',
-        color: 'var(--text-main)',
-        borderBottom: '2px solid var(--border-color)',
-        paddingBottom: '8px',
-        marginBottom: '16px'
-    },
-    sectionSubtitle: {
-        color: 'var(--text-muted)',
-        marginTop: '-12px',
-        marginBottom: '16px',
-        fontSize: '14px'
+        fontSize: '14px',
+        fontWeight: '900',
+        color: '#94a3b8',
+        textTransform: 'uppercase',
+        letterSpacing: '2px',
+        marginBottom: '24px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px'
     },
     statsGrid: {
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '16px',
-        marginBottom: '16px'
+        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+        gap: '24px',
+        marginBottom: '50px'
     },
     statCard: {
-        padding: '24px',
-        borderRadius: '8px',
-        textAlign: 'center',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        backgroundColor: 'white',
+        padding: '32px',
+        borderRadius: '20px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+        textAlign: 'left',
     },
     statLabel: {
-        fontSize: '14px',
-        fontWeight: 'bold',
-        letterSpacing: '1px',
-        opacity: 0.9
+        fontSize: '12px',
+        fontWeight: '900',
+        letterSpacing: '1.5px',
+        marginBottom: '16px'
     },
     statValue: {
         fontSize: '48px',
-        fontWeight: 'bold',
-        margin: '8px 0'
+        fontWeight: '900',
+        color: '#1e293b',
+        lineHeight: '1',
+        marginBottom: '8px'
     },
     statSub: {
-        fontSize: '12px',
-        color: 'var(--text-muted)',
+        fontSize: '13px',
+        color: '#94a3b8',
+        fontWeight: '700',
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
-        gap: '4px'
-    },
-    card: {
-        backgroundColor: 'var(--card-bg)',
-        padding: '24px',
-        borderRadius: '8px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        border: '1px solid var(--border-color)'
-    },
-    comparisonRow: {
-        display: 'flex',
-        gap: '32px',
         flexWrap: 'wrap'
     },
+    card: {
+        backgroundColor: 'white',
+        padding: '32px',
+        borderRadius: '20px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+        border: '1px solid #f1f5f9'
+    },
     barBg: {
-        height: '8px',
         backgroundColor: '#f1f5f9',
-        borderRadius: '4px',
+        height: '10px',
+        borderRadius: '5px',
         overflow: 'hidden'
     },
     barFill: {
         height: '100%',
-        borderRadius: '4px'
-    },
-    deltaBadge: {
-        padding: '2px 8px',
-        borderRadius: '4px',
-        fontSize: '11px',
-        fontWeight: 'bold'
-    },
-    statusBadge: {
-        padding: '4px 12px',
-        borderRadius: '16px',
-        fontSize: '14px',
         fontWeight: 'bold'
     },
     riskBadge: {
@@ -850,49 +611,85 @@ const styles = {
         textTransform: 'uppercase'
     },
     pillBadge: {
-        backgroundColor: 'var(--hover-bg)',
-        border: '1px solid var(--border-color)',
-        padding: '4px 12px',
-        borderRadius: '16px',
+        backgroundColor: '#f8fafc',
+        border: '1px solid #e2e8f0',
+        padding: '5px 14px',
+        borderRadius: '20px',
         fontSize: '13px',
-        color: 'var(--text-main)'
+        fontWeight: '600',
+        color: '#475569',
+        fontFamily: "'Outfit', sans-serif",
+        letterSpacing: '0.2px'
     },
     actionBox: {
-        backgroundColor: '#1e3a5f',
-        color: 'white',
-        padding: '16px',
-        borderRadius: '8px',
+        backgroundColor: '#eef2ff',
+        border: '1px solid #c7d2fe',
+        padding: '16px 20px',
+        borderRadius: '12px',
         display: 'flex',
-        gap: '12px',
-        alignItems: 'flex-start'
+        gap: '14px',
+        alignItems: 'center'
     },
     toggleBtn: {
         background: 'none',
         border: 'none',
         color: '#3b82f6',
-        padding: 0,
+        padding: '0',
         cursor: 'pointer',
         fontSize: '14px',
-        fontWeight: 'bold'
+        fontWeight: '700',
+        fontFamily: "'Outfit', sans-serif",
+        letterSpacing: '0.2px'
     },
     table: {
         width: '100%',
         borderCollapse: 'collapse',
-        textAlign: 'left'
+        textAlign: 'left',
+        fontFamily: "'Outfit', sans-serif"
     },
     th: {
-        padding: '12px 16px',
-        borderBottom: '2px solid var(--border-color)',
-        color: 'var(--text-muted)',
-        fontWeight: 'bold',
-        fontSize: '14px',
-        backgroundColor: 'var(--table-header)'
+        padding: '12px 18px',
+        borderBottom: '2px solid #f1f5f9',
+        color: '#64748b',
+        fontWeight: '700',
+        fontSize: '13px',
+        backgroundColor: '#f8fafc',
+        letterSpacing: '0.5px',
+        textTransform: 'uppercase',
+        fontFamily: "'Outfit', sans-serif"
     },
     td: {
-        padding: '12px 16px',
-        borderBottom: '1px solid var(--border-color)',
+        padding: '14px 18px',
+        borderBottom: '1px solid #f1f5f9',
         fontSize: '14px',
-        color: 'var(--text-main)'
+        color: '#334155',
+        fontFamily: "'Outfit', sans-serif",
+        fontWeight: '500',
+        lineHeight: '1.5'
+    },
+    skuChip: {
+        backgroundColor: '#f1f5f9',
+        border: '1px solid #e2e8f0',
+        padding: '4px 12px',
+        borderRadius: '20px',
+        fontSize: '13px',
+        fontWeight: '600',
+        color: '#334155',
+        fontFamily: "'Outfit', sans-serif"
+    },
+    statusBadge: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '5px 12px',
+        borderRadius: '8px',
+        fontSize: '12px',
+        fontWeight: '800',
+        letterSpacing: '0.5px',
+        fontFamily: "'Outfit', sans-serif"
+    },
+    tr: {
+        transition: 'background 0.15s ease'
     }
 };
 

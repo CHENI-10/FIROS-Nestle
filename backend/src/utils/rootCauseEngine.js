@@ -14,7 +14,7 @@ const categoriseBatch = (batch) => {
     }
 
     // 2. Long Storage
-    if (batch.days_in_warehouse > 120 && batch.total_temp_breach_windows <= 3) {
+    if (batch.days_in_warehouse > 50 && batch.total_temp_breach_windows <= 3) {
         return {
             category: 'Long Storage',
             icon: '📦',
@@ -29,22 +29,13 @@ const categoriseBatch = (batch) => {
         const diffTime = Math.abs(collectedDate - dispatchedDate);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
-        if (diffDays > 14) {
+        if (diffDays > 5) {
             return {
                 category: 'Distributor Delay',
                 icon: '🚛',
                 color: '#8b5cf6' // purple
             };
         }
-    }
-
-    // 4. Market Saturation
-    if (batch.market_saturation_score !== null && batch.market_saturation_score !== undefined && batch.market_saturation_score < 1.5) {
-        return {
-            category: 'Market Saturation',
-            icon: '📉',
-            color: '#8b5cf6' // purple
-        };
     }
 
     // 4. Unclassified
@@ -68,7 +59,6 @@ const detectPatterns = (categorisedBatches) => {
         'Temperature-Driven': [],
         'Long Storage': [],
         'Distributor Delay': [],
-        'Market Saturation': [],
         'Unclassified': []
     };
 
@@ -126,6 +116,12 @@ const detectPatterns = (categorisedBatches) => {
             patternDetected = true;
             const dayName = daysOfWeek[mostFailedDayIdx];
             patternText = `You dispatched ${mostFailedDayCount} of these on ${dayName} — consider checking Zone cooling before ${dayName} dispatches.`;
+        } else if (Object.keys(zoneCounts).length > 0) {
+            // Scattered across multiple zones — list all zones by name
+            patternDetected = true;
+            const zoneList = Object.keys(zoneCounts).map(z => `Zone ${z}`).join(' and ');
+            patternText = `Failures are spread across ${zoneList}. Review ${zoneList} coolings for maintenance issues.`;
+            suggestedAction = `Review ${zoneList} coolings — check maintenance logs for temperature calibration failures.`;
         }
 
         const tempSkuCounts = {};
@@ -162,7 +158,7 @@ const detectPatterns = (categorisedBatches) => {
                 skuData[b.productName] = { count: 0, totalDays: 0 };
             }
             skuData[b.productName].count += 1;
-            skuData[b.productName].totalDays += parseInt(b.days_in_warehouse) || 0;
+            skuData[b.productName].totalDays += parseInt(b.daysInWarehouse || b.days_in_warehouse) || 0;
         });
 
         let mostFailedSku = null;
@@ -229,7 +225,7 @@ const detectPatterns = (categorisedBatches) => {
 
         if (mostDelayedCount >= 2) {
             patternDetected = true;
-            patternText = `This is a recurring issue where ${mostDelayedDist} exceeded the 14-day collection window in your dispatches.`;
+            patternText = `This is a recurring issue where ${mostDelayedDist} exceeded the 5-day collection window in your dispatches.`;
             suggestedAction = getSuggestedAction('Distributor Delay', { distributorName: mostDelayedDist });
         }
 
@@ -253,41 +249,7 @@ const detectPatterns = (categorisedBatches) => {
         });
     }
 
-    // 4. Pattern Detection for MARKET SATURATION
-    const satBatches = categories['Market Saturation'];
-    if (satBatches && satBatches.length > 0) {
-        let patternDetected = true; // By definition, it's a pattern if it fires
-        
-        // Group by product & region
-        let mostAffectedSku = null;
-        let mostAffectedRegion = null;
-        if (satBatches.length > 0) {
-            mostAffectedSku = satBatches[0].productName;
-            mostAffectedRegion = satBatches[0].distributorRegion || 'the region';
-        }
 
-        let patternText = `Field reports show ${mostAffectedSku} is moving slowly in ${mostAffectedRegion}. The warehouse risk may be driven by low market demand, not just storage conditions.`;
-        let suggestedAction = `Consider redirecting this SKU to a region where sales rep reports show faster movement before dispatch. Check the Market Pulse dashboard for regional demand data.`;
-
-        const satSkuCounts = {};
-        satBatches.forEach(b => {
-            if (!satSkuCounts[b.sku]) satSkuCounts[b.sku] = { sku: b.sku, productName: b.productName, count: 0 };
-            satSkuCounts[b.sku].count++;
-        });
-
-        patterns.push({
-            category: 'Market Saturation',
-            icon: '📉',
-            color: '#8b5cf6',
-            count: satBatches.length,
-            batches: satBatches,
-            patternDetected,
-            patternText,
-            suggestedAction,
-            affectedSkus: Object.values(satSkuCounts),
-            affectedZones: [...new Set(satBatches.map(b => b.zone))]
-        });
-    }
 
     // 5. Unclassified
     const unclassifiedBatches = categories['Unclassified'];

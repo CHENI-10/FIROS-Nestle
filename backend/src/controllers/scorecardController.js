@@ -196,6 +196,20 @@ exports.getScorecardDetail = async (req, res) => {
             LIMIT 5
         `, [distId]);
 
+        const lossRes = await db.query(`
+            SELECT 
+                COUNT(*) FILTER (WHERE b.status IN ('cleared', 'returned')) as loss_count,
+                COUNT(*) as total_count
+            FROM dispatch_records dr
+            JOIN batches b ON dr.batch_id = b.batch_id
+            WHERE dr.distributor_id = $1
+        `, [distId]);
+        
+        const lossData = lossRes.rows[0];
+        const lossContributionPercent = lossData.total_count > 0 
+            ? ((parseInt(lossData.loss_count) / parseInt(lossData.total_count)) * 100).toFixed(1)
+            : 0;
+
         const regionRes = await db.query(`
             SELECT 
                 r.region,
@@ -207,6 +221,9 @@ exports.getScorecardDetail = async (req, res) => {
             ORDER BY r.region
         `);
 
+        // AC7: Specific Movement Score for this distributor's region
+        const localMovement = regionRes.rows.find(r => r.region === dist.region);
+
         res.json({
             distributorId: dist.distributor_id,
             distributorName: dist.distributor_name,
@@ -214,12 +231,15 @@ exports.getScorecardDetail = async (req, res) => {
             metrics: {
                 ...metrics,
                 historicalScore: hist !== null ? hist.toFixed(1) : 'N/A',
-                scoreTrend
+                scoreTrend,
+                lossContributionCount: parseInt(lossData.loss_count) || 0,
+                lossContributionPercent: parseFloat(lossContributionPercent)
             },
             historicalTrend,
             recentDispatches: recentDispRes.rows,
             recentReturns: recentRetRes.rows,
-            regionMovementSpeeds: regionRes.rows
+            regionMovementSpeeds: regionRes.rows,
+            localMovementScore: localMovement ? parseFloat(localMovement.avgMovementScore).toFixed(1) : 'N/A'
         });
 
     } catch (error) {

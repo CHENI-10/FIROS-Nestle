@@ -25,17 +25,23 @@ const DistributorScorecardDetail = () => {
     }
   };
 
+  const userRole = JSON.parse(atob(sessionStorage.getItem('token').split('.')[1])).role;
+
   useEffect(() => {
     fetchData();
+    // AC8: If admin, force insights tab
+    if (userRole === 'admin') {
+      setActiveTab('insights');
+    }
     const intervalId = setInterval(fetchData, 60000);
     return () => clearInterval(intervalId);
-  }, [distributorId]);
+  }, [distributorId, userRole]);
 
   if (loading) return <div style={{ padding: '60px', textAlign: 'center', fontFamily: 'sans-serif', color: '#64748b' }}>Loading scorecard...</div>;
   if (!data) return <div style={{ padding: '60px', textAlign: 'center', fontFamily: 'sans-serif', color: '#64748b' }}>Distributor not found.</div>;
 
-  const { distributorName, region, metrics, historicalTrend, recentDispatches, recentReturns, regionMovementSpeeds } = data;
-  
+  const { distributorName, region, metrics, historicalTrend, recentDispatches, recentReturns, regionMovementSpeeds, localMovementScore } = data;
+
   // Safe fallbacks for counts to prevent NaN
   const safeTotalDispatches = parseInt(metrics.totalDispatches) || 0;
   const safeTotalReturns = parseInt(metrics.totalReturns) || 0;
@@ -127,7 +133,7 @@ const DistributorScorecardDetail = () => {
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="period_label" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip 
+              <Tooltip
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                 cursor={{ fill: '#f8fafc' }}
               />
@@ -141,6 +147,14 @@ const DistributorScorecardDetail = () => {
     </div>
   );
 
+  const getMovementLabel = (score) => {
+    const s = parseFloat(score);
+    if (isNaN(s)) return 'N/A';
+    if (s >= 2.5) return 'FAST 🚀';
+    if (s >= 1.5) return 'STABLE 📊';
+    return 'SLOW 📉';
+  };
+
   const renderInsightsTab = () => {
     const classification = getClassification();
     const recommendation = getRecommendation();
@@ -148,10 +162,25 @@ const DistributorScorecardDetail = () => {
     if (parseFloat(metrics.returnRate) > 20) insights.push("Return rate above acceptable threshold — investigate root cause.");
     if (parseFloat(metrics.avgCollectionDelayDays) > 5) insights.push("Collection delays are impacting freshness scores.");
     if (parseFloat(metrics.avgFrsAtDispatch) < 70) insights.push("Batches arriving at below-average FRS — review dispatch prioritisation.");
+    if (parseFloat(metrics.lossContributionPercent) > 15) insights.push("High loss contribution detected — investigate handling quality.");
     if (insights.length === 0) insights.push("Distributor is consistently meeting freshness and efficiency targets.");
 
     return (
       <div style={{ animation: 'fadeIn 0.4s ease' }}>
+        {/* AC7: STRATEGIC INSIGHTS GRID */}
+        <div style={{ marginBottom: '24px' }}>
+          {/* AC7: REGIONAL MOVEMENT */}
+          <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+            <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.5px' }}>Regional Market Pulse</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: '#5c3a21' }}>{getMovementLabel(localMovementScore)}</div>
+              <div style={{ fontSize: '14px', color: '#64748b', fontWeight: 'bold' }}>({localMovementScore})</div>
+            </div>
+            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '8px' }}>Latest demand context for {region}</div>
+          </div>
+        </div>
+
+
         {/* IMPACT SUMMARY */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
           <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
@@ -202,13 +231,13 @@ const DistributorScorecardDetail = () => {
         <style>{`
           @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         `}</style>
-        
+
         <button onClick={() => navigate('/dashboard/my-distributors')} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', marginBottom: '24px', fontSize: '14px', fontWeight: 'bold' }}>
-          &larr; Back
+          &larr; Back to Fleet
         </button>
 
         {/* HEADER */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
           <div>
             <h1 style={{ color: '#1a3a5c', margin: '0 0 4px 0', fontSize: '32px', fontWeight: '900' }}>{distributorName}</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -220,29 +249,55 @@ const DistributorScorecardDetail = () => {
             <div style={{ width: '80px', height: '80px', borderRadius: '50%', border: `6px solid ${getColor(metrics.overallScore, 'overall')}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: '900', color: '#1a3a5c' }}>
               {metrics.overallScore}
             </div>
-            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#94a3b8', marginTop: '8px', textTransform: 'uppercase' }}>Overall Score</div>
+            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#94a3b8', marginTop: '8px', textTransform: 'uppercase' }}>Overall Rating</div>
           </div>
         </div>
 
-        {/* TABS */}
-        <div style={{ display: 'flex', gap: '32px', borderBottom: '1px solid #e2e8f0', marginBottom: '32px' }}>
-          {['performance', 'insights'].map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              style={{
-                background: 'none', border: 'none', padding: '12px 0', cursor: 'pointer',
-                fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px',
-                color: activeTab === tab ? '#5c3a21' : '#94a3b8',
-                borderBottom: activeTab === tab ? '3px solid #5c3a21' : '3px solid transparent'
-              }}
-            >
-              {tab === 'performance' ? 'Performance' : 'Contract Insights'}
-            </button>
-          ))}
-        </div>
+        {/* ROLE-BASED LAYOUT ENGINE */}
+        {userRole === 'admin' ? (
+          <>
+            {/* ADMIN TABS: To prevent scrolling for senior management */}
+            <div style={{ display: 'flex', gap: '32px', borderBottom: '1px solid #e2e8f0', marginBottom: '32px' }}>
+              <button
+                onClick={() => setActiveTab('insights')}
+                style={{
+                  background: 'none', border: 'none', padding: '12px 0', cursor: 'pointer',
+                  fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px',
+                  color: activeTab === 'insights' ? '#5c3a21' : '#94a3b8',
+                  borderBottom: activeTab === 'insights' ? '3px solid #5c3a21' : '3px solid transparent'
+                }}
+              >
+                Contract Review
+              </button>
+              <button
+                onClick={() => setActiveTab('performance')}
+                style={{
+                  background: 'none', border: 'none', padding: '12px 0', cursor: 'pointer',
+                  fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px',
+                  color: activeTab === 'performance' ? '#5c3a21' : '#94a3b8',
+                  borderBottom: activeTab === 'performance' ? '3px solid #5c3a21' : '3px solid transparent'
+                }}
+              >
+                Performance Evidence
+              </button>
+            </div>
 
-        {activeTab === 'performance' ? renderPerformanceTab() : renderInsightsTab()}
+            <div style={{ animation: 'fadeIn 0.3s ease' }}>
+              {activeTab === 'insights' ? renderInsightsTab() : renderPerformanceTab()}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* MANAGER VIEW: Pure Operational One-Pager */}
+            <div style={{ marginBottom: '40px' }}>
+              <h2 style={{ fontSize: '14px', fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '20px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px' }}>
+                Operational Fleet Performance
+              </h2>
+              {renderPerformanceTab()}
+            </div>
+          </>
+        )}
+
 
       </div>
     </div>
