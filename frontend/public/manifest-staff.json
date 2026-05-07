@@ -1,6 +1,6 @@
 {
-  "short_name": "FIROS",
-  "name": "Freshness Intelligence & Risk Optimization System",
+  "short_name": "Warehouse",
+  "name": "FIROS Warehouse Operations",
   "icons": [
     {
       "src": "favicon.ico",
@@ -18,8 +18,9 @@
       "sizes": "512x512"
     }
   ],
-  "start_url": "/salesrep",
+  "start_url": "/",
   "display": "standalone",
   "theme_color": "#2A1301",
-  "background_color": "#FAFAF9"
+  "background_color": "#FAFAF9",
+  "scope": "/"
 }
