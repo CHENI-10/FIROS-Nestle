@@ -18,7 +18,7 @@
       "sizes": "512x512"
     }
   ],
-  "start_url": "/salesrep",
+  "start_url": "/",
   "display": "standalone",
   "theme_color": "#2A1301",
   "background_color": "#FAFAF9"
