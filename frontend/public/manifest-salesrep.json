@@ -1,6 +1,6 @@
 {
-  "short_name": "FIROS",
-  "name": "Freshness Intelligence & Risk Optimization System",
+  "short_name": "Sales Rep",
+  "name": "FIROS Sales Rep Intelligence",
   "icons": [
     {
       "src": "favicon.ico",
@@ -21,5 +21,6 @@
   "start_url": "/salesrep",
   "display": "standalone",
   "theme_color": "#2A1301",
-  "background_color": "#FAFAF9"
+  "background_color": "#FAFAF9",
+  "scope": "/salesrep"
 }

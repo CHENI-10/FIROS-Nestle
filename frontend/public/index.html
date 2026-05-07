@@ -12,8 +12,16 @@
       manifest.json provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
     -->
-  <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-  <!--
+  <script>
+    var manifestLink = document.createElement('link');
+    manifestLink.rel = 'manifest';
+    if (window.location.pathname.startsWith('/salesrep')) {
+      manifestLink.href = '%PUBLIC_URL%/manifest-salesrep.json';
+    } else {
+      manifestLink.href = '%PUBLIC_URL%/manifest-staff.json';
+    }
+    document.head.appendChild(manifestLink);
+  </script>  <!--
       Notice the use of %PUBLIC_URL% in the tags above.
       It will be replaced with the URL of the `public` folder during the build.
       Only files inside the `public` folder can be referenced from the HTML.
