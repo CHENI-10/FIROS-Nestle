@@ -150,24 +150,15 @@ exports.getScorecardDetail = async (req, res) => {
         }
 
         const histTrendRes = await db.query(`
-            WITH months AS (
-                SELECT 
-                    TO_CHAR(m, 'Mon') as period_label,
-                    date_trunc('month', m) as m_start,
-                    (date_trunc('month', m) + interval '1 month' - interval '1 second') as m_end
-                FROM generate_series(
-                    date_trunc('month', current_date) - interval '4 months',
-                    date_trunc('month', current_date),
-                    interval '1 month'
-                ) AS m
-            )
             SELECT 
-                m.period_label,
-                (SELECT performance_score FROM distributor_scorecards WHERE distributor_id = $1 AND date_trunc('month', last_updated_at) = m.m_start ORDER BY last_updated_at DESC LIMIT 1) as overall_score,
-                (SELECT COUNT(*) FROM dispatch_records WHERE distributor_id = $1 AND dispatch_timestamp BETWEEN m.m_start AND m.m_end) as dispatched_count,
-                (SELECT COUNT(*) FROM return_records WHERE distributor_id = $1 AND created_at BETWEEN m.m_start AND m.m_end) as returned_count
-            FROM months m
-            ORDER BY m.m_start ASC
+                TO_CHAR(ds.last_updated_at, 'Mon') as period_label,
+                ds.performance_score as overall_score,
+                ds.total_dispatches as dispatched_count,
+                ds.total_returns as returned_count
+            FROM distributor_scorecards ds
+            WHERE ds.distributor_id = $1
+            ORDER BY ds.last_updated_at ASC
+            LIMIT 5
         `, [distId]);
         const historicalTrend = histTrendRes.rows;
 

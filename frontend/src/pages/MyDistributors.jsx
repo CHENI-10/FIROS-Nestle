@@ -13,7 +13,7 @@ const MyDistributors = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const apiUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/my-distributors?t=${new Date().getTime()}`;
+                const apiUrl = `/api/my-distributors?t=${new Date().getTime()}`;
                 const res = await fetch(apiUrl, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
