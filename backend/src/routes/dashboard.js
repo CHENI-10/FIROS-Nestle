@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../config/db');
 const verifyToken = require('../middleware/authMiddleware');
 const { requireRole } = require('../middleware/roleMiddleware');
+const { resolveMultiBatchAllocation } = require('../utils/allocationEngine');
 
 // Apply auth middleware to all routes
 router.use(verifyToken);
@@ -237,32 +238,35 @@ router.get('/recommendations', async (req, res) => {
             }
         }
 
+        // Use the Smart Allocation Engine for consistent recommendations
+        const smartBatches = batches.map(b => ({
+            batchId: b.batch_id,
+            batchSku: String(b.product_id),
+            batchProductId: b.product_id,
+            batchFrs: b.frs_score,
+            riskBand: b.risk_band || 'low'
+        }));
+
+        const smartResults = await resolveMultiBatchAllocation(smartBatches);
+        const resultsMap = {};
+        smartResults.forEach(res => { resultsMap[res.batchId] = res.recommendedDistributor; });
+
         const high_risk = [];
         const medium_risk = [];
         const low_risk = [];
 
         batches.forEach(batch => {
             const risk_band = batch.risk_band;
-            let urgency_score = Math.min((batch.days_in_warehouse || 0) / 30, 5);
-
-            let suggested_distributor_id = null;
-            let suggested_distributor_name = null;
-            let suggested_next_visit_date = null;
-
-            if (distributors.length > 0) {
-                const dist = distributors[distIndex % distributors.length];
-                suggested_distributor_id = dist.distributor_id;
-                suggested_distributor_name = dist.distributor_name;
-                suggested_next_visit_date = dist.next_visit_date;
-                distIndex++;
-            }
-
+            const smartRec = resultsMap[batch.batch_id];
+            
             let recommendationObj = {
                 ...batch,
-                urgency_score,
-                suggested_distributor_id,
-                suggested_distributor_name,
-                suggested_next_visit_date
+                urgency_score: Math.min((batch.days_in_warehouse || 0) / 30, 5),
+                suggested_distributor_id: smartRec?.distributorId,
+                suggested_distributor_name: smartRec?.distributorName,
+                suggested_next_visit_date: smartRec?.breakdown?.urgencyScore >= 100 ? new Date().toISOString() : null,
+                allocationScore: smartRec?.allocationScore,
+                breakdown: smartRec?.breakdown
             };
 
             if (risk_band === 'high') {

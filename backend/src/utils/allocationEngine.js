@@ -9,11 +9,12 @@ async function calculateAllocationScores({ batchProductId, distributors, riskBan
     const totalReportsRes = await db.query(`SELECT COUNT(*) as cnt FROM sales_rep_reports`);
     const fallbackMode = parseInt(totalReportsRes.rows[0].cnt) === 0;
 
-    // Resolve the actual SKU/Barcode for this product once to match rep reports
-    const productRes = await db.query(`SELECT ean13_barcode FROM products WHERE product_id = $1`, [batchProductId]);
-    const targetSku = productRes.rows[0]?.ean13_barcode || String(batchProductId);
+    // Get the most likely SKU/Barcode for this product
+    const prodInfoRes = await db.query(`SELECT ean13_barcode, product_name FROM products WHERE product_id = $1`, [batchProductId]);
+    const prodRow = prodInfoRes.rows[0];
+    const targetSku = prodRow?.ean13_barcode || String(batchProductId);
+    const productName = prodRow?.product_name || '';
 
-    // Track if ANY distributor has an OOS for this product (needed for Medium Risk decision)
     const scored = await Promise.all(distributors.map(async (dist) => {
         // 1. PERFORMANCE SCORE
         const perfRes = await db.query(`
@@ -30,32 +31,34 @@ async function calculateAllocationScores({ batchProductId, distributors, riskBan
         let isOOS = false;
 
         if (!fallbackMode) {
-            const catRes = await db.query(`SELECT category FROM report_line_items WHERE sku = $1 LIMIT 1`, [targetSku]);
-            const category = catRes.rows[0]?.category;
-
+            const brandName = productName.split(' ')[0];
             const velRes = await db.query(`
                 SELECT 
                     AVG(li.movement_score_final) as avg_movement,
-                    COUNT(CASE 
-                        WHEN li.shelf_availability = 'out_of_stock' 
-                        OR (li.is_empty_shelf = true AND (li.empty_shelf_reason = 'sold_out' OR li.empty_shelf_reason IS NULL))
-                        THEN 1 END) as demand_surge_count,
+                    SUM(CASE 
+                        WHEN (li.sku = $2 OR li.product_name ILIKE $3) 
+                        AND (li.shelf_availability = 'out_of_stock' 
+                        OR (li.is_empty_shelf = true AND (li.empty_shelf_reason = 'sold_out' OR li.empty_shelf_reason IS NULL)))
+                        THEN (CASE WHEN r.submitted_at >= NOW() - INTERVAL '48 hours' THEN 5 ELSE 1 END)
+                        ELSE 0 END) as weighted_oos_score,
                     (SELECT AVG(li2.movement_score_final) FROM sales_rep_reports r2
                      JOIN report_line_items li2 ON r2.report_id = li2.report_id
-                     WHERE r2.region = $1 AND li2.category = $3
+                     WHERE r2.region ILIKE $1 AND (li2.product_name ILIKE $3)
                      AND r2.submitted_at >= NOW() - INTERVAL '30 days') as cat_avg
                 FROM sales_rep_reports r
                 JOIN report_line_items li ON r.report_id = li.report_id
-                WHERE r.region = $1 AND li.sku = $2
+                WHERE r.region ILIKE $1
                   AND r.submitted_at >= NOW() - INTERVAL '30 days'
-            `, [dist.region, targetSku, category]);
+            `, [`%${dist.region}%`, targetSku, `%${brandName}%`]);
 
             const avg = velRes.rows[0]?.avg_movement ? parseFloat(velRes.rows[0].avg_movement) : null;
             const catAvg = velRes.rows[0]?.cat_avg ? parseFloat(velRes.rows[0].cat_avg) : null;
-            const demandSurgeCount = parseInt(velRes.rows[0]?.demand_surge_count || 0);
+            const weightedOosScore = parseFloat(velRes.rows[0]?.weighted_oos_score || 0);
 
-            if (demandSurgeCount > 0) {
-                velocityScore = 100;
+            if (weightedOosScore > 0) {
+                // RECENCY-WEIGHTED EMERGENCY: Fresh reports (last 48h) count for 5x more.
+                // No cap—the worse the emergency, the higher the score.
+                velocityScore = 100 + (weightedOosScore * 5); 
                 isOOS = true;
             } else if (avg !== null) {
                 velocityScore = avg >= 2.5 ? 100 : (avg >= 1.5 ? 70 : 30);
@@ -90,8 +93,15 @@ async function calculateAllocationScores({ batchProductId, distributors, riskBan
             // STANDARD MODE: No empty shelf? Just follow visit schedule (100% Urgency)
             allocationScore = urgencyScore;
         } else {
-            // EMERGENCY MODE (High Risk OR Medium with OOS): Use Smart Score
-            allocationScore = (performanceScore * 0.30) + (velocityScore * 0.50) + (urgencyScore * 0.20);
+            // EMERGENCY BOOST: MASSIVE +50 BONUS for Stockouts
+            if (isOOS) {
+                // In an emergency, history (performance) matters very little (5%) 
+                // compared to the immediate need (80%)
+                allocationScore = (performanceScore * 0.05) + (velocityScore * 0.80) + (urgencyScore * 0.15);
+                allocationScore += 50; // NUCLEAR OPTION: +50 Emergency Bonus
+            } else {
+                allocationScore = (performanceScore * 0.30) + (velocityScore * 0.50) + (urgencyScore * 0.20);
+            }
         }
 
         return {
@@ -104,7 +114,14 @@ async function calculateAllocationScores({ batchProductId, distributors, riskBan
         };
     });
 
+    // Rank based on the raw score (which can now exceed 100 for emergencies)
     finalized.sort((a, b) => b.allocationScore - a.allocationScore || b.breakdown.performanceScore - a.breakdown.performanceScore);
+    
+    // Now cap the final display scores to 100
+    finalized.forEach(f => {
+        f.allocationScore = Math.min(100, f.allocationScore);
+    });
+
     if (finalized.length > 0) finalized[0].isRecommended = true;
     return finalized;
 }

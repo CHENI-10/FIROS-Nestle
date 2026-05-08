@@ -372,7 +372,6 @@ CREATE TABLE report_line_items (
     report_id INTEGER NOT NULL REFERENCES sales_rep_reports(report_id) ON DELETE CASCADE,
     sku VARCHAR(50) NOT NULL,
     product_name VARCHAR(150) NOT NULL,
-    category VARCHAR(100) NOT NULL,
     movement_speed_raw INTEGER NOT NULL CHECK (movement_speed_raw IN (1,2,3)),
     movement_score_final INTEGER NOT NULL,
     shelf_availability VARCHAR(20) NOT NULL
