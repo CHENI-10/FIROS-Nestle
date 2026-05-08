@@ -129,7 +129,7 @@ const DistributorScorecardDetail = () => {
         <h3 style={{ margin: '0 0 24px 0', fontSize: '15px', color: '#1e293b' }}>Your History With Them</h3>
         <div style={{ height: '300px' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={historicalTrend}>
+            <BarChart data={historicalTrend} barCategoryGap="35%" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="period_label" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -138,8 +138,8 @@ const DistributorScorecardDetail = () => {
                 cursor={{ fill: '#f8fafc' }}
               />
               <Legend verticalAlign="top" align="right" wrapperStyle={{ paddingBottom: '20px', fontSize: '12px' }} iconType="circle" />
-              <Bar name="Dispatches" dataKey="dispatched_count" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={30} />
-              <Bar name="Returns" dataKey="returned_count" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={30} />
+              <Bar name="Dispatches" dataKey="dispatched_count" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={50} />
+              <Bar name="Returns" dataKey="returned_count" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={50} />
             </BarChart>
           </ResponsiveContainer>
         </div>

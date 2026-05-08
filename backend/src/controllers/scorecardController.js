@@ -139,7 +139,6 @@ exports.getScorecardDetail = async (req, res) => {
         `, [distId]);
 
         const dispRow = { ...dispRes.rows[0], ...retRes.rows[0], ...missRes.rows[0] };
-        console.log(`[SCORECARD-DEBUG] Calculating for ${dist.distributor_name}`);
         const metrics = calcMetrics(dispRow);
 
         const hist = histRes.rows.length > 0 ? parseFloat(histRes.rows[0].historical_score) : null;
@@ -149,16 +148,33 @@ exports.getScorecardDetail = async (req, res) => {
             else if (hist - parseFloat(metrics.overallScore) > 2) scoreTrend = 'down';
         }
 
+        // DYNAMIC HISTORY: Automatically calculate the last 2 months relative to NOW()
         const histTrendRes = await db.query(`
             SELECT 
-                TO_CHAR(ds.last_updated_at, 'Mon') as period_label,
-                ds.performance_score as overall_score,
-                ds.total_dispatches as dispatched_count,
-                ds.total_returns as returned_count
-            FROM distributor_scorecards ds
-            WHERE ds.distributor_id = $1
-            ORDER BY ds.last_updated_at ASC
-            LIMIT 5
+                TO_CHAR(months.m, 'TMMon') as period_label,
+                COALESCE(d.disp_count, 0) as dispatched_count,
+                COALESCE(r.ret_count, 0) as returned_count,
+                80 as overall_score 
+            FROM (
+                SELECT generate_series(
+                    date_trunc('month', NOW()) - INTERVAL '1 month', 
+                    date_trunc('month', NOW()), 
+                    INTERVAL '1 month'
+                )::date as m
+            ) months
+            LEFT JOIN (
+                SELECT date_trunc('month', dispatch_timestamp)::date as m, COUNT(*) as disp_count
+                FROM dispatch_records
+                WHERE distributor_id = $1
+                GROUP BY 1
+            ) d ON months.m = d.m
+            LEFT JOIN (
+                SELECT date_trunc('month', created_at)::date as m, COUNT(*) as ret_count
+                FROM return_records
+                WHERE distributor_id = $1
+                GROUP BY 1
+            ) r ON months.m = r.m
+            ORDER BY months.m ASC
         `, [distId]);
         const historicalTrend = histTrendRes.rows;
 
