@@ -184,8 +184,8 @@ const DistributorScorecardDetail = () => {
         {/* IMPACT SUMMARY */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
           <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-            <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Batches Successfully Sent</div>
-            <div style={{ fontSize: '28px', fontWeight: '900', color: '#1e293b' }}>{successfullySent}</div>
+            <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Total Dispatches</div>
+            <div style={{ fontSize: '28px', fontWeight: '900', color: '#1e293b' }}>{safeTotalDispatches}</div>
           </div>
           <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
             <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px' }}>Batches Returned</div>
