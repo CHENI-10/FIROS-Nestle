@@ -276,45 +276,139 @@ const RootCauseAnalytics = () => {
                                 </div>
                             ) : (
                                 <div style={styles.card}>
-                                    <div style={{ display: 'grid', gap: '24px' }}>
-                                        {['Temperature-Driven', 'Long Storage', 'Distributor Delay', 'Unclassified'].map(catName => {
-                                            const rc = data.rootCauses.find(c => c.category === catName) || { category: catName, count: 0, percentage: 0 };
-                                            const colors = {
-                                                'Temperature-Driven': '#f43f5e',
-                                                'Long Storage': '#f59e0b',
-                                                'Distributor Delay': '#8b5cf6',
-                                                'Market Saturation': '#3b82f6',
-                                                'Unclassified': '#94a3b8'
-                                            };
-                                            const barColor = colors[catName] || '#94a3b8';
-                                            const hasBatches = rc.count > 0;
+                                    {(() => {
+                                        const PIE_CATEGORIES = [
+                                            { name: 'Temperature-Driven', color: '#f43f5e', icon: '🌡️', gradient: 'linear-gradient(135deg, #f43f5e, #e11d48)' },
+                                            { name: 'Long Storage',       color: '#f59e0b', icon: '📦', gradient: 'linear-gradient(135deg, #f59e0b, #d97706)' },
+                                            { name: 'Distributor Delay',  color: '#8b5cf6', icon: '🚚', gradient: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' },
+                                            { name: 'Unclassified',       color: '#64748b', icon: '❓', gradient: 'linear-gradient(135deg, #64748b, #475569)' },
+                                        ];
 
-                                            let delta = 0;
-                                            if (catName === 'Temperature-Driven') delta = data.summary.comparison?.tempFailuresDelta;
-                                            if (catName === 'Long Storage') delta = data.summary.comparison?.longStorageDelta;
+                                        const pieData = PIE_CATEGORIES
+                                            .map(cat => {
+                                                const rc = data.rootCauses.find(c => c.category === cat.name) || { count: 0, percentage: 0 };
+                                                return { ...cat, count: rc.count, percentage: rc.percentage };
+                                            })
+                                            .filter(d => d.count > 0);
 
-                                            return (
-                                                <div key={catName} style={{ opacity: hasBatches ? 1 : 0.4 }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                                        <span style={{ fontWeight: '800', color: '#1e293b', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                            {catName}
-                                                        </span>
-                                                        <span style={{ color: '#64748b', fontWeight: 'bold', fontSize: '13px' }}>
-                                                            {hasBatches ? `${rc.count} batches (${rc.percentage}%)` : '—'}
-                                                        </span>
+                                        const totalFailed = pieData.reduce((s, d) => s + d.count, 0);
+
+                                        const CustomTooltip = ({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                                const d = payload[0].payload;
+                                                return (
+                                                    <div style={{
+                                                        background: 'white',
+                                                        border: `2px solid ${d.color}`,
+                                                        borderRadius: '12px',
+                                                        padding: '12px 18px',
+                                                        boxShadow: `0 8px 24px ${d.color}33`,
+                                                        fontFamily: "'Outfit', sans-serif"
+                                                    }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                                            <span style={{ fontSize: '18px' }}>{d.icon}</span>
+                                                            <span style={{ fontWeight: '900', fontSize: '14px', color: d.color }}>{d.name}</span>
+                                                        </div>
+                                                        <div style={{ fontSize: '22px', fontWeight: '900', color: '#1e293b', lineHeight: 1 }}>{d.count}</div>
+                                                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>batches · {d.percentage}% of failures</div>
                                                     </div>
-                                                    <div style={styles.barBg}>
-                                                        <div style={{
-                                                            ...styles.barFill,
-                                                            width: `${rc.percentage}%`,
-                                                            backgroundColor: barColor,
-                                                            boxShadow: `0 0 10px ${barColor}44`
-                                                        }} />
+                                                );
+                                            }
+                                            return null;
+                                        };
+
+                                        return (
+                                            <div style={{ display: 'flex', gap: '40px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                {/* Pie Chart */}
+                                                <div style={{ position: 'relative', flexShrink: 0 }}>
+                                                    <PieChart width={280} height={280}>
+                                                        <Pie
+                                                            data={pieData}
+                                                            cx={135}
+                                                            cy={135}
+                                                            innerRadius={78}
+                                                            outerRadius={126}
+                                                            paddingAngle={3}
+                                                            dataKey="count"
+                                                            strokeWidth={0}
+                                                        >
+                                                            {pieData.map((entry, i) => (
+                                                                <Cell key={i} fill={entry.color} />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip content={<CustomTooltip />} />
+                                                    </PieChart>
+                                                    {/* Center label */}
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        top: '50%', left: '50%',
+                                                        transform: 'translate(-50%, -50%)',
+                                                        textAlign: 'center',
+                                                        pointerEvents: 'none'
+                                                    }}>
+                                                        <div style={{ fontSize: '36px', fontWeight: '900', color: '#1e293b', lineHeight: 1 }}>{totalFailed}</div>
+                                                        <div style={{ fontSize: '11px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>Total</div>
+                                                        <div style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Failed</div>
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
+
+                                                {/* Legend Panel */}
+                                                <div style={{ flex: 1, minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                                    {PIE_CATEGORIES.map(cat => {
+                                                        const rc = data.rootCauses.find(c => c.category === cat.name) || { count: 0, percentage: 0 };
+                                                        const active = rc.count > 0;
+                                                        return (
+                                                            <div key={cat.name} style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '14px',
+                                                                padding: '14px 18px',
+                                                                borderRadius: '14px',
+                                                                background: active ? `${cat.color}0d` : '#f8fafc',
+                                                                border: `1.5px solid ${active ? cat.color + '33' : '#e2e8f0'}`,
+                                                                opacity: active ? 1 : 0.45,
+                                                                transition: 'all 0.2s ease'
+                                                            }}>
+                                                                {/* Color swatch */}
+                                                                <div style={{
+                                                                    width: '38px', height: '38px',
+                                                                    borderRadius: '10px',
+                                                                    background: active ? cat.gradient : '#e2e8f0',
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                    fontSize: '18px', flexShrink: 0
+                                                                }}>
+                                                                    {cat.icon}
+                                                                </div>
+                                                                {/* Label */}
+                                                                <div style={{ flex: 1 }}>
+                                                                    <div style={{ fontSize: '13px', fontWeight: '800', color: active ? '#1e293b' : '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                                                        {cat.name}
+                                                                    </div>
+                                                                    <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600', marginTop: '2px' }}>
+                                                                        {active ? `${rc.count} batch${rc.count > 1 ? 'es' : ''}` : 'No failures'}
+                                                                    </div>
+                                                                </div>
+                                                                {/* Percentage badge */}
+                                                                <div style={{
+                                                                    minWidth: '52px',
+                                                                    textAlign: 'right'
+                                                                }}>
+                                                                    <div style={{ fontSize: '22px', fontWeight: '900', color: active ? cat.color : '#cbd5e1', lineHeight: 1 }}>
+                                                                        {active ? `${rc.percentage}%` : '—'}
+                                                                    </div>
+                                                                    {active && (
+                                                                        <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700', letterSpacing: '0.5px', marginTop: '2px' }}>
+                                                                            OF FAILURES
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             )}
                         </div>

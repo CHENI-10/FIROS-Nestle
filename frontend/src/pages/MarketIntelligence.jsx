@@ -101,12 +101,12 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
   const handleLineItemChange = (sku, field, value) => {
     setLineItems(prev => {
       const newItem = { ...prev[sku], [field]: value };
-      
+
       // Auto-set miss flag based on reason
       if (field === 'empty_shelf_reason') {
         newItem.distributor_miss_flagged = (value === 'not_delivered');
       }
-      
+
       return { ...prev, [sku]: newItem };
     });
   };
@@ -177,7 +177,13 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
     if (lower.includes('milo')) return '/images/milo.png';
     if (lower.includes('nestomalt')) return '/images/nestomalt.png';
     if (lower.includes('nescafe')) return '/images/nescafe.png';
+    if (lower.includes('maggi chicken') || lower.includes('maggi noodle')) return '/images/maggi_noodles.png';
     if (lower.includes('maggi')) return '/images/maggi.png';
+    if (lower.includes('nespray')) return '/images/nespray_milk.png';
+    if (lower.includes('milkmaid')) return '/images/milkmaid.png';
+    if (lower.includes('cerelac')) return '/images/cerelac.png';
+    if (lower.includes('nangrow')) return '/images/nangrow.png';
+    if (lower.includes('lactogrow')) return '/images/lactogrow.png';
     return 'https://via.placeholder.com/100x100.png?text=Nestle';
   };
 
@@ -382,8 +388,8 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
 
         <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
           <button style={{ ...btnSecondary, flex: 1 }} onClick={() => setStep(2)}>Products</button>
-          <button 
-            style={{ ...btnPrimary, flex: 2, opacity: productsArray.some(p => p.isEmptyShelf && !p.empty_shelf_reason) ? 0.5 : 1 }} 
+          <button
+            style={{ ...btnPrimary, flex: 2, opacity: productsArray.some(p => p.isEmptyShelf && !p.empty_shelf_reason) ? 0.5 : 1 }}
             onClick={() => {
               const invalid = productsArray.some(p => p.isEmptyShelf && !p.empty_shelf_reason);
               if (invalid) {
@@ -391,7 +397,7 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
                 return;
               }
               setStep(4);
-            }} 
+            }}
             disabled={productsArray.some(p => p.isEmptyShelf && !p.empty_shelf_reason)}
           >
             Review &rarr;
@@ -446,14 +452,14 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
 
         {emptyProducts.length > 0 && (
           <div style={{ marginBottom: '24px' }}>
-            <h4 style={{ color: '#D32F2F', fontSize: '13px', borderBottom: '2px solid #FFCDD2', paddingBottom: '8px', textTransform: 'uppercase' }}>🚨 Action Required</h4>
+            <h4 style={{ color: '#D32F2F', fontSize: '11px', fontWeight: '900', letterSpacing: '1.5px', textTransform: 'uppercase', fontFamily: "'Outfit', sans-serif", borderBottom: '2px solid #FFCDD2', paddingBottom: '10px', marginBottom: '4px' }}>🚨 Action Required</h4>
             {emptyProducts.map(p => (
               <div key={p.sku} style={{ display: 'flex', padding: '12px 0', borderBottom: '1px solid #eee' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                     <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <img src={getProductImage(p.productName)} alt="" style={{ width: '30px', height: '30px', marginRight: '10px', objectFit: 'contain' }} />
-                      <span style={{ fontWeight: 'bold', color: '#333' }}>{p.productName} - {p.packSize}</span>
+                      <img src={getProductImage(p.productName)} alt="" style={{ width: '34px', height: '34px', marginRight: '12px', objectFit: 'contain', borderRadius: '6px', border: '1px solid #eee' }} />
+                      <span style={{ fontFamily: "'Outfit', sans-serif", fontWeight: '600', fontSize: '14px', color: '#333' }}>{p.productName} - {p.packSize}</span>
                     </div>
                     <span style={{ fontSize: '11px', color: '#D32F2F', fontWeight: 'bold' }}>{p.empty_shelf_reason?.replace(/_/g, ' ').toUpperCase()}</span>
                   </div>
@@ -464,15 +470,15 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
         )}
 
         <div>
-          <h4 style={{ color: '#8B5E3C', fontSize: '13px', borderBottom: '2px solid #E8DDD0', paddingBottom: '8px', textTransform: 'uppercase' }}>Available Stock</h4>
+          <h4 style={{ color: '#8B5E3C', fontSize: '11px', fontWeight: '900', letterSpacing: '1.5px', textTransform: 'uppercase', fontFamily: "'Outfit', sans-serif", borderBottom: '2px solid #E8DDD0', paddingBottom: '10px', marginBottom: '4px' }}>Available Stock</h4>
           {availableProducts.map(p => (
-            <div key={p.sku} style={{ padding: '12px 0', borderBottom: '1px solid #eee' }}>
+            <div key={p.sku} style={{ padding: '12px 4px', borderBottom: '1px solid #f0ede8' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <img src={getProductImage(p.productName)} alt="" style={{ width: '30px', height: '30px', marginRight: '10px', objectFit: 'contain' }} />
-                  <span style={{ color: '#444' }}>{p.productName} - {p.packSize}</span>
+                  <img src={getProductImage(p.productName)} alt="" style={{ width: '34px', height: '34px', marginRight: '12px', objectFit: 'contain', borderRadius: '6px', border: '1px solid #eee' }} />
+                  <span style={{ fontFamily: "'Outfit', sans-serif", fontWeight: '600', fontSize: '14px', color: '#333' }}>{p.productName} - {p.packSize}</span>
                 </div>
-                <div style={{ color: '#4CAF50', fontWeight: 'bold', fontSize: '12px' }}>✓ Audited</div>
+                <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', fontWeight: '700', fontSize: '11px', fontFamily: "'Outfit', sans-serif", padding: '4px 10px', borderRadius: '20px', letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>✓ Audited</div>
               </div>
             </div>
           ))}
