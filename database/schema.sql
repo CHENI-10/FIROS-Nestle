@@ -607,3 +607,19 @@ INSERT INTO sales_reps (work_id, name, region) VALUES
     ('REP004', 'Saman Kumara', 'Jaffna'),
     ('REP005', 'Ruwanthi de Silva', 'Kurunegala');
 
+
+-- ============================================================
+-- SECTION 3 — PERFORMANCE INDEXES
+-- ============================================================
+CREATE INDEX IF NOT EXISTS idx_batches_product_id ON batches(product_id);
+CREATE INDEX IF NOT EXISTS idx_batches_zone_id ON batches(zone_id);
+CREATE INDEX IF NOT EXISTS idx_batches_status ON batches(status);
+CREATE INDEX IF NOT EXISTS idx_batch_zone_history_batch_id ON batch_zone_history(batch_id);
+CREATE INDEX IF NOT EXISTS idx_batch_zone_history_zone_id ON batch_zone_history(zone_id);
+CREATE INDEX IF NOT EXISTS idx_dispatch_records_batch_id ON dispatch_records(batch_id);
+CREATE INDEX IF NOT EXISTS idx_dispatch_records_distributor_id ON dispatch_records(distributor_id);
+CREATE INDEX IF NOT EXISTS idx_clearance_records_batch_id ON clearance_records(batch_id);
+CREATE INDEX IF NOT EXISTS idx_return_records_batch_id ON return_records(batch_id);
+CREATE INDEX IF NOT EXISTS idx_sales_rep_reports_rep_id ON sales_rep_reports(sales_rep_id);
+CREATE INDEX IF NOT EXISTS idx_report_line_items_report_id ON report_line_items(report_id);
+CREATE INDEX IF NOT EXISTS idx_products_zone_id ON products(zone_id);

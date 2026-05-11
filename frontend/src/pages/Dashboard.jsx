@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Pagination from '../components/Pagination';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -20,6 +21,12 @@ const Dashboard = () => {
     const [riskFilter, setRiskFilter] = useState('All');
     const [zoneFilter, setZoneFilter] = useState('All Zones');
     const [statusFilter, setStatusFilter] = useState('in_storage');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [riskFilter, zoneFilter, statusFilter]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -131,6 +138,9 @@ const Dashboard = () => {
 
         return true;
     });
+
+    const totalPages = Math.max(1, Math.ceil(filteredBatches.length / itemsPerPage));
+    const paginatedBatches = filteredBatches.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     const getRiskColor = (risk) => {
         if (risk === 'low') return 'var(--green)';
@@ -627,7 +637,7 @@ const Dashboard = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {(Array.isArray(filteredBatches) ? filteredBatches : []).map(b => (
+                                    {paginatedBatches.map(b => (
                                         <tr key={b.batch_id} className={`row-${b.risk_band || 'unknown'}-risk`}>
                                             <td>{b.batch_id}</td>
                                             <td>{b.product_name}</td>
@@ -669,6 +679,14 @@ const Dashboard = () => {
                                     )}
                                 </tbody>
                             </table>
+                            {filteredBatches.length > 0 && (
+                                <Pagination
+                                    currentPage={currentPage}
+                                    totalPages={totalPages}
+                                    totalItems={filteredBatches.length}
+                                    onPageChange={setCurrentPage}
+                                />
+                            )}
                         </div>
                     </div>
 

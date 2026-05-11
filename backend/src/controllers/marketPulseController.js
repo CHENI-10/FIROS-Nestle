@@ -1,8 +1,23 @@
 const db = require('../config/db');
+const redisClient = require('../config/redis');
 
 exports.getMarketPulse = async (req, res) => {
     try {
         const days = parseInt(req.query.days) || 30;
+
+        const cacheKey = `marketPulse:${days}`;
+        
+        if (redisClient.isOpen) {
+            try {
+                const cachedData = await redisClient.get(cacheKey);
+                if (cachedData) {
+                    console.log(`[Cache] Serving ${cacheKey} from Redis`);
+                    return res.json(JSON.parse(cachedData));
+                }
+            } catch (cacheErr) {
+                console.warn('[Cache] Redis get error:', cacheErr.message);
+            }
+        }
 
         // Query 1: Current warehouse stock per SKU
         const stockQuery = `
@@ -257,14 +272,25 @@ exports.getMarketPulse = async (req, res) => {
         `);
         const recentReportsCount = parseInt(recentReportsRes.rows[0].recent_count) || 0;
 
-        res.json({
+        const responseData = {
             generatedAt: new Date(),
             lastUpdated: new Date(),
             regionOverview,
             stockWithVelocity,
             highDemandNotInStock,
             recentReportsCount
-        });
+        };
+
+        if (redisClient.isOpen) {
+            try {
+                // Cache for 5 minutes
+                await redisClient.setEx(cacheKey, 300, JSON.stringify(responseData));
+            } catch (cacheErr) {
+                console.warn('[Cache] Redis set error:', cacheErr.message);
+            }
+        }
+
+        res.json(responseData);
 
     } catch (error) {
         console.error("Error generating market pulse:", error);
