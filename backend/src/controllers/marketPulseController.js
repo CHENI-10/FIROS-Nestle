@@ -7,7 +7,7 @@ exports.getMarketPulse = async (req, res) => {
 
         const cacheKey = `marketPulse:${days}`;
         
-        if (redisClient.isOpen) {
+        if (redisClient.isReady) {
             try {
                 const cachedData = await redisClient.get(cacheKey);
                 if (cachedData) {
@@ -281,7 +281,7 @@ exports.getMarketPulse = async (req, res) => {
             recentReportsCount
         };
 
-        if (redisClient.isOpen) {
+        if (redisClient.isReady) {
             try {
                 // Cache for 5 minutes
                 await redisClient.setEx(cacheKey, 300, JSON.stringify(responseData));

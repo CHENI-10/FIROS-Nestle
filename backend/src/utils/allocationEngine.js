@@ -4,27 +4,45 @@ const db = require('../config/db');
  * Scores all distributors for a given batch product_id (used as SKU identifier).
  * Returns a ranked list from best to worst.
  */
-async function calculateAllocationScores({ batchProductId, distributors, riskBand = 'high' }) {
+async function calculateAllocationScores({ batchProductId, distributors, riskBand = 'high', productCache = new Map() }) {
     // Check if any sales rep reports exist at all (for fallback mode detection)
-    const totalReportsRes = await db.query(`SELECT COUNT(*) as cnt FROM sales_rep_reports`);
-    const fallbackMode = parseInt(totalReportsRes.rows[0].cnt) === 0;
+    let fallbackMode = false;
+    if (productCache.has('fallbackMode')) {
+        fallbackMode = productCache.get('fallbackMode');
+    } else {
+        const totalReportsRes = await db.query(`SELECT COUNT(*) as cnt FROM sales_rep_reports`);
+        fallbackMode = parseInt(totalReportsRes.rows[0].cnt) === 0;
+        productCache.set('fallbackMode', fallbackMode);
+    }
 
-    // Get the most likely SKU/Barcode for this product
-    const prodInfoRes = await db.query(`SELECT ean13_barcode, product_name FROM products WHERE product_id = $1`, [batchProductId]);
-    const prodRow = prodInfoRes.rows[0];
+    let prodRow;
+    if (productCache.has(`prod_${batchProductId}`)) {
+        prodRow = productCache.get(`prod_${batchProductId}`);
+    } else {
+        const prodInfoRes = await db.query(`SELECT ean13_barcode, product_name FROM products WHERE product_id = $1`, [batchProductId]);
+        prodRow = prodInfoRes.rows[0];
+        productCache.set(`prod_${batchProductId}`, prodRow);
+    }
+    
     const targetSku = prodRow?.ean13_barcode || String(batchProductId);
     const productName = prodRow?.product_name || '';
 
-    const scored = await Promise.all(distributors.map(async (dist) => {
-        // 1. PERFORMANCE SCORE
-        const perfRes = await db.query(`
-            SELECT performance_score as overall_score
-            FROM distributor_scorecards
-            WHERE distributor_id = $1
-            ORDER BY last_updated_at DESC
-            LIMIT 1
-        `, [dist.distributor_id]);
-        const performanceScore = perfRes.rows.length > 0 ? parseFloat(perfRes.rows[0].overall_score) : 50;
+    const cacheKey = `scored_${batchProductId}`;
+    let scored;
+
+    if (productCache.has(cacheKey)) {
+        scored = productCache.get(cacheKey);
+    } else {
+        scored = await Promise.all(distributors.map(async (dist) => {
+            // 1. PERFORMANCE SCORE
+            const perfRes = await db.query(`
+                SELECT performance_score as overall_score
+                FROM distributor_scorecards
+                WHERE distributor_id = $1
+                ORDER BY last_updated_at DESC
+                LIMIT 1
+            `, [dist.distributor_id]);
+            const performanceScore = perfRes.rows.length > 0 ? parseFloat(perfRes.rows[0].overall_score) : 50;
 
         // 2. SALES VELOCITY / DEMO DATA
         let velocityScore = 50;
@@ -74,13 +92,15 @@ async function calculateAllocationScores({ batchProductId, distributors, riskBan
             urgencyScore = days <= 0 ? 100 : Math.max(0, Math.min(100, 100 - days));
         }
 
-        return {
-            distId: dist.distributor_id,
-            distName: dist.distributor_name,
-            region: dist.region,
-            scores: { performanceScore, velocityScore, urgencyScore, isOOS }
-        };
-    }));
+            return {
+                distId: dist.distributor_id,
+                distName: dist.distributor_name,
+                region: dist.region,
+                scores: { performanceScore, velocityScore, urgencyScore, isOOS }
+            };
+        }));
+        productCache.set(cacheKey, scored);
+    }
 
     // Check if there's any OOS for Medium Risk batches
     const anyOOS = scored.some(s => s.scores.isOOS);
@@ -146,12 +166,14 @@ async function resolveMultiBatchAllocation(batches) {
 
     const allocatedSet = new Set();
     const results = [];
+    const sharedProductCache = new Map();
 
     for (const batch of sorted) {
         const ranked = await calculateAllocationScores({
             batchProductId: batch.batchProductId,
             distributors,
-            riskBand: batch.riskBand || 'high'
+            riskBand: batch.riskBand || 'high',
+            productCache: sharedProductCache
         });
 
         // Pick highest-scored distributor not yet allocated
