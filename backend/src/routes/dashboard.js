@@ -8,6 +8,41 @@ const { resolveMultiBatchAllocation } = require('../utils/allocationEngine');
 // Apply auth middleware to all routes
 router.use(verifyToken);
 
+// ROUTE: GET /search/:query
+// Omni-search for batches by exact batch_id or product ean13_barcode
+router.get('/search/:query', async (req, res) => {
+    try {
+        const { query } = req.params;
+        const searchQuery = `
+            SELECT 
+                b.batch_id, b.status, b.manufacturing_date, b.expiry_date, b.arrival_timestamp, b.zone_id, b.quantity,
+                p.product_name, p.ean13_barcode, p.pack_size,
+                fs.frs_score, fs.risk_band, fs.total_temp_breach_windows, fs.total_humidity_breach_windows,
+                dr.dispatch_timestamp, dr.collected_timestamp AS dispatch_collected, dr.distributor_id AS dispatch_dist_id,
+                dd.distributor_name AS dispatch_distributor_name,
+                cr.cleared_at, cr.collected_timestamp AS clearance_collected, cr.reason AS clearance_reason, cr.distributor_id AS clearance_dist_id,
+                cd.distributor_name AS clearance_distributor_name,
+                rr.created_at AS returned_at, rr.return_reason, rr.decision AS liability_status
+            FROM batches b
+            JOIN products p ON b.product_id = p.product_id
+            LEFT JOIN freshness_scores fs ON b.batch_id = fs.batch_id
+            LEFT JOIN dispatch_records dr ON b.batch_id = dr.batch_id
+            LEFT JOIN distributor_records dd ON dr.distributor_id = dd.distributor_id
+            LEFT JOIN clearance_records cr ON b.batch_id = cr.batch_id
+            LEFT JOIN distributor_records cd ON cr.distributor_id = cd.distributor_id
+            LEFT JOIN return_records rr ON b.batch_id = rr.batch_id
+            WHERE b.batch_id ILIKE $1 OR p.ean13_barcode = $1
+            ORDER BY b.arrival_timestamp DESC
+            LIMIT 50
+        `;
+        const result = await pool.query(searchQuery, [`%${query}%`]);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error in omni-search:', err);
+        res.status(500).json({ error: 'Server error during search' });
+    }
+});
+
 // ROUTE 1: GET /
 // Returns complete dashboard data in one call
 router.get('/', async (req, res) => {

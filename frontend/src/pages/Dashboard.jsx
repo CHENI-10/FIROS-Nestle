@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Pagination from '../components/Pagination';
+import GlobalSearch from '../components/GlobalSearch';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -186,6 +187,8 @@ const Dashboard = () => {
                 </div>
 
                 <div className="nav-actions">
+                    <GlobalSearch />
+                    
                     <div className="last-updated">
                         Last Updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : ''}
                     </div>
