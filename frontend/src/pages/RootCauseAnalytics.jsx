@@ -358,17 +358,39 @@ const RootCauseAnalytics = () => {
                                                         const rc = data.rootCauses.find(c => c.category === cat.name) || { count: 0, percentage: 0 };
                                                         const active = rc.count > 0;
                                                         return (
-                                                            <div key={cat.name} style={{
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '14px',
-                                                                padding: '14px 18px',
-                                                                borderRadius: '14px',
-                                                                background: active ? `${cat.color}0d` : '#f8fafc',
-                                                                border: `1.5px solid ${active ? cat.color + '33' : '#e2e8f0'}`,
-                                                                opacity: active ? 1 : 0.45,
-                                                                transition: 'all 0.2s ease'
-                                                            }}>
+                                                            <div 
+                                                                key={cat.name} 
+                                                                onClick={() => {
+                                                                    if (active) {
+                                                                        document.getElementById(`diagnostic-${cat.name}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                    }
+                                                                }}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '14px',
+                                                                    padding: '14px 18px',
+                                                                    borderRadius: '14px',
+                                                                    background: active ? `${cat.color}0d` : '#f8fafc',
+                                                                    border: `1.5px solid ${active ? cat.color + '33' : '#e2e8f0'}`,
+                                                                    opacity: active ? 1 : 0.45,
+                                                                    transition: 'all 0.2s ease',
+                                                                    cursor: active ? 'pointer' : 'default',
+                                                                    transform: active ? 'scale(1)' : 'scale(1)',
+                                                                }}
+                                                                onMouseEnter={(e) => {
+                                                                    if (active) {
+                                                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                                                        e.currentTarget.style.boxShadow = `0 4px 12px ${cat.color}1a`;
+                                                                    }
+                                                                }}
+                                                                onMouseLeave={(e) => {
+                                                                    if (active) {
+                                                                        e.currentTarget.style.transform = 'translateY(0)';
+                                                                        e.currentTarget.style.boxShadow = 'none';
+                                                                    }
+                                                                }}
+                                                            >
                                                                 {/* Color swatch */}
                                                                 <div style={{
                                                                     width: '38px', height: '38px',
@@ -418,7 +440,11 @@ const RootCauseAnalytics = () => {
                             <div style={styles.section}>
                                 <h2 style={styles.sectionTitle}>Diagnostic Patterns</h2>
                                 {data.rootCauses.filter(rc => rc.count > 0).map(rc => (
-                                    <div key={rc.category} style={{ ...styles.card, borderLeft: `6px solid ${rc.color}`, marginBottom: '24px' }}>
+                                    <div 
+                                        key={rc.category} 
+                                        id={`diagnostic-${rc.category}`}
+                                        style={{ ...styles.card, borderLeft: `6px solid ${rc.color}`, marginBottom: '24px', scrollMarginTop: '20px' }}
+                                    >
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                                             <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px', color: '#1e293b', fontSize: '18px', fontWeight: '900' }}>
                                                 <span style={{ fontSize: '24px' }}>{rc.icon}</span> {rc.category.toUpperCase()}
