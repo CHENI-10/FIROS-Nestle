@@ -513,7 +513,7 @@ const Dashboard = () => {
                             alignItems: 'center',
                             boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
                             transition: 'all 0.3s ease',
-                            gridColumn: '1 / -1'
+                            gridColumn: role === 'admin' ? 'auto' : '1 / -1'
                         }}
                         onMouseOver={(e) => {
                             e.currentTarget.style.transform = 'translateY(-3px)';
