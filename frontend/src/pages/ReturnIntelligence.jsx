@@ -159,6 +159,16 @@ const ReturnIntelligence = () => {
         }
     };
 
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (batchId.trim()) {
+                verifyBatch();
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [batchId]);
+
     const handleBatchChange = (e) => {
         setBatchId(e.target.value);
         setDispatchEvidence(null);
@@ -167,8 +177,9 @@ const ReturnIntelligence = () => {
         setSuccessResult(null);
     };
 
-    const handleBatchBlur = async () => {
-        if (!batchId.trim()) return;
+    const verifyBatch = async () => {
+        const targetId = batchId.trim();
+        if (!targetId) return;
         setEvidenceLoading(true);
         setEvidenceError('');
         const token = sessionStorage.getItem('token');
@@ -181,9 +192,10 @@ const ReturnIntelligence = () => {
             if (dispRes.ok) {
                 const responseData = await dispRes.json();
                 const data = responseData.dispatches || responseData;
-                const activeDispatch = data.find(d => d.batch_id === batchId);
+                const activeDispatch = data.find(d => d.batch_id === targetId);
                 
                 if (activeDispatch) {
+                    if (batchId.trim() !== targetId) return;
                     setDispatchEvidence({
                         ...activeDispatch,
                         type: 'Standard Dispatch'
@@ -202,9 +214,10 @@ const ReturnIntelligence = () => {
             if (clrRes.ok) {
                 const responseData = await clrRes.json();
                 const data = responseData.clearances || responseData;
-                const activeClearance = data.find(c => c.batch_id === batchId);
+                const activeClearance = data.find(c => c.batch_id === targetId);
 
                 if (activeClearance) {
+                    if (batchId.trim() !== targetId) return;
                     if (!activeClearance.distributor_name) {
                         setEvidenceError("This batch was cleared without a distributor assignment and cannot be returned through the system.");
                         setEvidenceLoading(false);
@@ -214,8 +227,8 @@ const ReturnIntelligence = () => {
                     setDispatchEvidence({
                         ...activeClearance,
                         type: 'Clearance Release',
-                        frs_at_dispatch: activeClearance.frs_score, // Mapping clearance FRS to the same field
-                        dispatch_timestamp: activeClearance.cleared_at // Mapping clearance time to the same field
+                        frs_at_dispatch: activeClearance.frs_score,
+                        dispatch_timestamp: activeClearance.cleared_at
                     });
                     setDistributorId(activeClearance.distributor_id);
                     setEvidenceLoading(false);
@@ -223,7 +236,9 @@ const ReturnIntelligence = () => {
                 }
             }
 
-            setEvidenceError("No outbound record found for this batch ID in either Dispatch or Clearance ledgers.");
+            if (batchId.trim() === targetId) {
+                setEvidenceError("No outbound record found for this batch ID in either Dispatch or Clearance ledgers.");
+            }
             
         } catch (err) {
             console.error(err);
@@ -404,7 +419,6 @@ const ReturnIntelligence = () => {
                                         type="text"
                                         value={batchId}
                                         onChange={handleBatchChange}
-                                        onBlur={handleBatchBlur}
                                         placeholder="e.g. BATCH-A001"
                                         className="ri-input"
                                     />

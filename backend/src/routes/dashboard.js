@@ -294,12 +294,13 @@ router.get('/recommendations', async (req, res) => {
             const risk_band = batch.risk_band;
             const smartRec = resultsMap[batch.batch_id];
             
+            const assignedDist = distributors.find(d => d.distributor_id === smartRec?.distributorId);
             let recommendationObj = {
                 ...batch,
                 urgency_score: Math.min((batch.days_in_warehouse || 0) / 30, 5),
                 suggested_distributor_id: smartRec?.distributorId,
                 suggested_distributor_name: smartRec?.distributorName,
-                suggested_next_visit_date: smartRec?.breakdown?.urgencyScore >= 100 ? new Date().toISOString() : null,
+                suggested_next_visit_date: assignedDist?.next_visit_date || null,
                 allocationScore: smartRec?.allocationScore,
                 breakdown: smartRec?.breakdown
             };
