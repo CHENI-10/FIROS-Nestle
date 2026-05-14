@@ -3,6 +3,73 @@ import { useNavigate } from 'react-router-dom';
 import Pagination from '../components/Pagination';
 import GlobalSearch from '../components/GlobalSearch';
 import './Dashboard.css';
+const AnimatedCounter = ({ value }) => {
+    const [count, setCount] = React.useState(0);
+
+    React.useEffect(() => {
+        let startTimestamp = null;
+        const totalDuration = 1000;
+        const endValue = parseFloat(value);
+        if (isNaN(endValue)) return;
+
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / totalDuration, 1);
+            const easeProgress = 1 - Math.pow(1 - progress, 4);
+            setCount(easeProgress * endValue);
+            
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            } else {
+                setCount(endValue);
+            }
+        };
+        window.requestAnimationFrame(step);
+    }, [value]);
+
+    const isDecimal = value.toString().includes('.');
+    return <>{isDecimal ? count.toFixed(1) : Math.round(count)}</>;
+};
+
+const CustomSelect = ({ value, onChange, options }) => {
+    const [isOpen, setIsOpen] = React.useState(false);
+    const selectRef = React.useRef(null);
+
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (selectRef.current && !selectRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    return (
+        <div ref={selectRef} style={{ position: 'relative', minWidth: '130px' }}>
+            <div 
+                className="custom-select-trigger"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                {options.find(o => (o.value || o) === value)?.label || value}
+                <span style={{ fontSize: '10px', marginLeft: '12px', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}>▼</span>
+            </div>
+            {isOpen && (
+                <div className="glass-dropdown">
+                    {options.map((opt, i) => (
+                        <div 
+                            key={i}
+                            onClick={() => { onChange(opt.value || opt); setIsOpen(false); }}
+                            className={`glass-dropdown-item ${value === (opt.value || opt) ? 'active' : ''}`}
+                        >
+                            {opt.label || opt}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -283,23 +350,23 @@ const Dashboard = () => {
                 <section className="stats-row">
                     <div className="stat-card pulse-card">
                         <div className="stat-value" style={{ color: getFreshnessColor(overall_freshness_percent) }}>
-                            {overall_freshness_percent}%
+                            <AnimatedCounter value={overall_freshness_percent} />%
                         </div>
                         <div className="stat-title">Overall Freshness Score</div>
                     </div>
 
                     <div className="stat-card">
-                        <div className="stat-value" style={{ color: 'var(--blue)' }}>{total_batches}</div>
+                        <div className="stat-value" style={{ color: 'var(--blue)' }}><AnimatedCounter value={total_batches} /></div>
                         <div className="stat-title">Batches In Storage</div>
                     </div>
 
                     <div className={`stat-card ${high_risk_count > 0 ? 'flash-card' : ''}`}>
-                        <div className="stat-value" style={{ color: 'var(--red)' }}>{high_risk_count}</div>
+                        <div className="stat-value" style={{ color: 'var(--red)' }}><AnimatedCounter value={high_risk_count} /></div>
                         <div className="stat-title">Urgent Action Required</div>
                     </div>
 
                     <div className="stat-card">
-                        <div className="stat-value" style={{ color: 'var(--amber)' }}>{alerts.length}</div>
+                        <div className="stat-value" style={{ color: 'var(--amber)' }}><AnimatedCounter value={alerts.length} /></div>
                         <div className="stat-title">Active Alerts</div>
                     </div>
                 </section>
@@ -601,26 +668,27 @@ const Dashboard = () => {
                         <div className="panel-header">
                             <h2>Batch Inventory</h2>
                             <div className="filters">
-                                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-                                    <option value="in_storage">In Storage</option>
-                                    <option value="dispatched">Dispatched</option>
-                                    <option value="returned">Returned</option>
-                                    <option value="cleared">Cleared</option>
-                                    <option value="All Statuses">All Statuses</option>
-                                </select>
-                                <select value={riskFilter} onChange={e => setRiskFilter(e.target.value)}>
-                                    <option>All</option>
-                                    <option>High Risk</option>
-                                    <option>Medium Risk</option>
-                                    <option>Low Risk</option>
-                                </select>
-                                <select value={zoneFilter} onChange={e => setZoneFilter(e.target.value)}>
-                                    <option>All Zones</option>
-                                    <option>Zone A</option>
-                                    <option>Zone B</option>
-                                    <option>Zone C</option>
-                                    <option>Zone D</option>
-                                </select>
+                                <CustomSelect 
+                                    value={statusFilter} 
+                                    onChange={setStatusFilter} 
+                                    options={[
+                                        { value: 'in_storage', label: 'In Storage' },
+                                        { value: 'dispatched', label: 'Dispatched' },
+                                        { value: 'returned', label: 'Returned' },
+                                        { value: 'cleared', label: 'Cleared' },
+                                        { value: 'All Statuses', label: 'All Statuses' }
+                                    ]} 
+                                />
+                                <CustomSelect 
+                                    value={riskFilter} 
+                                    onChange={setRiskFilter} 
+                                    options={['All', 'High Risk', 'Medium Risk', 'Low Risk']} 
+                                />
+                                <CustomSelect 
+                                    value={zoneFilter} 
+                                    onChange={setZoneFilter} 
+                                    options={['All Zones', 'Zone A', 'Zone B', 'Zone C', 'Zone D']} 
+                                />
                             </div>
                         </div>
 
@@ -669,7 +737,16 @@ const Dashboard = () => {
                                                         borderRadius: '4px',
                                                         fontSize: '11px',
                                                         cursor: 'pointer',
-                                                        fontWeight: 'bold'
+                                                        fontWeight: 'bold',
+                                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                                    }}
+                                                    onMouseOver={(e) => {
+                                                        e.currentTarget.style.transform = 'scale(1.15)';
+                                                        e.currentTarget.style.background = 'rgba(200, 169, 110, 0.1)';
+                                                    }}
+                                                    onMouseOut={(e) => {
+                                                        e.currentTarget.style.transform = 'scale(1)';
+                                                        e.currentTarget.style.background = 'none';
                                                     }}
                                                 >
                                                     View Details

@@ -184,9 +184,77 @@ body.dark { background-color: #0f172a; margin: 0; }
 .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .panel-header h2 { margin: 0; font-size: 22px; color: var(--text-main); }
 .filters { display: flex; gap: 15px; }
-.filters select {
-  padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);
-  background: var(--card-bg); color: var(--text-main); outline: none; font-size: 14px; transition: var(--transition);
+
+.custom-select-trigger {
+  padding: 8px 14px; 
+  border-radius: var(--radius-sm); 
+  border: 1px solid rgba(200, 200, 200, 0.3);
+  background: rgba(255, 255, 255, 0.15); 
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--text-main); 
+  outline: none; 
+  font-size: 14px; 
+  font-weight: 600;
+  transition: var(--transition);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.custom-select-trigger:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+.dashboard-container.dark .custom-select-trigger {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.dashboard-container.dark .custom-select-trigger:hover {
+  background: rgba(30, 41, 59, 0.8);
+}
+
+.glass-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 8px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  overflow: hidden;
+  animation: fadeInDown 0.2s ease-out;
+}
+.dashboard-container.dark .glass-dropdown {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-dropdown-item {
+  padding: 10px 14px;
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  transition: background 0.2s;
+}
+.glass-dropdown-item:hover, .glass-dropdown-item.active {
+  background: rgba(255, 255, 255, 0.5);
+}
+.dashboard-container.dark .glass-dropdown-item:hover,
+.dashboard-container.dark .glass-dropdown-item.active {
+  background: rgba(255, 255, 255, 0.15);
+}
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .table-responsive { overflow-x: auto; background: var(--card-bg); border-radius: var(--radius-md); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); }

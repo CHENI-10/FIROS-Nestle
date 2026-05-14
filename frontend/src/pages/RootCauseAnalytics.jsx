@@ -1,6 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip } from 'recharts';
+const AnimatedCounter = ({ value }) => {
+    const [count, setCount] = useState(0);
+
+    useEffect(() => {
+        let startTimestamp = null;
+        const totalDuration = 1000;
+        const endValue = parseFloat(value);
+        if (isNaN(endValue)) return;
+
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / totalDuration, 1);
+            const easeProgress = 1 - Math.pow(1 - progress, 4);
+            setCount(easeProgress * endValue);
+            
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            } else {
+                setCount(endValue);
+            }
+        };
+        window.requestAnimationFrame(step);
+    }, [value]);
+
+    const isDecimal = value.toString().includes('.');
+    return <>{isDecimal ? count.toFixed(1) : Math.round(count)}</>;
+};
 
 const RootCauseAnalytics = () => {
     const navigate = useNavigate();
@@ -19,6 +46,15 @@ const RootCauseAnalytics = () => {
     const [expandedBatches, setExpandedBatches] = useState({});
     const [assignedActions, setAssignedActions] = useState({});
     const reportRef = useRef(null);
+    const [fadeClass, setFadeClass] = useState('fluid-transition');
+
+    useEffect(() => {
+        if (data) {
+            setFadeClass('');
+            const timer = setTimeout(() => setFadeClass('fluid-transition'), 10);
+            return () => clearTimeout(timer);
+        }
+    }, [data]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -163,7 +199,16 @@ const RootCauseAnalytics = () => {
         <div style={{ backgroundColor: '#f1f5f9', minHeight: '100vh', fontFamily: "'Outfit', sans-serif", color: '#1e293b' }}>
             {/* GOOGLE FONTS IMPORT */}
             <style>
-                {`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');`}
+                {`
+                @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+                @keyframes fadeSlideIn {
+                    from { opacity: 0; transform: translateY(15px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .fluid-transition {
+                    animation: fadeSlideIn 0.5s ease-out forwards;
+                }
+                `}
             </style>
 
             <div style={styles.container} ref={reportRef}>
@@ -231,38 +276,39 @@ const RootCauseAnalytics = () => {
                     )}
                 </div>
 
-                {data.summary.totalDispatched === 0 && data.summary.totalFailed === 0 ? (
-                    <div style={styles.card}>
-                        <h3 style={{ marginTop: 0, color: '#64748b' }}>No data for {data.periodLabel}.</h3>
-                        <p style={{ color: '#94a3b8' }}>All operations are currently inactive for this timeframe.</p>
-                    </div>
-                ) : (
-                    <>
-                        {/* SECTION 1: METRICS GRID */}
-                        <div style={styles.statsGrid}>
-                            <div style={{ ...styles.statCard, borderTop: '4px solid #3b82f6' }}>
-                                <div style={{ ...styles.statLabel, color: '#3b82f6' }}>DISPATCHED</div>
-                                <div style={styles.statValue}>{data.summary.totalDispatched}</div>
-                                <div style={styles.statSub}>batches sent</div>
-                            </div>
-                            <div style={{ ...styles.statCard, borderTop: '4px solid #10b981' }}>
-                                <div style={{ ...styles.statLabel, color: '#10b981' }}>SUCCESSFUL</div>
-                                <div style={styles.statValue}>{data.summary.totalCleared}</div>
-                                <div style={styles.statSub}>batches cleared</div>
-                            </div>
-                            <div style={{ ...styles.statCard, borderTop: '4px solid #f43f5e' }}>
-                                <div style={{ ...styles.statLabel, color: '#f43f5e' }}>RETURNED</div>
-                                <div style={styles.statValue}>{data.summary.totalReturned}</div>
-                                <div style={styles.statSub}>
-                                    batches returned
+                <div className={fadeClass}>
+                    {data.summary.totalDispatched === 0 && data.summary.totalFailed === 0 ? (
+                        <div style={styles.card}>
+                            <h3 style={{ marginTop: 0, color: '#64748b' }}>No data for {data.periodLabel}.</h3>
+                            <p style={{ color: '#94a3b8' }}>All operations are currently inactive for this timeframe.</p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* SECTION 1: METRICS GRID */}
+                            <div style={styles.statsGrid}>
+                                <div style={{ ...styles.statCard, borderTop: '4px solid #3b82f6' }}>
+                                    <div style={{ ...styles.statLabel, color: '#3b82f6' }}>DISPATCHED</div>
+                                    <div style={styles.statValue}><AnimatedCounter value={data.summary.totalDispatched} /></div>
+                                    <div style={styles.statSub}>batches sent</div>
                                 </div>
-                            </div>
+                                <div style={{ ...styles.statCard, borderTop: '4px solid #10b981' }}>
+                                    <div style={{ ...styles.statLabel, color: '#10b981' }}>SUCCESSFUL</div>
+                                    <div style={styles.statValue}><AnimatedCounter value={data.summary.totalCleared} /></div>
+                                    <div style={styles.statSub}>batches cleared</div>
+                                </div>
+                                <div style={{ ...styles.statCard, borderTop: '4px solid #f43f5e' }}>
+                                    <div style={{ ...styles.statLabel, color: '#f43f5e' }}>RETURNED</div>
+                                    <div style={styles.statValue}><AnimatedCounter value={data.summary.totalReturned} /></div>
+                                    <div style={styles.statSub}>
+                                        batches returned
+                                    </div>
+                                </div>
 
-                            <div style={{ ...styles.statCard, borderTop: `4px solid ${data.summary.failureRate > 10 ? '#f43f5e' : data.summary.failureRate > 5 ? '#f59e0b' : '#10b981'}` }}>
-                                <div style={{ ...styles.statLabel, color: data.summary.failureRate > 10 ? '#f43f5e' : data.summary.failureRate > 5 ? '#f59e0b' : '#10b981' }}>FAILURE RATE</div>
-                                <div style={styles.statValue}>{data.summary.failureRate}%</div>
-                                <div style={styles.statSub}>of total dispatches</div>
-                            </div>
+                                <div style={{ ...styles.statCard, borderTop: `4px solid ${data.summary.failureRate > 10 ? '#f43f5e' : data.summary.failureRate > 5 ? '#f59e0b' : '#10b981'}` }}>
+                                    <div style={{ ...styles.statLabel, color: data.summary.failureRate > 10 ? '#f43f5e' : data.summary.failureRate > 5 ? '#f59e0b' : '#10b981' }}>FAILURE RATE</div>
+                                    <div style={styles.statValue}><AnimatedCounter value={data.summary.failureRate} />%</div>
+                                    <div style={styles.statSub}>of total dispatches</div>
+                                </div>
                         </div>
 
                         {/* SECTION 2: ROOT CAUSE CLASSIFICATION */}
@@ -557,8 +603,9 @@ const RootCauseAnalytics = () => {
                                 ))}
                             </div>
                         )}
-                    </>
-                )}
+                        </>
+                    )}
+                </div>
             </div>
         </div>
     );

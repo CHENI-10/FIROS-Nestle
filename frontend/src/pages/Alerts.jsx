@@ -2,6 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import Pagination from '../components/Pagination';
+const AnimatedCounter = ({ value }) => {
+    const [count, setCount] = React.useState(0);
+
+    React.useEffect(() => {
+        let startTimestamp = null;
+        const totalDuration = 1000;
+        const endValue = parseFloat(value);
+        if (isNaN(endValue)) return;
+
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / totalDuration, 1);
+            const easeProgress = 1 - Math.pow(1 - progress, 4);
+            setCount(easeProgress * endValue);
+            
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            } else {
+                setCount(endValue);
+            }
+        };
+        window.requestAnimationFrame(step);
+    }, [value]);
+
+    const isDecimal = value.toString().includes('.');
+    return <>{isDecimal ? count.toFixed(1) : Math.round(count)}</>;
+};
 
 const Alerts = () => {
     const navigate = useNavigate();
@@ -172,19 +199,19 @@ const Alerts = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
                     <div style={{ backgroundColor: cardBgColor, padding: '24px', borderRadius: '16px', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, textAlign: 'center' }}>
                         <div style={{ fontSize: '12px', textTransform: 'uppercase', color: textMuted, fontWeight: 'bold' }}>Total Logged</div>
-                        <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '8px 0' }}>{dynamicSummary.total_alerts}</div>
+                        <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '8px 0' }}><AnimatedCounter value={dynamicSummary.total_alerts} /></div>
                     </div>
                     <div style={{ backgroundColor: cardBgColor, padding: '24px', borderRadius: '16px', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, textAlign: 'center', boxShadow: dynamicSummary.unread_count > 0 ? '0 4px 20px rgba(239, 68, 68, 0.15)' : 'none' }}>
                         <div style={{ fontSize: '12px', textTransform: 'uppercase', color: '#ef4444', fontWeight: 'bold' }}>Urgent Attention</div>
-                        <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '8px 0', color: '#ef4444' }}>{dynamicSummary.unread_count}</div>
+                        <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '8px 0', color: '#ef4444' }}><AnimatedCounter value={dynamicSummary.unread_count} /></div>
                     </div>
                     <div style={{ backgroundColor: cardBgColor, padding: '24px', borderRadius: '16px', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, textAlign: 'center' }}>
                         <div style={{ fontSize: '12px', textTransform: 'uppercase', color: '#f97316', fontWeight: 'bold' }}>Infant Formula Breaches</div>
-                        <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '8px 0', color: '#f97316' }}>{dynamicSummary.zone_c_count}</div>
+                        <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '8px 0', color: '#f97316' }}><AnimatedCounter value={dynamicSummary.zone_c_count} /></div>
                     </div>
                     <div style={{ backgroundColor: cardBgColor, padding: '24px', borderRadius: '16px', border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, textAlign: 'center' }}>
                         <div style={{ fontSize: '12px', textTransform: 'uppercase', color: '#f59e0b', fontWeight: 'bold' }}>Expiry Impending</div>
-                        <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '8px 0', color: '#f59e0b' }}>{dynamicSummary.expiry_count}</div>
+                        <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '8px 0', color: '#f59e0b' }}><AnimatedCounter value={dynamicSummary.expiry_count} /></div>
                     </div>
                 </div>
 

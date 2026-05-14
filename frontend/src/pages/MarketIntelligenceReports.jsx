@@ -2,6 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Dashboard.css'; 
 
+const AnimatedCounter = ({ value }) => {
+    const [count, setCount] = React.useState(0);
+
+    React.useEffect(() => {
+        let startTimestamp = null;
+        const totalDuration = 1000;
+        const endValue = parseFloat(value);
+        if (isNaN(endValue)) return;
+
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / totalDuration, 1);
+            const easeProgress = 1 - Math.pow(1 - progress, 4);
+            setCount(easeProgress * endValue);
+            
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            } else {
+                setCount(endValue);
+            }
+        };
+        window.requestAnimationFrame(step);
+    }, [value]);
+
+    const isDecimal = value.toString().includes('.');
+    return <>{isDecimal ? count.toFixed(1) : Math.round(count)}</>;
+};
+
 const MarketIntelligenceReports = () => {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
@@ -144,7 +172,7 @@ const MarketIntelligenceReports = () => {
           <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderTop: '4px solid #ef4444' }}>
             <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.5px' }}>Urgent Procurement Flags</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-              <div style={{ fontSize: '32px', fontWeight: '900', color: '#1e293b' }}>{urgentProcurementCount}</div>
+              <div style={{ fontSize: '32px', fontWeight: '900', color: '#1e293b' }}><AnimatedCounter value={urgentProcurementCount} /></div>
               <div style={{ fontSize: '14px', color: '#ef4444', fontWeight: 'bold' }}>Items</div>
             </div>
             <p style={{ fontSize: '12px', color: '#94a3b8', margin: '8px 0 0 0' }}>High demand but zero stock</p>
@@ -153,7 +181,7 @@ const MarketIntelligenceReports = () => {
           <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderTop: '4px solid #f59e0b' }}>
             <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.5px' }}>Stock-Out Territories</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-              <div style={{ fontSize: '32px', fontWeight: '900', color: '#1e293b' }}>{oosRegionsCount}</div>
+              <div style={{ fontSize: '32px', fontWeight: '900', color: '#1e293b' }}><AnimatedCounter value={oosRegionsCount} /></div>
               <div style={{ fontSize: '14px', color: '#f59e0b', fontWeight: 'bold' }}>Regions</div>
             </div>
             <p style={{ fontSize: '12px', color: '#94a3b8', margin: '8px 0 0 0' }}>Reporting lost sales opportunities</p>
@@ -162,7 +190,7 @@ const MarketIntelligenceReports = () => {
           <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', borderTop: '4px solid #3b82f6' }}>
             <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.5px' }}>Intelligence Pulse</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-              <div style={{ fontSize: '32px', fontWeight: '900', color: '#1e293b' }}>{recentReportsCount}</div>
+              <div style={{ fontSize: '32px', fontWeight: '900', color: '#1e293b' }}><AnimatedCounter value={recentReportsCount} /></div>
               <div style={{ fontSize: '14px', color: '#3b82f6', fontWeight: 'bold' }}>Reports</div>
             </div>
             <p style={{ fontSize: '12px', color: '#94a3b8', margin: '8px 0 0 0' }}>Field data received in last 7 days</p>
@@ -173,17 +201,35 @@ const MarketIntelligenceReports = () => {
 
         {/* SECTION 1: QUICK REGION SNAPSHOT */}
         <div style={{ marginBottom: '40px' }}>
-          <h2 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.5px', marginBottom: '12px' }}>Region Overview</h2>
-          <div style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-              {regionOverview.map((r, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px' }}>
-                  <span style={{ width: '80px', fontWeight: 'bold', color: '#1e293b' }}>{r.region}</span>
-                  <span style={{ fontSize: '16px' }}>{r.icon}</span>
-                  <span style={{ color: '#475569' }}>{r.label}</span>
-                </div>
-              ))}
-            </div>
+          <h2 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.5px', marginBottom: '12px' }}>Regional Intelligence Status</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+              {regionOverview.map((r, i) => {
+                let bgColor = '#f8fafc';
+                let borderColor = '#e2e8f0';
+                if (r.label.includes('High Activity')) { bgColor = '#f0fdf4'; borderColor = '#bbf7d0'; }
+                else if (r.label.includes('Moderate')) { bgColor = '#fef3c7'; borderColor = '#fde68a'; }
+                else if (r.label.includes('Low')) { bgColor = '#fef2f2'; borderColor = '#fecaca'; }
+                
+                return (
+                  <div key={i} style={{ 
+                    display: 'flex', alignItems: 'center', gap: '16px', 
+                    backgroundColor: bgColor, border: `1px solid ${borderColor}`, 
+                    borderRadius: '12px', padding: '16px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                    transition: 'transform 0.2s ease', cursor: 'default'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                  >
+                    <div style={{ fontSize: '24px', backgroundColor: 'white', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                      {r.icon}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: '800', color: '#1e293b', fontSize: '15px', letterSpacing: '0.5px' }}>{r.region}</div>
+                      <div style={{ color: '#475569', fontSize: '12px', fontWeight: '600', marginTop: '2px' }}>{r.label}</div>
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </div>
 

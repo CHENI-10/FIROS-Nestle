@@ -1,6 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+const AnimatedCounter = ({ value }) => {
+    const [count, setCount] = React.useState(0);
+
+    React.useEffect(() => {
+        let startTimestamp = null;
+        const totalDuration = 1000;
+        const endValue = parseFloat(value);
+        if (isNaN(endValue)) return;
+
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / totalDuration, 1);
+            const easeProgress = 1 - Math.pow(1 - progress, 4);
+            setCount(easeProgress * endValue);
+            
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            } else {
+                setCount(endValue);
+            }
+        };
+        window.requestAnimationFrame(step);
+    }, [value]);
+
+    const isDecimal = value.toString().includes('.');
+    return <>{isDecimal ? count.toFixed(1) : Math.round(count)}</>;
+};
 
 const MyDistributors = () => {
     const [data, setData] = useState(null);
@@ -167,23 +194,23 @@ const MyDistributors = () => {
                             <h3 style={styles.panelHeading}>STOCK LOSS SUMMARY</h3>
                             <div style={styles.lossMainRow}>
                                 <div style={styles.lossStat}>
-                                    <div style={styles.lossValue}>{data.totalUnitsLost || 0}</div>
+                                    <div style={styles.lossValue}><AnimatedCounter value={data.totalUnitsLost || 0} /></div>
                                     <div style={styles.lossLabel}>Total Units Lost</div>
                                 </div>
                                 <div style={styles.lossDivider}></div>
                                 <div style={{ display: 'flex', gap: '20px' }}>
                                     <div style={styles.lossStat}>
                                         <div style={{ ...styles.batchValue, color: '#ef4444' }}>
-                                            {data.totalReturnsCount || 0} <span style={{ fontSize: '14px', opacity: 0.8 }}>Batches</span>
+                                            <AnimatedCounter value={data.totalReturnsCount || 0} /> <span style={{ fontSize: '14px', opacity: 0.8 }}>Batches</span>
                                         </div>
-                                        <div style={styles.lossLabel}>{data.totalReturnsUnits || 0} Units Returned</div>
+                                        <div style={styles.lossLabel}><AnimatedCounter value={data.totalReturnsUnits || 0} /> Units Returned</div>
                                     </div>
                                     <div style={styles.lossDivider}></div>
                                     <div style={styles.lossStat}>
                                         <div style={{ ...styles.batchValue, color: '#A67956' }}>
-                                            {data.totalClearancesCount || 0} <span style={{ fontSize: '14px', opacity: 0.8 }}>Batches</span>
+                                            <AnimatedCounter value={data.totalClearancesCount || 0} /> <span style={{ fontSize: '14px', opacity: 0.8 }}>Batches</span>
                                         </div>
-                                        <div style={styles.lossLabel}>{data.totalClearancesUnits || 0} Emergency Cleared</div>
+                                        <div style={styles.lossLabel}><AnimatedCounter value={data.totalClearancesUnits || 0} /> Emergency Cleared</div>
                                     </div>
                                 </div>
                             </div>
@@ -226,21 +253,21 @@ const MyDistributors = () => {
                 <div style={styles.summaryGrid}>
                     <SummaryStatCard
                         label="BATCH RETURN RATE"
-                        value={`${data.yourOverallReturnRate || 0}%`}
+                        value={<><AnimatedCounter value={data.yourOverallReturnRate || 0} />%</>}
                         sub={`System Avg: ${data.systemAvgReturnRate || 0}%`}
                         status={(data.yourOverallReturnRate || 0) <= (data.systemAvgReturnRate || 0) ? 'good' : 'poor'}
                         statusLabel={(data.yourOverallReturnRate || 0) <= (data.systemAvgReturnRate || 0) ? '✅ Below avg' : '⚠ Above avg'}
                     />
                     <SummaryStatCard
                         label="AVG PICKUP DELAY"
-                        value={`${data.yourAvgCollectionDelay || 0} days`}
+                        value={<><AnimatedCounter value={data.yourAvgCollectionDelay || 0} /> days</>}
                         sub={`System Avg: ${data.systemAvgCollectionDelay || 0}d`}
                         status={(data.yourAvgCollectionDelay || 0) <= (data.systemAvgCollectionDelay || 0) ? 'good' : 'poor'}
                         statusLabel={(data.yourAvgCollectionDelay || 0) <= (data.systemAvgCollectionDelay || 0) ? '✅ Below avg' : '⚠ Above avg'}
                     />
                     <SummaryStatCard
                         label="TOTAL UNITS LOST"
-                        value={data.totalUnitsLost || 0}
+                        value={<AnimatedCounter value={data.totalUnitsLost || 0} />}
                         sub={`${data.totalReturnsUnits || 0} Returns + ${data.totalClearancesUnits || 0} Emergency Clearances`}
                         status="poor"
                         icon="📦"
@@ -418,7 +445,7 @@ const MyDistributors = () => {
 const TrendStat = ({ count, label, color, icon }) => (
     <div style={{ ...styles.trendStat, borderColor: color + '30' }}>
         <div style={{ fontSize: '20px', marginBottom: '4px' }}>{icon}</div>
-        <div style={{ fontSize: '20px', fontWeight: '900', color }}>{count}</div>
+        <div style={{ fontSize: '20px', fontWeight: '900', color }}><AnimatedCounter value={count} /></div>
         <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{label}</div>
     </div>
 );

@@ -156,7 +156,29 @@ const ClearanceRecommendations = () => {
         <p style={{ margin: '0 0 32px 0', color: muted }}>AI-driven promotional guidance with Smart Distributor Allocation Engine.</p>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '64px', fontSize: '18px' }}>Analyzing inventory risks...</div>
+          <div style={{ display: 'flex', gap: '32px', flexDirection: window.innerWidth < 1024 ? 'column' : 'row' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {[1, 2, 3].map(i => (
+                <div key={i} style={{ backgroundColor: card, borderRadius: '12px', padding: '20px 24px', border: `1px solid ${border}`, animation: 'pulseSkeleton 1.5s infinite ease-in-out' }}>
+                  <div style={{ width: '60%', height: '24px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '12px' }} />
+                  <div style={{ width: '80%', height: '16px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '16px' }} />
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ width: '80px', height: '24px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '6px' }} />
+                    <div style={{ width: '100px', height: '24px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '6px' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ flex: 1 }}>
+                <div style={{ backgroundColor: card, borderRadius: '12px', padding: '32px', border: `1px solid ${border}`, animation: 'pulseSkeleton 1.5s infinite ease-in-out' }}>
+                  <div style={{ width: '40%', height: '28px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '24px' }} />
+                  <div style={{ width: '100%', height: '100px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '8px', marginBottom: '24px' }} />
+                  <div style={{ width: '30%', height: '16px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '8px' }} />
+                  <div style={{ width: '50%', height: '24px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '24px' }} />
+                  <div style={{ width: '100%', height: '48px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '8px' }} />
+                </div>
+            </div>
+          </div>
         ) : error ? (
           <div style={{ textAlign: 'center', padding: '64px', color: '#ef4444' }}>{error}</div>
         ) : batches.length === 0 ? (
@@ -344,6 +366,7 @@ const ClearanceRecommendations = () => {
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulseSkeleton { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
       `}</style>
     </div>
   );
