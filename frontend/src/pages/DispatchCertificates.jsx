@@ -25,7 +25,30 @@ const DispatchCertificates = () => {
     const [clearancePage, setClearancePage] = useState(1);
     const [clearancePagination, setClearancePagination] = useState({ total: 0, page: 1, totalPages: 1 });
     const isDark = theme === 'dark';
-    const bgColor = isDark ? '#0f172a' : '#f8fafc';
+
+    useEffect(() => {
+        const syncTheme = () => setTheme(sessionStorage.getItem('theme') || 'light');
+        window.addEventListener('theme-changed', syncTheme);
+        return () => window.removeEventListener('theme-changed', syncTheme);
+    }, []);
+
+    const [fadeClass, setFadeClass] = useState('fluid-transition');
+
+    useEffect(() => {
+        // Trigger animation on tab change or initial load
+        setFadeClass('');
+        const timer = setTimeout(() => setFadeClass('fluid-transition'), 10);
+        return () => clearTimeout(timer);
+    }, [activeTab]);
+
+    const toggleTheme = () => {
+        const nt = theme === 'dark' ? 'light' : 'dark';
+        setTheme(nt);
+        sessionStorage.setItem('theme', nt);
+        window.dispatchEvent(new Event('theme-changed'));
+    };
+
+    const bgColor = isDark ? '#0f172a' : '#faf7f2';
     const textColor = isDark ? '#f1f5f9' : '#1e293b';
     const cardBgColor = isDark ? '#1e293b' : 'white';
     const navBg = isDark ? '#1e293b' : '#3D1C02';
@@ -106,12 +129,7 @@ const DispatchCertificates = () => {
         navigate('/login');
     };
 
-    const toggleTheme = () => {
-        const newTheme = isDark ? 'light' : 'dark';
-        setTheme(newTheme);
-        sessionStorage.setItem('theme', newTheme);
-        document.documentElement.classList.toggle('dark', newTheme === 'dark');
-    };
+
 
     const processCollection = async () => {
         setIsCollecting(true);
@@ -169,28 +187,59 @@ const DispatchCertificates = () => {
 
     return (
         <div className="dc-root" style={{ backgroundColor: bgColor, color: textColor }}>
-            <nav className="dc-nav hide-on-print" style={{ backgroundColor: navBg }}>
-                <div className="dc-nav-brand">
-                    FIROS <span className="dc-nav-brand-sub">NESTLÉ LANKA</span>
-                </div>
-                <div className="dc-nav-actions">
-                    <button onClick={toggleTheme} className="dc-theme-btn">
+            <nav style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                padding: '20px 40px',
+                background: 'transparent',
+                position: 'sticky',
+                top: 0,
+                zIndex: 100
+            }} className="hide-on-print">
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '15px',
+                    background: isDark ? 'rgba(30, 41, 59, 0.4)' : 'rgba(255, 255, 255, 0.4)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    padding: '8px 15px',
+                    borderRadius: '20px',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
+                }}>
+                    <button onClick={toggleTheme} style={{
+                        background: 'rgba(255, 255, 255, 0.2)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        fontSize: '16px',
+                        cursor: 'pointer',
+                        borderRadius: '50%',
+                        width: '34px',
+                        height: '34px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: isDark ? '#f8fafc' : '#1e293b'
+                    }}>
                         {isDark ? '☀️' : '🌙'}
                     </button>
-                    <button onClick={handleLogout} className="dc-logout-btn">Logout</button>
+                    <button onClick={handleLogout} style={{
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        color: '#ef4444',
+                        fontWeight: '700',
+                        padding: '6px 14px',
+                        fontSize: '13px',
+                        borderRadius: '12px',
+                        cursor: 'pointer'
+                    }}>Logout</button>
                 </div>
             </nav>
 
             <main className="dc-main hide-on-print">
                 <div className="dc-page-header">
                     <div>
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            className="back-btn dc-back-btn"
-                            style={{ color: isDark ? '#60a5fa' : '#2563eb' }}
-                        >
-                            <span>←</span> Back to Dashboard
-                        </button>
                         <h1 className="dc-page-title">Dispatch Certificate Vault</h1>
                         <p className="dc-page-subtitle" style={{ color: textMuted }}>Immutable ledger of all warehouse dispatches and verified FRS handovers.</p>
                     </div>
@@ -220,10 +269,28 @@ const DispatchCertificates = () => {
                     </button>
                 </div>
 
-                {loading ? (
-                    <div className="dc-loading">	Tracking Ledger...</div>
-                ) : tabLoading ? (
-                    <div className="dc-loading" style={{ color: textMuted }}>Refreshing Ledger...</div>
+                {loading || tabLoading ? (
+                    <div style={{ padding: '40px', textAlign: 'center' }}>
+                        <style>{`
+                            @keyframes pulseSkeleton { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+                            .skeleton-item { animation: pulseSkeleton 1.5s infinite ease-in-out; }
+                            .loading-msg {
+                                background: linear-gradient(135deg, #1a3a5c 0%, #295380 100%);
+                                color: #f8fafc; padding: 12px 24px; border-radius: 30px; display: inline-block;
+                                font-weight: 800; font-size: 16px; box-shadow: 0 4px 15px rgba(26, 58, 92, 0.4);
+                                letter-spacing: 0.5px; border: 1px solid rgba(200, 169, 110, 0.3);
+                                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999;
+                            }
+                        `}</style>
+                        <div className="skeleton-item">
+                            <div className="loading-msg">📜 Retrieving Ledger Records...</div>
+                        </div>
+                        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                            {[1, 2, 3, 4, 5].map(i => (
+                                <div key={i} className="skeleton-item" style={{ height: '80px', backgroundColor: isDark ? '#1e293b' : '#fdfaf5', borderRadius: '12px', marginBottom: '16px', border: `1px solid ${isDark ? '#334155' : '#e8dfd0'}` }} />
+                            ))}
+                        </div>
+                    </div>
                 ) : error ? (
                     <div className="dc-error">{error}</div>
                 ) : dispatches.length === 0 ? (
@@ -239,7 +306,7 @@ const DispatchCertificates = () => {
                                 <>
                                     <table className="dc-table">
                                         <thead>
-                                            <tr style={{ backgroundColor: isDark ? '#334155' : '#f8fafc', color: textMuted, borderBottom: `2px solid ${isDark ? '#475569' : '#e2e8f0'}` }}>
+                                            <tr style={{ backgroundColor: isDark ? '#334155' : '#faf7f2', color: textMuted, borderBottom: `2px solid ${isDark ? '#475569' : '#e2e8f0'}` }}>
                                                 <th>Dispatch ID</th>
                                                 <th>Batch &amp; Product</th>
                                                 <th>Distributor Assigned</th>

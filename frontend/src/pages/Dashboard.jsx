@@ -107,9 +107,27 @@ const Dashboard = () => {
     }, []);
 
     useEffect(() => {
-        sessionStorage.setItem('theme', theme);
-        document.body.className = theme;
-    }, [theme]);
+        const syncTheme = () => setTheme(sessionStorage.getItem('theme') || 'light');
+        window.addEventListener('theme-changed', syncTheme);
+        return () => window.removeEventListener('theme-changed', syncTheme);
+    }, []);
+
+    const [fadeClass, setFadeClass] = useState('fluid-transition');
+
+    useEffect(() => {
+        if (data) {
+            setFadeClass('');
+            const timer = setTimeout(() => setFadeClass('fluid-transition'), 10);
+            return () => clearTimeout(timer);
+        }
+    }, [data]);
+
+    const toggleTheme = () => {
+        const nt = theme === 'dark' ? 'light' : 'dark';
+        setTheme(nt);
+        sessionStorage.setItem('theme', nt);
+        window.dispatchEvent(new Event('theme-changed'));
+    };
 
     const fetchAllData = React.useCallback(async () => {
         const token = sessionStorage.getItem('token');
@@ -163,7 +181,7 @@ const Dashboard = () => {
         return () => clearInterval(interval);
     }, [fetchAllData]);
 
-    const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
+
 
     const handleLogout = () => {
         sessionStorage.removeItem('token');
@@ -173,9 +191,53 @@ const Dashboard = () => {
 
     if (loading && !data) {
         return (
-            <div className={`dashboard-container ${theme} flex-center fullscreen`}>
-                <div className="spinner"></div>
-                <h2 style={{ marginTop: '20px' }}>Loading FIROS Dashboard...</h2>
+            <div className={`dashboard-container ${theme}`} style={{ padding: '40px', minHeight: '100vh' }}>
+                <style>{`
+                    @keyframes pulseSkeleton {
+                        0%, 100% { opacity: 1; }
+                        50% { opacity: 0.5; }
+                    }
+                    .skeleton-item { animation: pulseSkeleton 1.5s infinite ease-in-out; }
+                    .loading-msg {
+                        background: linear-gradient(135deg, #1a3a5c 0%, #295380 100%);
+                        color: #f8fafc;
+                        padding: 12px 24px;
+                        border-radius: 30px;
+                        display: inline-block;
+                        font-weight: 800;
+                        font-size: 16px;
+                        box-shadow: 0 4px 15px rgba(26, 58, 92, 0.4);
+                        letter-spacing: 0.5px;
+                        border: 1px solid rgba(200, 169, 110, 0.3);
+                        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999;
+                    }
+                `}</style>
+                <div style={{ textAlign: 'center' }} className="skeleton-item">
+                    <div className="loading-msg">🔄 Compiling Live FIROS Dashboard...</div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '40px' }}>
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="skeleton-item" style={{ height: '140px', backgroundColor: theme === 'dark' ? '#1e293b' : 'white', borderRadius: '16px', padding: '20px', border: theme === 'dark' ? '1px solid #334155' : '1px solid #e2e8f0' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: theme === 'dark' ? '#334155' : '#e2e8f0', marginBottom: '16px' }} />
+                            <div style={{ width: '60%', height: '12px', backgroundColor: theme === 'dark' ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '12px' }} />
+                            <div style={{ width: '80%', height: '8px', backgroundColor: theme === 'dark' ? '#334155' : '#f1f5f9', borderRadius: '4px' }} />
+                        </div>
+                    ))}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '30px' }}>
+                    <div className="skeleton-item" style={{ height: '400px', backgroundColor: theme === 'dark' ? '#1e293b' : 'white', borderRadius: '16px', padding: '24px', border: theme === 'dark' ? '1px solid #334155' : '1px solid #e2e8f0' }}>
+                        <div style={{ width: '200px', height: '24px', backgroundColor: theme === 'dark' ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '24px' }} />
+                        {[1, 2, 3, 4, 5].map(i => (
+                            <div key={i} style={{ height: '40px', backgroundColor: theme === 'dark' ? '#334155' : '#f8fafc', borderRadius: '8px', marginBottom: '12px' }} />
+                        ))}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                        <div className="skeleton-item" style={{ height: '250px', backgroundColor: theme === 'dark' ? '#1e293b' : 'white', borderRadius: '16px', padding: '24px', border: theme === 'dark' ? '1px solid #334155' : '1px solid #e2e8f0' }} />
+                        <div className="skeleton-item" style={{ height: '120px', backgroundColor: theme === 'dark' ? '#1e293b' : 'white', borderRadius: '16px', padding: '24px', border: theme === 'dark' ? '1px solid #334155' : '1px solid #e2e8f0' }} />
+                    </div>
+                </div>
             </div>
         );
     }
@@ -248,11 +310,7 @@ const Dashboard = () => {
     return (
         <div className={`dashboard-container ${theme}`}>
             <nav className="top-nav">
-                <div className="logo-section">
-                    <h1 className="logo-text">FIROS</h1>
-                    <span className="subtitle">Nestlé Lanka Warehouse</span>
-                </div>
-
+                {/* Logo section removed as per floating nav redesign */}
                 <div className="nav-actions">
                     <GlobalSearch />
                     
@@ -346,7 +404,18 @@ const Dashboard = () => {
                 </div>
             </nav>
 
-            <main className="dashboard-main">
+            <main className={`dashboard-main ${fadeClass}`}>
+                <style>
+                    {`
+                    @keyframes fadeSlideIn {
+                        from { opacity: 0; transform: translateY(15px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                    .fluid-transition {
+                        animation: fadeSlideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                    }
+                    `}
+                </style>
                 <section className="stats-row">
                     <div className="stat-card pulse-card">
                         <div className="stat-value" style={{ color: getFreshnessColor(overall_freshness_percent) }}>
@@ -371,246 +440,7 @@ const Dashboard = () => {
                     </div>
                 </section>
 
-                <div style={{ padding: '0 20px', marginBottom: '25px', marginTop: '10px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-                    <button
-                        onClick={() => navigate('/recommendations')}
-                        style={{
-                            background: 'linear-gradient(135deg, #C8A96E 0%, #3D1C02 100%)',
-                            color: 'white',
-                            padding: '16px 24px',
-                            border: 'none',
-                            borderRadius: '12px',
-                            fontSize: '18px',
-                            fontWeight: 'bold',
-                            letterSpacing: '0.5px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            boxShadow: '0 4px 15px rgba(61, 28, 2, 0.2)',
-                            transition: 'all 0.3s ease'
-                        }}
-                        onMouseOver={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-3px)';
-                            e.currentTarget.style.boxShadow = '0 8px 25px rgba(61, 28, 2, 0.3)';
-                        }}
-                        onMouseOut={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 4px 15px rgba(61, 28, 2, 0.2)';
-                        }}
-                    >
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '20px' }}>📋</span> Action Recommendations
-                        </span>
-                        <span style={{ fontSize: '24px' }}>→</span>
-                    </button>
-
-                    <button
-                        onClick={() => navigate('/clearance')}
-                        style={{
-                            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-                            color: 'white',
-                            padding: '16px 24px',
-                            border: '2px solid #ef4444',
-                            borderRadius: '12px',
-                            fontSize: '18px',
-                            fontWeight: 'bold',
-                            letterSpacing: '0.5px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-                            transition: 'all 0.3s ease'
-                        }}
-                        onMouseOver={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-3px)';
-                            e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
-                        }}
-                        onMouseOut={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
-                        }}
-                    >
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#f87171' }}>
-                            <span style={{ fontSize: '20px' }}>🔥</span> Clearance Promotions
-                        </span>
-                        <span style={{ fontSize: '24px', color: '#f87171' }}>→</span>
-                    </button>
-
-                    <button
-                        onClick={() => navigate('/certificates')}
-                        style={{
-                            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-                            color: 'white',
-                            padding: '16px 24px',
-                            border: '2px solid #C8A96E',
-                            borderRadius: '12px',
-                            fontSize: '18px',
-                            fontWeight: 'bold',
-                            letterSpacing: '0.5px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-                            transition: 'all 0.3s ease'
-                        }}
-                        onMouseOver={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-3px)';
-                            e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
-                        }}
-                        onMouseOut={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
-                        }}
-                    >
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#C8A96E' }}>
-                            <span style={{ fontSize: '20px' }}>📜</span> Dispatch Certificates
-                        </span>
-                        <span style={{ fontSize: '24px', color: '#C8A96E' }}>→</span>
-                    </button>
-
-                    <button
-                        onClick={() => navigate('/returns')}
-                        style={{
-                            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-                            color: 'white',
-                            padding: '16px 24px',
-                            border: '2px solid #2563eb',
-                            borderRadius: '12px',
-                            fontSize: '18px',
-                            fontWeight: 'bold',
-                            letterSpacing: '0.5px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-                            transition: 'all 0.3s ease'
-                        }}
-                        onMouseOver={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-3px)';
-                            e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
-                        }}
-                        onMouseOut={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
-                        }}
-                    >
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#60a5fa' }}>
-                            <span style={{ fontSize: '20px' }}>↩️</span> Return Intelligence
-                        </span>
-                        <span style={{ fontSize: '24px', color: '#60a5fa' }}>→</span>
-                    </button>
-
-                    {(role === 'manager' || role === 'admin') && (
-                        <>
-                            {role === 'manager' && (
-                                <button
-                                    onClick={() => navigate('/dashboard/root-cause')}
-                                    style={{
-                                        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-                                        color: 'white',
-                                        padding: '16px 24px',
-                                        border: '2px solid #8b5cf6',
-                                        borderRadius: '12px',
-                                        fontSize: '18px',
-                                        fontWeight: 'bold',
-                                        letterSpacing: '0.5px',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-                                        transition: 'all 0.3s ease'
-                                    }}
-                                    onMouseOver={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(-3px)';
-                                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
-                                    }}
-                                    onMouseOut={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                        e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
-                                    }}
-                                >
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#c4b5fd' }}>
-                                        <span style={{ fontSize: '20px' }}>🔍</span> Root Cause Analytics
-                                    </span>
-                                    <span style={{ fontSize: '24px', color: '#c4b5fd' }}>→</span>
-                                </button>
-                            )}
-
-                            <button
-                                onClick={() => navigate('/dashboard/my-distributors')}
-                                style={{
-                                    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-                                    color: 'white',
-                                    padding: '16px 24px',
-                                    border: '2px solid #3b82f6',
-                                    borderRadius: '12px',
-                                    fontSize: '18px',
-                                    fontWeight: 'bold',
-                                    letterSpacing: '0.5px',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-                                    transition: 'all 0.3s ease'
-                                }}
-                                onMouseOver={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(-3px)';
-                                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
-                                }}
-                                onMouseOut={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
-                                }}
-                            >
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#93c5fd' }}>
-                                    <span style={{ fontSize: '20px' }}>🤝</span> {role === 'admin' ? 'Contract Intelligence' : 'Distributor Scorecards'}
-                                </span>
-                                <span style={{ fontSize: '24px', color: '#93c5fd' }}>→</span>
-                            </button>
-                        </>
-                    )}
-
-                    <button
-                        onClick={() => navigate('/dashboard/market-intelligence')}
-                        style={{
-                            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-                            color: 'white',
-                            padding: '16px 24px',
-                            border: '2px solid #22c55e',
-                            borderRadius: '12px',
-                            fontSize: '18px',
-                            fontWeight: 'bold',
-                            letterSpacing: '0.5px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-                            transition: 'all 0.3s ease',
-                            gridColumn: role === 'admin' ? 'auto' : '1 / -1'
-                        }}
-                        onMouseOver={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-3px)';
-                            e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.3)';
-                        }}
-                        onMouseOut={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
-                        }}
-                    >
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#4ade80' }}>
-                            <span style={{ fontSize: '20px' }}>📊</span> Market Intelligence Reports
-                        </span>
-                        <span style={{ fontSize: '24px', color: '#4ade80' }}>→</span>
-                    </button>
-
-                    </div>
+                {/* The main grid of buttons has been moved to the Glassmorphic Sidebar */}
 
                 <h2 className="section-title">Warehouse Zones Status</h2>
                 <section className="zones-row">

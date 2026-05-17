@@ -25,8 +25,9 @@ body {
 }
 
 .login-wrapper {
-  min-height: 100vh;
+  min-height: calc(100vh / 0.8);
   display: flex;
+  flex: 1;
   flex-direction: column;
   position: relative;
   background-color: var(--nestle-choco-main); /* Match panel background */
@@ -47,7 +48,6 @@ body {
 .login-split-container {
   display: flex;
   flex: 1;
-  min-height: 100vh;
 }
 
 /* LEFT SIDE: Brand Panel */

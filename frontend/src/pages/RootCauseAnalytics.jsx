@@ -42,6 +42,28 @@ const RootCauseAnalytics = () => {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     });
 
+    const [theme, setTheme] = useState(sessionStorage.getItem('theme') || 'light');
+
+    useEffect(() => {
+        const syncTheme = () => setTheme(sessionStorage.getItem('theme') || 'light');
+        window.addEventListener('theme-changed', syncTheme);
+        return () => window.removeEventListener('theme-changed', syncTheme);
+    }, []);
+
+    const toggleTheme = () => {
+        const nt = theme === 'dark' ? 'light' : 'dark';
+        setTheme(nt);
+        sessionStorage.setItem('theme', nt);
+        window.dispatchEvent(new Event('theme-changed'));
+    };
+
+    const isDark = theme === 'dark';
+    const bgColor = isDark ? '#0f172a' : '#faf7f2';
+    const textColor = isDark ? '#f1f5f9' : '#1e293b';
+    const cardBg = isDark ? '#1e293b' : '#ffffff';
+    const borderColor = isDark ? '#334155' : '#e2e8f0';
+    const mutedColor = isDark ? '#94a3b8' : '#64748b';
+
     const [selectedPeriod, setSelectedPeriod] = useState(null);
     const [expandedBatches, setExpandedBatches] = useState({});
     const [assignedActions, setAssignedActions] = useState({});
@@ -178,13 +200,37 @@ const RootCauseAnalytics = () => {
     };
 
     if (loading) {
-        return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc', fontFamily: "'Outfit', sans-serif" }}>
-            <div style={{ color: '#64748b', fontSize: '18px', fontWeight: 'bold' }}>Scanning Intelligence Engine...</div>
-        </div>;
+        return (
+            <div style={{ minHeight: '100vh', backgroundColor: bgColor, padding: '40px' }}>
+                <style>{`
+                    @keyframes pulseSkeleton { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+                    .skeleton-item { animation: pulseSkeleton 1.5s infinite ease-in-out; }
+                    .loading-msg {
+                        background: linear-gradient(135deg, #1a3a5c 0%, #295380 100%);
+                        color: #f8fafc; padding: 12px 24px; border-radius: 30px; display: inline-block;
+                        font-weight: 800; font-size: 16px; box-shadow: 0 4px 15px rgba(26, 58, 92, 0.4);
+                        letter-spacing: 0.5px; border: 1px solid rgba(200, 169, 110, 0.3);
+                        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999;
+                    }
+                `}</style>
+                <div style={{ textAlign: 'center' }} className="skeleton-item">
+                    <div className="loading-msg">🧠 Scanning Intelligence Engine...</div>
+                </div>
+                <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+                    <div className="skeleton-item" style={{ height: '60px', width: '300px', backgroundColor: isDark ? '#1e293b' : '#e2e8f0', borderRadius: '8px', marginBottom: '32px' }} />
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+                        {[1, 2, 3, 4].map(i => <div key={i} className="skeleton-item" style={{ height: '140px', backgroundColor: isDark ? '#1e293b' : 'white', borderRadius: '16px', border: `1px solid ${borderColor}` }} />)}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        {[1, 2, 3].map(i => <div key={i} className="skeleton-item" style={{ height: '120px', backgroundColor: isDark ? '#1e293b' : 'white', borderRadius: '12px', border: `1px solid ${borderColor}` }} />)}
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     if (error) {
-        return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc', fontFamily: "'Outfit', sans-serif" }}>
+        return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#faf7f2', fontFamily: "'Outfit', sans-serif" }}>
             <div style={{ color: '#ef4444', fontSize: '18px', fontWeight: 'bold' }}>Error: {error}</div>
         </div>;
     }
@@ -194,9 +240,90 @@ const RootCauseAnalytics = () => {
     const getTrendBadge = (val, isFailures = false) => {
         return null; // Logic removed as per user request to declutter UI
     };
+    
+    const styles = {
+        container: { maxWidth: '1400px', margin: '0 auto', minHeight: '100vh' },
+        header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' },
+        title: { fontSize: '32px', fontWeight: '900', color: isDark ? '#f8fafc' : '#1a3a5c', margin: 0, letterSpacing: '-1px' },
+        exportBtn: {
+            backgroundColor: '#1a3a5c', color: '#fff', border: 'none', padding: '12px 24px',
+            borderRadius: '12px', cursor: 'pointer', fontWeight: '800', fontSize: '14px',
+            boxShadow: '0 4px 12px rgba(26, 58, 92, 0.2)', transition: 'all 0.2s ease'
+        },
+        navSection: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '20px' },
+        periodTabs: { display: 'flex', gap: '10px', backgroundColor: isDark ? '#1e293b' : '#fff', padding: '6px', borderRadius: '14px', border: `1px solid ${borderColor}` },
+        tabBtn: {
+            padding: '8px 16px', borderRadius: '10px', border: 'none', background: 'none',
+            color: mutedColor, cursor: 'pointer', fontWeight: '700', fontSize: '13px', transition: 'all 0.2s'
+        },
+        activeTab: { backgroundColor: '#1a3a5c', color: '#fff' },
+        navRow: { display: 'flex', alignItems: 'center', gap: '12px' },
+        monthSelect: {
+            padding: '10px 16px', borderRadius: '12px', border: `1px solid ${borderColor}`,
+            backgroundColor: isDark ? '#1e293b' : '#fff', color: textColor, fontWeight: '700', fontSize: '14px', cursor: 'pointer', outline: 'none'
+        },
+        refreshBtn: {
+            backgroundColor: isDark ? '#334155' : '#fff', color: textColor, border: `1px solid ${borderColor}`,
+            padding: '10px 16px', borderRadius: '12px', fontWeight: '700', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px'
+        },
+        generateBtn: {
+            backgroundColor: '#C8A96E', color: '#fff', border: 'none', padding: '12px 28px',
+            borderRadius: '12px', fontWeight: '900', fontSize: '16px', cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(200, 169, 110, 0.3)', transition: 'all 0.2s'
+        },
+        section: { marginBottom: '50px' },
+        sectionTitle: {
+            fontSize: '14px', fontWeight: '900', color: isDark ? '#C8A96E' : '#8B5E3C',
+            textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '24px',
+            display: 'flex', alignItems: 'center', gap: '12px'
+        },
+        statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px', marginBottom: '50px' },
+        statCard: {
+            backgroundColor: cardBg, padding: '32px', borderRadius: '20px',
+            boxShadow: isDark ? '0 8px 30px rgba(0,0,0,0.2)' : '0 4px 20px rgba(0,0,0,0.03)',
+            textAlign: 'left', border: `1px solid ${borderColor}`
+        },
+        statLabel: { fontSize: '12px', fontWeight: '900', letterSpacing: '1.5px', marginBottom: '16px', color: mutedColor },
+        statValue: { fontSize: '48px', fontWeight: '900', color: textColor, lineHeight: '1', marginBottom: '8px' },
+        statSub: { fontSize: '13px', color: mutedColor, fontWeight: '700', display: 'flex', alignItems: 'center', flexWrap: 'wrap' },
+        card: {
+            backgroundColor: cardBg, padding: '32px', borderRadius: '20px',
+            boxShadow: isDark ? '0 8px 30px rgba(0,0,0,0.2)' : '0 4px 20px rgba(0,0,0,0.03)',
+            border: `1px solid ${borderColor}`
+        },
+        barBg: { backgroundColor: isDark ? '#334155' : '#f1f5f9', height: '10px', borderRadius: '5px', overflow: 'hidden' },
+        barFill: { height: '100%', fontWeight: 'bold' },
+        riskBadge: { padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' },
+        pillBadge: {
+            backgroundColor: isDark ? '#334155' : '#f8fafc', border: `1px solid ${borderColor}`,
+            padding: '5px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: '600',
+            color: textColor, fontFamily: "'Outfit', sans-serif", letterSpacing: '0.2px'
+        },
+        actionBox: {
+            backgroundColor: isDark ? 'rgba(79, 70, 229, 0.1)' : '#eef2ff',
+            border: `1px solid ${isDark ? 'rgba(79, 70, 229, 0.3)' : '#c7d2fe'}`,
+            padding: '16px 20px', borderRadius: '12px', display: 'flex', gap: '14px', alignItems: 'center'
+        },
+        toggleBtn: { background: 'none', border: 'none', color: '#3b82f6', padding: '0', cursor: 'pointer', fontSize: '14px', fontWeight: '700', fontFamily: "'Outfit', sans-serif", letterSpacing: '0.2px' },
+        table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontFamily: "'Outfit', sans-serif" },
+        th: {
+            padding: '12px 18px', borderBottom: `2px solid ${borderColor}`, color: mutedColor,
+            fontWeight: '700', fontSize: '13px', backgroundColor: isDark ? '#1e293b' : '#f8fafc',
+            letterSpacing: '0.5px', textTransform: 'uppercase', fontFamily: "'Outfit', sans-serif"
+        },
+        td: { padding: '14px 18px', borderBottom: `1px solid ${borderColor}`, fontSize: '14px', color: textColor, fontFamily: "'Outfit', sans-serif", fontWeight: '500', lineHeight: '1.5' },
+        skuChip: {
+            backgroundColor: isDark ? '#334155' : '#f1f5f9', border: `1px solid ${borderColor}`,
+            padding: '4px 12px', borderRadius: '20px', fontSize: '13px', fontWeight: '600',
+            color: textColor, fontFamily: "'Outfit', sans-serif"
+        },
+        statusBadge: { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '800', letterSpacing: '0.5px', fontFamily: "'Outfit', sans-serif" },
+        tr: { transition: 'background 0.15s ease', cursor: 'pointer' },
+    };
 
     return (
-        <div style={{ backgroundColor: '#f1f5f9', minHeight: '100vh', fontFamily: "'Outfit', sans-serif", color: '#1e293b' }}>
+        <div style={{ backgroundColor: bgColor, minHeight: '100vh', fontFamily: "'Outfit', sans-serif", color: textColor }}>
             {/* GOOGLE FONTS IMPORT */}
             <style>
                 {`
@@ -208,26 +335,75 @@ const RootCauseAnalytics = () => {
                 .fluid-transition {
                     animation: fadeSlideIn 0.5s ease-out forwards;
                 }
+                .rc-row:hover {
+                    background-color: ${isDark ? 'rgba(255, 255, 255, 0.05)' : '#f8fafc'} !important;
+                }
                 `}
             </style>
 
-            <div style={styles.container} ref={reportRef}>
+            <nav style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                padding: '20px 40px',
+                background: 'transparent',
+                position: 'sticky',
+                top: 0,
+                zIndex: 100
+            }}>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '15px',
+                    background: isDark ? 'rgba(30, 41, 59, 0.4)' : 'rgba(255, 255, 255, 0.4)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    padding: '8px 15px',
+                    borderRadius: '20px',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
+                }}>
+                    <button onClick={toggleTheme} style={{
+                        background: 'rgba(255, 255, 255, 0.2)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        fontSize: '16px',
+                        cursor: 'pointer',
+                        borderRadius: '50%',
+                        width: '34px',
+                        height: '34px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: isDark ? '#f8fafc' : '#1e293b'
+                    }}>
+                        {isDark ? '☀️' : '🌙'}
+                    </button>
+                    <button onClick={() => {
+                        sessionStorage.clear();
+                        navigate('/login');
+                    }} style={{
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        color: '#ef4444',
+                        fontWeight: '700',
+                        padding: '6px 14px',
+                        fontSize: '13px',
+                        borderRadius: '12px',
+                        cursor: 'pointer'
+                    }}>Logout</button>
+                </div>
+            </nav>
+
+            <div style={{ ...styles.container, padding: '16px 24px' }} ref={reportRef}>
                 {/* Header */}
                 <div style={styles.header}>
                     <div>
-                        <h1 style={styles.title}>Root Cause Intelligence</h1>
-                        {/* <p style={styles.subtitle}>Strategic Analysis by {data.managerName}</p> */}
+                        <h1 style={{ ...styles.title, color: isDark ? '#f8fafc' : '#1a3a5c' }}>Root Cause Intelligence</h1>
                     </div>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            style={styles.secondaryBtn}
-                        >
-                            &larr; Back
-                        </button>
-                        <button onClick={handleExport} style={styles.exportBtn}>Export Intel</button>
-                    </div>
+                    <button onClick={handleExport} style={styles.exportBtn}>Export Intel</button>
                 </div>
+
+
 
                 {/* Period Selection Row */}
                 <div style={styles.navSection}>
@@ -344,19 +520,19 @@ const RootCauseAnalytics = () => {
                                                 const d = payload[0].payload;
                                                 return (
                                                     <div style={{
-                                                        background: 'white',
+                                                        background: isDark ? '#1e293b' : 'white',
                                                         border: `2px solid ${d.color}`,
                                                         borderRadius: '12px',
                                                         padding: '12px 18px',
-                                                        boxShadow: `0 8px 24px ${d.color}33`,
+                                                        boxShadow: isDark ? `0 8px 24px rgba(0,0,0,0.5)` : `0 8px 24px ${d.color}33`,
                                                         fontFamily: "'Outfit', sans-serif"
                                                     }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                                                             <span style={{ fontSize: '18px' }}>{d.icon}</span>
                                                             <span style={{ fontWeight: '900', fontSize: '14px', color: d.color }}>{d.name}</span>
                                                         </div>
-                                                        <div style={{ fontSize: '22px', fontWeight: '900', color: '#1e293b', lineHeight: 1 }}>{d.count}</div>
-                                                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>batches · {d.percentage}% of failures</div>
+                                                        <div style={{ fontSize: '22px', fontWeight: '900', color: textColor, lineHeight: 1 }}>{d.count}</div>
+                                                        <div style={{ fontSize: '12px', color: mutedColor, marginTop: '2px' }}>batches · {d.percentage}% of failures</div>
                                                     </div>
                                                 );
                                             }
@@ -417,8 +593,8 @@ const RootCauseAnalytics = () => {
                                                                     gap: '14px',
                                                                     padding: '14px 18px',
                                                                     borderRadius: '14px',
-                                                                    background: active ? `${cat.color}0d` : '#f8fafc',
-                                                                    border: `1.5px solid ${active ? cat.color + '33' : '#e2e8f0'}`,
+                                                                    background: active ? (isDark ? `${cat.color}15` : `${cat.color}0d`) : (isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc'),
+                                                                    border: `1.5px solid ${active ? cat.color + '33' : borderColor}`,
                                                                     opacity: active ? 1 : 0.45,
                                                                     transition: 'all 0.2s ease',
                                                                     cursor: active ? 'pointer' : 'default',
@@ -449,10 +625,10 @@ const RootCauseAnalytics = () => {
                                                                 </div>
                                                                 {/* Label */}
                                                                 <div style={{ flex: 1 }}>
-                                                                    <div style={{ fontSize: '13px', fontWeight: '800', color: active ? '#1e293b' : '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                                                    <div style={{ fontSize: '13px', fontWeight: '800', color: active ? textColor : mutedColor, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                                                                         {cat.name}
                                                                     </div>
-                                                                    <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600', marginTop: '2px' }}>
+                                                                    <div style={{ fontSize: '12px', color: mutedColor, fontWeight: '600', marginTop: '2px' }}>
                                                                         {active ? `${rc.count} batch${rc.count > 1 ? 'es' : ''}` : 'No failures'}
                                                                     </div>
                                                                 </div>
@@ -461,7 +637,7 @@ const RootCauseAnalytics = () => {
                                                                     minWidth: '52px',
                                                                     textAlign: 'right'
                                                                 }}>
-                                                                    <div style={{ fontSize: '22px', fontWeight: '900', color: active ? cat.color : '#cbd5e1', lineHeight: 1 }}>
+                                                                    <div style={{ fontSize: '22px', fontWeight: '900', color: active ? cat.color : (isDark ? '#475569' : '#cbd5e1'), lineHeight: 1 }}>
                                                                         {active ? `${rc.percentage}%` : '—'}
                                                                     </div>
                                                                     {active && (
@@ -492,7 +668,7 @@ const RootCauseAnalytics = () => {
                                         style={{ ...styles.card, borderLeft: `6px solid ${rc.color}`, marginBottom: '24px', scrollMarginTop: '20px' }}
                                     >
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px', color: '#1e293b', fontSize: '18px', fontWeight: '900' }}>
+                                            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px', color: textColor, fontSize: '18px', fontWeight: '900' }}>
                                                 <span style={{ fontSize: '24px' }}>{rc.icon}</span> {rc.category.toUpperCase()}
                                             </h3>
                                             <span style={styles.pillBadge}>{rc.count} Failed Batches</span>
@@ -500,18 +676,18 @@ const RootCauseAnalytics = () => {
 
                                         <div style={{ marginBottom: '20px' }}>
                                             {rc.patternDetected ? (
-                                                <div style={{ ...styles.statusBadge, backgroundColor: '#fff7ed', color: '#c2410c', display: 'inline-block', marginBottom: '12px' }}>
+                                                <div style={{ ...styles.statusBadge, backgroundColor: isDark ? 'rgba(251,146,60,0.1)' : '#fff7ed', color: isDark ? '#fb923c' : '#c2410c', display: 'inline-block', marginBottom: '12px', border: `1px solid ${isDark ? 'rgba(251,146,60,0.2)' : '#ffedd5'}` }}>
                                                     ⚡ RECURRING ANOMALY DETECTED
                                                 </div>
                                             ) : (
                                                 rc.category !== 'Unclassified' && (
-                                                    <div style={{ color: '#94a3b8', fontSize: '13px', fontStyle: 'italic', marginBottom: '12px' }}>
+                                                    <div style={{ color: mutedColor, fontSize: '13px', fontStyle: 'italic', marginBottom: '12px' }}>
                                                         Scattered failures — no central pattern identified
                                                     </div>
                                                 )
                                             )}
                                             {rc.category !== 'Unclassified' && (
-                                                <p style={{ margin: '0 0 16px 0', color: '#334155', lineHeight: '1.6', fontSize: '15px' }}>{rc.patternText}</p>
+                                                <p style={{ margin: '0 0 16px 0', color: textColor, lineHeight: '1.6', fontSize: '15px', opacity: 0.9 }}>{rc.patternText}</p>
                                             )}
                                         </div>
 
@@ -556,12 +732,12 @@ const RootCauseAnalytics = () => {
                                         )}
 
                                         <div style={{ marginTop: '20px' }}>
-                                            <button onClick={() => toggleBatches(rc.category)} style={styles.toggleBtn}>
+                                            <button onClick={() => toggleBatches(rc.category)} style={{ ...styles.toggleBtn, color: isDark ? '#60a5fa' : '#3b82f6' }}>
                                                 {expandedBatches[rc.category] ? 'Collapse List ▲' : 'Inspect Affected Batches ▼'}
                                             </button>
 
                                             {expandedBatches[rc.category] && (
-                                                <div style={{ overflowX: 'auto', marginTop: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                                <div style={{ overflowX: 'auto', marginTop: '16px', borderRadius: '12px', border: `1px solid ${borderColor}` }}>
                                                     <table style={styles.table}>
                                                         <thead>
                                                             <tr>
@@ -611,253 +787,6 @@ const RootCauseAnalytics = () => {
     );
 };
 
-const styles = {
-    container: {
-        padding: '40px 5%',
-        maxWidth: '1400px',
-        margin: '0 auto',
-    },
-    header: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: '40px',
-        flexWrap: 'wrap',
-        gap: '20px'
-    },
-    title: {
-        margin: '0 0 6px 0',
-        fontSize: '32px',
-        fontWeight: '900',
-        color: '#1e3a8a',
-        letterSpacing: '-1px'
-    },
-    subtitle: {
-        margin: 0,
-        color: '#64748b',
-        fontSize: '16px',
-        fontWeight: '500'
-    },
-    exportBtn: {
-        background: 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)',
-        border: 'none',
-        padding: '12px 24px',
-        borderRadius: '10px',
-        cursor: 'pointer',
-        fontWeight: '900',
-        color: 'white',
-        fontSize: '14px',
-        boxShadow: '0 4px 12px rgba(30, 64, 175, 0.2)',
-        textTransform: 'uppercase',
-        letterSpacing: '1px'
-    },
-    secondaryBtn: {
-        backgroundColor: 'white',
-        border: '1px solid #e2e8f0',
-        padding: '12px 24px',
-        borderRadius: '10px',
-        cursor: 'pointer',
-        fontWeight: '800',
-        color: '#475569',
-        fontSize: '14px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-    },
-    navSection: {
-        marginBottom: '40px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '20px'
-    },
-    periodTabs: {
-        display: 'flex',
-        gap: '6px',
-        backgroundColor: '#e2e8f0',
-        padding: '6px',
-        borderRadius: '12px',
-    },
-    tabBtn: {
-        padding: '10px 20px',
-        borderRadius: '8px',
-        border: 'none',
-        background: 'none',
-        cursor: 'pointer',
-        fontSize: '14px',
-        color: '#64748b',
-        fontWeight: '800',
-        transition: 'all 0.3s ease'
-    },
-    activeTab: {
-        backgroundColor: 'white',
-        color: '#1e40af',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-    },
-    monthSelect: {
-        padding: '12px 24px',
-        borderRadius: '12px',
-        border: '1px solid #e2e8f0',
-        backgroundColor: 'white',
-        color: '#1e293b',
-        fontSize: '16px',
-        fontWeight: '900',
-        cursor: 'pointer',
-        outline: 'none',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.05)'
-    },
-    section: {
-        marginBottom: '50px'
-    },
-    sectionTitle: {
-        fontSize: '14px',
-        fontWeight: '900',
-        color: '#94a3b8',
-        textTransform: 'uppercase',
-        letterSpacing: '2px',
-        marginBottom: '24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px'
-    },
-    statsGrid: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        gap: '24px',
-        marginBottom: '50px'
-    },
-    statCard: {
-        backgroundColor: 'white',
-        padding: '32px',
-        borderRadius: '20px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
-        textAlign: 'left',
-    },
-    statLabel: {
-        fontSize: '12px',
-        fontWeight: '900',
-        letterSpacing: '1.5px',
-        marginBottom: '16px'
-    },
-    statValue: {
-        fontSize: '48px',
-        fontWeight: '900',
-        color: '#1e293b',
-        lineHeight: '1',
-        marginBottom: '8px'
-    },
-    statSub: {
-        fontSize: '13px',
-        color: '#94a3b8',
-        fontWeight: '700',
-        display: 'flex',
-        alignItems: 'center',
-        flexWrap: 'wrap'
-    },
-    card: {
-        backgroundColor: 'white',
-        padding: '32px',
-        borderRadius: '20px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
-        border: '1px solid #f1f5f9'
-    },
-    barBg: {
-        backgroundColor: '#f1f5f9',
-        height: '10px',
-        borderRadius: '5px',
-        overflow: 'hidden'
-    },
-    barFill: {
-        height: '100%',
-        fontWeight: 'bold'
-    },
-    riskBadge: {
-        padding: '2px 8px',
-        borderRadius: '4px',
-        fontSize: '10px',
-        fontWeight: 'bold',
-        textTransform: 'uppercase'
-    },
-    pillBadge: {
-        backgroundColor: '#f8fafc',
-        border: '1px solid #e2e8f0',
-        padding: '5px 14px',
-        borderRadius: '20px',
-        fontSize: '13px',
-        fontWeight: '600',
-        color: '#475569',
-        fontFamily: "'Outfit', sans-serif",
-        letterSpacing: '0.2px'
-    },
-    actionBox: {
-        backgroundColor: '#eef2ff',
-        border: '1px solid #c7d2fe',
-        padding: '16px 20px',
-        borderRadius: '12px',
-        display: 'flex',
-        gap: '14px',
-        alignItems: 'center'
-    },
-    toggleBtn: {
-        background: 'none',
-        border: 'none',
-        color: '#3b82f6',
-        padding: '0',
-        cursor: 'pointer',
-        fontSize: '14px',
-        fontWeight: '700',
-        fontFamily: "'Outfit', sans-serif",
-        letterSpacing: '0.2px'
-    },
-    table: {
-        width: '100%',
-        borderCollapse: 'collapse',
-        textAlign: 'left',
-        fontFamily: "'Outfit', sans-serif"
-    },
-    th: {
-        padding: '12px 18px',
-        borderBottom: '2px solid #f1f5f9',
-        color: '#64748b',
-        fontWeight: '700',
-        fontSize: '13px',
-        backgroundColor: '#f8fafc',
-        letterSpacing: '0.5px',
-        textTransform: 'uppercase',
-        fontFamily: "'Outfit', sans-serif"
-    },
-    td: {
-        padding: '14px 18px',
-        borderBottom: '1px solid #f1f5f9',
-        fontSize: '14px',
-        color: '#334155',
-        fontFamily: "'Outfit', sans-serif",
-        fontWeight: '500',
-        lineHeight: '1.5'
-    },
-    skuChip: {
-        backgroundColor: '#f1f5f9',
-        border: '1px solid #e2e8f0',
-        padding: '4px 12px',
-        borderRadius: '20px',
-        fontSize: '13px',
-        fontWeight: '600',
-        color: '#334155',
-        fontFamily: "'Outfit', sans-serif"
-    },
-    statusBadge: {
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '6px',
-        padding: '5px 12px',
-        borderRadius: '8px',
-        fontSize: '12px',
-        fontWeight: '800',
-        letterSpacing: '0.5px',
-        fontFamily: "'Outfit', sans-serif"
-    },
-    tr: {
-        transition: 'background 0.15s ease'
-    }
-};
 
 export default RootCauseAnalytics;
+

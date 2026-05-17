@@ -5,10 +5,33 @@ import './BatchDetail.css';
 const BatchDetail = () => {
     const { batchId } = useParams();
     const navigate = useNavigate();
-    const [theme] = useState(sessionStorage.getItem('theme') || 'light');
+    const [theme, setTheme] = useState(sessionStorage.getItem('theme') || 'light');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [data, setData] = useState(null);
+
+    useEffect(() => {
+        const syncTheme = () => setTheme(sessionStorage.getItem('theme') || 'light');
+        window.addEventListener('theme-changed', syncTheme);
+        return () => window.removeEventListener('theme-changed', syncTheme);
+    }, []);
+
+    const toggleTheme = () => {
+        const nt = theme === 'dark' ? 'light' : 'dark';
+        setTheme(nt);
+        sessionStorage.setItem('theme', nt);
+        window.dispatchEvent(new Event('theme-changed'));
+    };
+
+    const [fadeClass, setFadeClass] = useState('fluid-transition');
+
+    useEffect(() => {
+        if (data) {
+            setFadeClass('');
+            const timer = setTimeout(() => setFadeClass('fluid-transition'), 10);
+            return () => clearTimeout(timer);
+        }
+    }, [data]);
 
     useEffect(() => {
         const fetchBatchDetails = async () => {
@@ -47,16 +70,35 @@ const BatchDetail = () => {
 
     if (loading) {
         return (
-            <div className={`batch-detail-container ${theme} flex-center fullscreen`}>
-                <div className="spinner"></div>
-                <h2 style={{ marginTop: '20px' }}>Loading Batch Details...</h2>
+            <div className={`batch-detail-container ${theme}`} style={{ minHeight: '100vh', padding: '40px' }}>
+                <style>{`
+                    @keyframes pulseSkeleton { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+                    .skeleton-item { animation: pulseSkeleton 1.5s infinite ease-in-out; }
+                    .loading-msg {
+                        background: linear-gradient(135deg, #1a3a5c 0%, #295380 100%);
+                        color: #f8fafc; padding: 12px 24px; border-radius: 30px; display: inline-block;
+                        font-weight: 800; font-size: 16px; box-shadow: 0 4px 15px rgba(26, 58, 92, 0.4);
+                        letter-spacing: 0.5px; border: 1px solid rgba(200, 169, 110, 0.3);
+                        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999;
+                    }
+                `}</style>
+                <div style={{ textAlign: 'center' }} className="skeleton-item">
+                    <div className="loading-msg">🔍 Fetching Batch Details...</div>
+                </div>
+                <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                    <div className="skeleton-item" style={{ height: '180px', backgroundColor: theme === 'dark' ? '#1e293b' : '#fdfaf5', borderRadius: '16px', marginBottom: '30px', border: `1px solid ${theme === 'dark' ? '#334155' : '#e8dfd0'}` }} />
+                    <div style={{ display: 'flex', gap: '30px' }}>
+                        <div className="skeleton-item" style={{ flex: 1, height: '400px', backgroundColor: theme === 'dark' ? '#1e293b' : '#fdfaf5', borderRadius: '16px', border: `1px solid ${theme === 'dark' ? '#334155' : '#e8dfd0'}` }} />
+                        <div className="skeleton-item" style={{ flex: 1, height: '400px', backgroundColor: theme === 'dark' ? '#1e293b' : '#fdfaf5', borderRadius: '16px', border: `1px solid ${theme === 'dark' ? '#334155' : '#e8dfd0'}` }} />
+                    </div>
+                </div>
             </div>
         );
     }
 
     if (error || !data) {
         return (
-            <div className={`batch-detail-container ${theme} flex-center fullscreen`}>
+            <div className={`batch-detail-container ${theme} flex-center fullscreen`} style={{ backgroundColor: theme === 'dark' ? '#0f172a' : '#faf7f2' }}>
                 <div className="error-card">
                     <h2>Error</h2>
                     <p>{error || "Batch details unavailable"}</p>
@@ -83,26 +125,83 @@ const BatchDetail = () => {
     };
 
     return (
-        <div className={`batch-detail-container ${theme}`}>
+        <div className={`batch-detail-container ${theme}`} style={{ backgroundColor: theme === 'dark' ? '#0f172a' : '#faf7f2', minHeight: '100vh' }}>
             <nav style={{
-                padding: '12px 32px',
-                backgroundColor: theme === 'dark' ? '#1a1a1a' : '#4d2600',
-                color: 'white',
                 display: 'flex',
-                justifyContent: 'space-between',
+                justifyContent: 'flex-end',
                 alignItems: 'center',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                padding: '20px 40px',
+                background: 'transparent',
                 position: 'sticky',
                 top: 0,
                 zIndex: 100
             }}>
-                <div className="nav-logo">FIROS <span style={{ color: '#C8A96E', marginLeft: '6px' }}>NESTLÉ</span></div>
-                <button onClick={() => navigate('/dashboard')} className="close-btn">
-                    Close Details
-                </button>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '15px',
+                    background: theme === 'dark' ? 'rgba(30, 41, 59, 0.4)' : 'rgba(255, 255, 255, 0.4)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    padding: '8px 15px',
+                    borderRadius: '20px',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
+                }}>
+                    <button onClick={() => navigate('/dashboard')} style={{
+                        background: 'rgba(200, 169, 110, 0.1)',
+                        border: '1px solid rgba(200, 169, 110, 0.2)',
+                        color: theme === 'dark' ? '#C8A96E' : '#8B5E3C',
+                        fontWeight: '700',
+                        padding: '6px 14px',
+                        fontSize: '13px',
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        marginRight: '5px'
+                    }}>Close Details</button>
+                    <button onClick={toggleTheme} style={{
+                        background: 'rgba(255, 255, 255, 0.2)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        fontSize: '16px',
+                        cursor: 'pointer',
+                        borderRadius: '50%',
+                        width: '34px',
+                        height: '34px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: theme === 'dark' ? '#f8fafc' : '#1e293b'
+                    }}>
+                        {theme === 'dark' ? '☀️' : '🌙'}
+                    </button>
+                    <button onClick={() => {
+                        sessionStorage.clear();
+                        navigate('/login');
+                    }} style={{
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        color: '#ef4444',
+                        fontWeight: '700',
+                        padding: '6px 14px',
+                        fontSize: '13px',
+                        borderRadius: '12px',
+                        cursor: 'pointer'
+                    }}>Logout</button>
+                </div>
             </nav>
 
-            <main className="detail-main">
+            <main className={`detail-main ${fadeClass}`}>
+                <style>
+                    {`
+                    @keyframes fadeSlideIn {
+                        from { opacity: 0; transform: translateY(15px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                    .fluid-transition {
+                        animation: fadeSlideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                    }
+                    `}
+                </style>
                 <div className="detail-header">
                     <div className="header-left">
                         <span className="batch-tag">BATCH ID: {batch.batch_id}</span>
@@ -183,11 +282,11 @@ const BatchDetail = () => {
 
                             <div style={{
                                 padding: '16px',
-                                background: 'rgba(200,169,110,0.1)',
-                                border: '1px solid rgba(200,169,110,0.2)',
+                                background: theme === 'dark' ? 'rgba(200, 169, 110, 0.05)' : 'rgba(200, 169, 110, 0.1)',
+                                border: `1px solid ${theme === 'dark' ? 'rgba(200, 169, 110, 0.2)' : 'rgba(200, 169, 110, 0.2)'}`,
                                 borderRadius: '16px',
                                 fontSize: '0.85rem',
-                                color: '#854d0e',
+                                color: theme === 'dark' ? '#C8A96E' : '#854d0e',
                                 fontWeight: 500,
                                 lineHeight: '1.5'
                             }}>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
 import BatchRegistration from './pages/BatchRegistration';
 import Dashboard from './pages/Dashboard';
@@ -24,18 +25,41 @@ import MyDistributors from './pages/MyDistributors';
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const token = sessionStorage.getItem('token');
   const role = sessionStorage.getItem('role');
+  const [theme, setTheme] = useState(sessionStorage.getItem('theme') || 'light');
+
+  React.useEffect(() => {
+    const handleThemeChange = () => {
+      setTheme(sessionStorage.getItem('theme') || 'light');
+    };
+    window.addEventListener('theme-changed', handleThemeChange);
+    return () => window.removeEventListener('theme-changed', handleThemeChange);
+  }, []);
   
   if (!token) {
-    // Redirect to login if token is not authenticated
     return <Navigate to="/login" replace />;
   }
 
   if (allowedRoles && (!role || !allowedRoles.includes(role))) {
-    // Redirect if user does not have permission
     return <Navigate to="/dashboard" replace />;
   }
 
-  return children;
+  const bgColor = theme === 'dark' ? '#0f172a' : '#faf7f2';
+
+  return (
+    <>
+      <div style={{ 
+        position: 'fixed', 
+        top: 0, left: 0, right: 0, bottom: 0, 
+        backgroundColor: bgColor, 
+        zIndex: -1,
+        transition: 'background-color 0.3s ease'
+      }} />
+      <Sidebar />
+      <div style={{ marginLeft: '300px', minHeight: '100vh', position: 'relative' }}>
+        {children}
+      </div>
+    </>
+  );
 };
 
 const App = () => {

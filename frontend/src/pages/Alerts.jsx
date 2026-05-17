@@ -49,7 +49,7 @@ const Alerts = () => {
     const [pagination, setPagination] = useState({ total: 0, page: 1, totalPages: 1 });
 
     const isDark = theme === 'dark';
-    const bgColor = isDark ? '#0f172a' : '#f8fafc';
+    const bgColor = isDark ? '#0f172a' : '#faf7f2';
     const textColor = isDark ? '#f1f5f9' : '#1e293b';
     const cardBgColor = isDark ? '#1e293b' : 'white';
     const textMuted = isDark ? '#94a3b8' : '#64748b';
@@ -115,7 +115,7 @@ const Alerts = () => {
         const newTheme = isDark ? 'light' : 'dark';
         setTheme(newTheme);
         sessionStorage.setItem('theme', newTheme);
-        document.documentElement.classList.toggle('dark', newTheme === 'dark');
+        window.dispatchEvent(new Event('theme-changed'));
     };
 
     const filteredAlerts = alerts.filter(alert => {
@@ -159,38 +159,94 @@ const Alerts = () => {
         if (riskBand === 'medium') return { bg: isDark ? 'rgba(245, 158, 11, 0.2)' : '#fffbeb', color: '#f59e0b' };
         if (riskBand === 'low') return { bg: isDark ? 'rgba(34, 197, 94, 0.2)' : '#f0fdf4', color: '#22c55e' };
         if (type === 'expiry_proximity') return { bg: isDark ? 'rgba(249, 115, 22, 0.2)' : '#fff7ed', color: '#f97316' };
-        return { bg: isDark ? '#334155' : '#f8fafc', color: textMuted };
+        return { bg: isDark ? '#334155' : '#faf7f2', color: textMuted };
     };
 
     if (loading) {
-        return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: bgColor, color: textColor }}><h2>Loading Alerts Matrix...</h2></div>;
+        return (
+            <div style={{ minHeight: '100vh', backgroundColor: bgColor, padding: '40px' }}>
+                <style>{`
+                    @keyframes pulseSkeleton { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+                    .skeleton-item { animation: pulseSkeleton 1.5s infinite ease-in-out; }
+                    .loading-msg {
+                        background: linear-gradient(135deg, #1a3a5c 0%, #295380 100%);
+                        color: #f8fafc; padding: 12px 24px; border-radius: 30px; display: inline-block;
+                        font-weight: 800; font-size: 16px; box-shadow: 0 4px 15px rgba(26, 58, 92, 0.4);
+                        letter-spacing: 0.5px; border: 1px solid rgba(200, 169, 110, 0.3);
+                        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999;
+                    }
+                `}</style>
+                <div style={{ textAlign: 'center' }} className="skeleton-item">
+                    <div className="loading-msg">🚨 Scanning Alert Intelligence Matrix...</div>
+                </div>
+                <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+                    <div className="skeleton-item" style={{ height: '40px', width: '300px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '8px', marginBottom: '32px' }} />
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+                        {[1,2,3,4].map(i => <div key={i} className="skeleton-item" style={{ height: '120px', backgroundColor: isDark ? '#1e293b' : '#fdfaf5', borderRadius: '16px', border: `1px solid ${isDark ? '#334155' : '#e8dfd0'}` }} />)}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {[1,2,3,4,5].map(i => <div key={i} className="skeleton-item" style={{ height: '80px', backgroundColor: isDark ? '#1e293b' : '#fdfaf5', borderRadius: '12px', border: `1px solid ${isDark ? '#334155' : '#e8dfd0'}` }} />)}
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (
         <div style={{ minHeight: '100vh', backgroundColor: bgColor, color: textColor, fontFamily: 'inherit' }}>
-            <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', backgroundColor: navBg, color: 'white' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '20px', letterSpacing: '1px' }}>
-                    FIROS <span style={{ color: '#C8A96E', fontSize: '14px', marginLeft: '8px' }}>NESTLÉ LANKA</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                    <button onClick={toggleTheme} style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>
+            <nav style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                padding: '20px 40px',
+                background: 'transparent',
+                position: 'sticky',
+                top: 0,
+                zIndex: 100
+            }}>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '15px',
+                    background: isDark ? 'rgba(30, 41, 59, 0.4)' : 'rgba(255, 255, 255, 0.4)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    padding: '8px 15px',
+                    borderRadius: '20px',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
+                }}>
+                    <button onClick={toggleTheme} style={{
+                        background: 'rgba(255, 255, 255, 0.2)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        fontSize: '16px',
+                        cursor: 'pointer',
+                        borderRadius: '50%',
+                        width: '34px',
+                        height: '34px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: isDark ? '#f8fafc' : '#1e293b'
+                    }}>
                         {isDark ? '☀️' : '🌙'}
                     </button>
-                    <button onClick={handleLogout} style={{ background: 'rgba(0,0,0,0.2)', border: 'none', color: 'white', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-                        Logout
-                    </button>
+                    <button onClick={handleLogout} style={{
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        color: '#ef4444',
+                        fontWeight: '700',
+                        padding: '6px 14px',
+                        fontSize: '13px',
+                        borderRadius: '12px',
+                        cursor: 'pointer'
+                    }}>Logout</button>
                 </div>
             </nav>
 
             <main style={{ padding: '32px 48px', maxWidth: '1400px', margin: '0 auto' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '32px' }}>
                     <div>
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            style={{ background: 'transparent', border: 'none', color: isDark ? '#60a5fa' : '#2563eb', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', padding: 0 }}
-                        >
-                            <span>←</span> Back to Dashboard
-                        </button>
                         <h1 style={{ margin: '0 0 8px 0', fontSize: '32px' }}>Alert Intelligence Centre</h1>
                         <p style={{ margin: 0, color: textMuted }}>Real-time monitoring of biological risk bands and zone breaches.</p>
                     </div>
@@ -237,7 +293,7 @@ const Alerts = () => {
                         placeholder="Search product or batch..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ padding: '10px 16px', borderRadius: '8px', border: `1px solid ${isDark ? '#475569' : '#cbd5e1'}`, backgroundColor: isDark ? '#0f172a' : '#f8fafc', color: textColor, width: '280px', outline: 'none' }}
+                        style={{ padding: '10px 16px', borderRadius: '8px', border: `1px solid ${isDark ? '#475569' : '#cbd5e1'}`, backgroundColor: isDark ? '#0f172a' : '#faf7f2', color: textColor, width: '280px', outline: 'none' }}
                     />
                 </div>
 

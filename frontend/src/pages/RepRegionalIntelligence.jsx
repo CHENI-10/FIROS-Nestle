@@ -97,7 +97,23 @@ const RepRegionalIntelligence = ({ token, verifiedRep, onProceed, onLogout }) =>
           {/* ── SUBMISSION STATUS ─────────────────────────────────────────── */}
           {loading ? (
             <div style={{ padding: '0 16px 0 16px', marginBottom: '8px' }}>
-              <div style={{ ...s.skeletonBase, height: '72px', borderRadius: '10px' }} />
+                <style>{`
+                    @keyframes pulseSkeleton { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+                    .skeleton-item { animation: pulseSkeleton 1.5s infinite ease-in-out; }
+                    .loading-msg {
+                        background: linear-gradient(135deg, #1a3a5c 0%, #295380 100%);
+                        color: #f8fafc; padding: 12px 24px; border-radius: 30px; display: inline-block;
+                        font-weight: 800; font-size: 14px; box-shadow: 0 4px 15px rgba(26, 58, 92, 0.4);
+                        letter-spacing: 0.5px; border: 1px solid rgba(200, 169, 110, 0.3);
+                        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999;
+                    }
+                `}</style>
+                <div style={{ textAlign: 'center' }} className="skeleton-item">
+                    <div className="loading-msg">🔄 Fetching Regional Data...</div>
+                </div>
+              <div className="skeleton-item" style={{ backgroundColor: '#e2e8f0', height: '72px', borderRadius: '10px', marginBottom: '16px' }} />
+              <div className="skeleton-item" style={{ backgroundColor: '#e2e8f0', height: '100px', borderRadius: '10px', marginBottom: '16px' }} />
+              <div className="skeleton-item" style={{ backgroundColor: '#e2e8f0', height: '100px', borderRadius: '10px' }} />
             </div>
           ) : (
             <div className="intel-section" style={{

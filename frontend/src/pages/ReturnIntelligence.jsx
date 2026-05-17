@@ -46,6 +46,27 @@ const ReturnIntelligence = () => {
     const isDark = theme === 'dark';
 
     useEffect(() => {
+        const syncTheme = () => setTheme(sessionStorage.getItem('theme') || 'light');
+        window.addEventListener('theme-changed', syncTheme);
+        return () => window.removeEventListener('theme-changed', syncTheme);
+    }, []);
+
+    const [fadeClass, setFadeClass] = useState('fluid-transition');
+
+    useEffect(() => {
+        // Trigger animation on tab change or initial load
+        setFadeClass('');
+        const timer = setTimeout(() => setFadeClass('fluid-transition'), 10);
+        return () => clearTimeout(timer);
+    }, [activeTab]);
+
+    const toggleTheme = () => {
+        const nt = theme === 'dark' ? 'light' : 'dark';
+        setTheme(nt);
+        sessionStorage.setItem('theme', nt);
+        window.dispatchEvent(new Event('theme-changed'));
+    };
+    useEffect(() => {
         fetchDistributors();
         if (activeTab === 'history') {
             fetchHistory(historyPage);
@@ -95,12 +116,7 @@ const ReturnIntelligence = () => {
         navigate('/login');
     };
 
-    const toggleTheme = () => {
-        const newTheme = isDark ? 'light' : 'dark';
-        setTheme(newTheme);
-        sessionStorage.setItem('theme', newTheme);
-        document.body.className = newTheme;
-    };
+
 
     const openResolveModal = (record) => {
         setResolvingReturn(record);
@@ -359,26 +375,70 @@ const ReturnIntelligence = () => {
     return (
         <div className={`ri-page ${theme}`}>
             {/* Navbar */}
-            <nav className="ri-nav">
-                <div className="ri-nav-logo">
-                    FIROS <span>NESTLÉ LANKA</span>
-                </div>
-                <div className="ri-nav-actions">
-                    <button onClick={toggleTheme} className="ri-theme-btn">
+            <nav style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                padding: '20px 40px',
+                background: 'transparent',
+                position: 'sticky',
+                top: 0,
+                zIndex: 100
+            }}>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '15px',
+                    background: isDark ? 'rgba(30, 41, 59, 0.4)' : 'rgba(255, 255, 255, 0.4)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    padding: '8px 15px',
+                    borderRadius: '20px',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
+                }}>
+                    <button onClick={toggleTheme} style={{
+                        background: 'rgba(255, 255, 255, 0.2)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        fontSize: '16px',
+                        cursor: 'pointer',
+                        borderRadius: '50%',
+                        width: '34px',
+                        height: '34px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: isDark ? '#f8fafc' : '#1e293b'
+                    }}>
                         {isDark ? '☀️' : '🌙'}
                     </button>
-                    <button onClick={handleLogout} className="ri-logout-btn">
-                        Logout
-                    </button>
+                    <button onClick={handleLogout} style={{
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        color: '#ef4444',
+                        fontWeight: '700',
+                        padding: '6px 14px',
+                        fontSize: '13px',
+                        borderRadius: '12px',
+                        cursor: 'pointer'
+                    }}>Logout</button>
                 </div>
             </nav>
 
-            <main className="ri-main">
+            <main className={`returns-main ${fadeClass}`}>
+                <style>
+                    {`
+                    @keyframes fadeSlideIn {
+                        from { opacity: 0; transform: translateY(15px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                    .fluid-transition {
+                        animation: fadeSlideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                    }
+                    `}
+                </style>
                 {/* Page Header */}
                 <div className="ri-header">
-                    <button onClick={() => navigate('/dashboard')} className="ri-back-btn">
-                        <span>←</span> Back to Dashboard
-                    </button>
                     <h1 className="ri-page-title">Return Intelligence Module</h1>
                     <p className="ri-page-subtitle">
                         Evaluate distributor returns and determine liability based on FRS constraints and distribution times.
@@ -604,7 +664,27 @@ const ReturnIntelligence = () => {
                 {activeTab === 'history' && (
                     <div className="ri-history-card">
                         {loading ? (
-                            <div className="ri-loading">Loading Return Histories...</div>
+                            <div style={{ padding: '40px', textAlign: 'center' }}>
+                                <style>{`
+                                    @keyframes pulseSkeleton { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+                                    .skeleton-item { animation: pulseSkeleton 1.5s infinite ease-in-out; }
+                                    .loading-msg {
+                                        background: linear-gradient(135deg, #1a3a5c 0%, #295380 100%);
+                                        color: #f8fafc; padding: 12px 24px; border-radius: 30px; display: inline-block;
+                                        font-weight: 800; font-size: 16px; box-shadow: 0 4px 15px rgba(26, 58, 92, 0.4);
+                                        letter-spacing: 0.5px; border: 1px solid rgba(200, 169, 110, 0.3);
+                                        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999;
+                                    }
+                                `}</style>
+                                <div className="skeleton-item">
+                                    <div className="loading-msg">🔄 Fetching Return Histories...</div>
+                                </div>
+                                <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                                    {[1, 2, 3, 4, 5].map(i => (
+                                        <div key={i} className="skeleton-item" style={{ height: '60px', backgroundColor: isDark ? '#1e293b' : 'white', borderRadius: '8px', marginBottom: '12px' }} />
+                                    ))}
+                                </div>
+                            </div>
                         ) : error ? (
                             <div className="ri-error-msg">{error}</div>
                         ) : (

@@ -267,7 +267,28 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
         {selectedSkus.length === products.length ? 'Deselect All' : 'Select All Products'}
       </button>
 
-      {loading ? <p>Loading catalog...</p> : (
+      {loading ? (
+        <div style={{ maxHeight: '380px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '12px', padding: '10px', backgroundColor: '#fff', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+          <style>{`
+              @keyframes pulseSkeleton {
+                  0%, 100% { opacity: 1; }
+                  50% { opacity: 0.5; }
+              }
+              .skeleton-item { animation: pulseSkeleton 1.5s infinite ease-in-out; }
+          `}</style>
+          <div style={{ textAlign: 'center', color: '#888', fontWeight: 'bold', fontSize: '13px', padding: '10px 0' }}>Loading catalog...</div>
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="skeleton-item" style={{ display: 'flex', alignItems: 'center', padding: '12px', borderBottom: '1px solid #f5f5f5', backgroundColor: '#fafafa', borderRadius: '8px', marginBottom: '8px' }}>
+              <div style={{ width: '20px', height: '20px', backgroundColor: '#e0e0e0', borderRadius: '4px', marginRight: '16px' }} />
+              <div style={{ width: '40px', height: '40px', backgroundColor: '#e0e0e0', borderRadius: '4px', marginRight: '12px' }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ height: '16px', width: '70%', backgroundColor: '#e0e0e0', borderRadius: '4px', marginBottom: '6px' }} />
+                <div style={{ height: '12px', width: '40%', backgroundColor: '#e0e0e0', borderRadius: '4px' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
         <div style={{ maxHeight: '380px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '12px', padding: '10px', backgroundColor: '#fff', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
           {products.map(p => (
             <label key={p.sku} style={{ display: 'flex', alignItems: 'center', padding: '12px', borderBottom: '1px solid #f5f5f5', cursor: 'pointer', transition: '0.2s', backgroundColor: selectedSkus.includes(p.sku) ? '#f9fbe7' : 'transparent', borderRadius: '8px' }}>

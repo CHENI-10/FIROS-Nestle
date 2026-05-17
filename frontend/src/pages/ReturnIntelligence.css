@@ -24,18 +24,18 @@
    Theme Tokens — applied via .ri-page.light / .ri-page.dark
    ===================================================== */
 .ri-page.light {
-  --ri-bg: #f8fafc;
+  --ri-bg: #faf7f2;
   --ri-card-bg: #ffffff;
   --ri-text: #1e293b;
   --ri-text-muted: #64748b;
-  --ri-border: #cbd5e1;
+  --ri-border: #e2e8f0;
   --ri-input-bg: #ffffff;
   --ri-nav-bg: #3D1C02;
-  --ri-table-header: #f8fafc;
-  --ri-hover-bg: #f1f5f9;
-  --ri-inner-bg: #f8fafc;
+  --ri-table-header: #faf7f2;
+  --ri-hover-bg: #f8fafc;
+  --ri-inner-bg: #faf7f2;
   --ri-back-color: #2563eb;
-  --ri-tab-active: #2563eb;
+  --ri-tab-active: #C8A96E;
 }
 
 .ri-page.dark {

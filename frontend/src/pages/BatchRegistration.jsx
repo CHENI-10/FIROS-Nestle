@@ -10,6 +10,27 @@ const BatchRegistration = () => {
   const [isLoadingProduct, setIsLoadingProduct] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [theme, setTheme] = useState(sessionStorage.getItem('theme') || 'light');
+
+  useEffect(() => {
+    const syncTheme = () => setTheme(sessionStorage.getItem('theme') || 'light');
+    window.addEventListener('theme-changed', syncTheme);
+    return () => window.removeEventListener('theme-changed', syncTheme);
+  }, []);
+
+  const toggleTheme = () => {
+    const nt = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nt);
+    sessionStorage.setItem('theme', nt);
+    window.dispatchEvent(new Event('theme-changed'));
+  };
+
+  const isDark = theme === 'dark';
+  const bgColor = isDark ? '#0f172a' : '#faf7f2';
+  const textColor = isDark ? '#f1f5f9' : '#1e293b';
+  const cardBg = isDark ? '#1e293b' : 'white';
+  const borderColor = isDark ? '#334155' : '#e2e8f0';
+  const mutedColor = isDark ? '#94a3b8' : '#7a6355';
 
   // Outbound Tab State
   const [activeTab, setActiveTab] = useState('inbound'); // 'inbound', 'outbound'
@@ -532,7 +553,7 @@ const BatchRegistration = () => {
       {confirmingDispatch && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
           <div style={{ backgroundColor: '#fff', width: '100%', maxWidth: '440px', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-            <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+            <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#faf7f2' }}>
               <h3 style={{ margin: 0, color: '#1e293b', fontSize: '20px' }}>Confirm Pickup</h3>
             </div>
             
@@ -571,7 +592,7 @@ const BatchRegistration = () => {
               </div>
             </div>
 
-            <div style={{ padding: '20px 24px', backgroundColor: '#f8fafc', display: 'flex', gap: '12px', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ padding: '20px 24px', backgroundColor: '#faf7f2', display: 'flex', gap: '12px', borderTop: '1px solid #e2e8f0' }}>
               <button 
                   onClick={() => setConfirmingDispatch(null)}
                   style={{ flex: 1, padding: '12px 20px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: 'transparent', color: '#475569', fontWeight: 'bold', cursor: 'pointer' }}

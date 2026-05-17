@@ -76,14 +76,41 @@ const MarketIntelligenceReportDetail = () => {
     return <span>-</span>;
   };
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading report details...</div>;
+  if (loading) {
+      return (
+          <div style={{ minHeight: '100vh', backgroundColor: '#faf7f2', padding: '40px' }}>
+              <style>{`
+                  @keyframes pulseSkeleton { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+                  .skeleton-item { animation: pulseSkeleton 1.5s infinite ease-in-out; }
+                  .loading-msg {
+                      background: linear-gradient(135deg, #1a3a5c 0%, #295380 100%);
+                      color: #faf7f2; padding: 12px 24px; border-radius: 30px; display: inline-block;
+                      font-weight: 800; font-size: 16px; box-shadow: 0 4px 15px rgba(26, 58, 92, 0.4);
+                      letter-spacing: 0.5px; border: 1px solid rgba(200, 169, 110, 0.3);
+                      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999;
+                  }
+              `}</style>
+              <div style={{ textAlign: 'center' }} className="skeleton-item">
+                  <div className="loading-msg">📄 Fetching Report Details...</div>
+              </div>
+              <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+                  <div className="skeleton-item" style={{ height: '180px', backgroundColor: 'white', borderRadius: '8px', marginBottom: '24px' }} />
+                  <div style={{ display: 'flex', gap: '20px', marginBottom: '24px' }}>
+                      <div className="skeleton-item" style={{ flex: 1, height: '120px', backgroundColor: 'white', borderRadius: '8px' }} />
+                      <div className="skeleton-item" style={{ flex: 1, height: '120px', backgroundColor: 'white', borderRadius: '8px' }} />
+                  </div>
+                  <div className="skeleton-item" style={{ height: '300px', backgroundColor: 'white', borderRadius: '8px' }} />
+              </div>
+          </div>
+      );
+  }
   if (!report) return null;
 
   const emptyShelves = report.lineItems.filter(item => item.isEmptyShelf);
   const totalProducts = report.lineItems.length;
 
   return (
-    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', padding: '40px 5%', fontFamily: 'sans-serif' }}>
+    <div style={{ backgroundColor: '#faf7f2', minHeight: '100vh', padding: '40px 5%', fontFamily: 'sans-serif' }}>
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
       
       <button 
@@ -133,7 +160,7 @@ const MarketIntelligenceReportDetail = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
             {emptyShelves.map(item => (
               <div key={item.sku} style={{ backgroundColor: '#fff', border: '1px solid #fca5a5', borderRadius: '8px', padding: '16px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 2px 4px rgba(239, 68, 68, 0.1)' }}>
-                <img src={getProductImage(item.productName)} alt={item.productName} style={{ width: '60px', height: '60px', objectFit: 'contain', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                <img src={getProductImage(item.productName)} alt={item.productName} style={{ width: '60px', height: '60px', objectFit: 'contain', backgroundColor: '#faf7f2', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 'bold', color: '#1e293b', fontSize: '15px' }}>{item.productName}</div>
                   <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>{item.category} • SKU: {item.sku}</div>
@@ -159,7 +186,7 @@ const MarketIntelligenceReportDetail = () => {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
-              <tr style={{ backgroundColor: '#f8fafc', color: '#64748b', fontSize: '13px', textTransform: 'uppercase' }}>
+              <tr style={{ backgroundColor: '#faf7f2', color: '#64748b', fontSize: '13px', textTransform: 'uppercase' }}>
                 <th style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0' }}>Product</th>
                 <th style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0' }}>SKU</th>
                 <th style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0' }}>Category</th>
@@ -195,7 +222,7 @@ const MarketIntelligenceReportDetail = () => {
       {report.notes && (
         <div style={{ backgroundColor: '#fff', borderRadius: '8px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '32px' }}>
           <h2 style={{ margin: '0 0 16px 0', color: '#1a3a5c', fontSize: '18px' }}>Rep Observations</h2>
-          <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '6px', color: '#475569', fontSize: '14px', lineHeight: '1.6', border: '1px solid #e2e8f0', whiteSpace: 'pre-wrap' }}>
+          <div style={{ backgroundColor: '#faf7f2', padding: '16px', borderRadius: '6px', color: '#475569', fontSize: '14px', lineHeight: '1.6', border: '1px solid #e2e8f0', whiteSpace: 'pre-wrap' }}>
             {report.notes}
           </div>
         </div>

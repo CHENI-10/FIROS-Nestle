@@ -33,7 +33,7 @@ const ClearanceRecommendations = () => {
   const [overrideReason, setOverrideReason] = useState('');
 
   const isDark = theme === 'dark';
-  const bg = isDark ? '#0f172a' : '#f8fafc';
+  const bg = isDark ? '#0f172a' : '#faf7f2';
   const text = isDark ? '#f1f5f9' : '#1e293b';
   const card = isDark ? '#1e293b' : '#ffffff';
   const navBg = isDark ? '#1e293b' : '#3D1C02';
@@ -41,7 +41,29 @@ const ClearanceRecommendations = () => {
   const border = isDark ? '#334155' : '#e2e8f0';
   const inputBg = isDark ? '#334155' : '#ffffff';
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+    const syncTheme = () => setTheme(sessionStorage.getItem('theme') || 'light');
+    window.addEventListener('theme-changed', syncTheme);
+    return () => window.removeEventListener('theme-changed', syncTheme);
+  }, []);
+
+  const [fadeClass, setFadeClass] = useState('fluid-transition');
+
+  useEffect(() => {
+    if (batches.length > 0) {
+      setFadeClass('');
+      const timer = setTimeout(() => setFadeClass('fluid-transition'), 10);
+      return () => clearTimeout(timer);
+    }
+  }, [batches]);
+
+  const toggleTheme = () => {
+    const nt = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nt);
+    sessionStorage.setItem('theme', nt);
+    window.dispatchEvent(new Event('theme-changed'));
+  };
 
   const token = () => sessionStorage.getItem('token');
 
@@ -142,41 +164,96 @@ const ClearanceRecommendations = () => {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: bg, color: text, fontFamily: 'inherit' }}>
-      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', backgroundColor: navBg, color: 'white' }}>
-        <div style={{ fontWeight: 'bold', fontSize: '20px' }}>FIROS <span style={{ color: '#C8A96E', fontSize: '14px', marginLeft: '8px' }}>NESTLÉ LANKA</span></div>
-        <div style={{ display: 'flex', gap: '16px' }}>
-          <button onClick={() => { const n = isDark ? 'light' : 'dark'; setTheme(n); sessionStorage.setItem('theme', n); }} style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>{isDark ? '☀️' : '🌙'}</button>
-          <button onClick={() => { sessionStorage.clear(); navigate('/login'); }} style={{ background: 'rgba(0,0,0,0.2)', border: 'none', color: 'white', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Logout</button>
+      <nav style={{
+        display: 'flex',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        padding: '20px 40px',
+        background: 'transparent',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100
+      }}>
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '15px',
+            background: isDark ? 'rgba(30, 41, 59, 0.4)' : 'rgba(255, 255, 255, 0.4)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            padding: '8px 15px',
+            borderRadius: '20px',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
+        }}>
+          <button onClick={toggleTheme} style={{
+              background: 'rgba(255, 255, 255, 0.2)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              fontSize: '16px',
+              cursor: 'pointer',
+              borderRadius: '50%',
+              width: '34px',
+              height: '34px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: isDark ? '#f8fafc' : '#1e293b'
+          }}>{isDark ? '☀️' : '🌙'}</button>
+          <button onClick={() => { sessionStorage.clear(); navigate('/login'); }} style={{
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              color: '#ef4444',
+              fontWeight: '700',
+              padding: '6px 14px',
+              fontSize: '13px',
+              borderRadius: '12px',
+              cursor: 'pointer'
+          }}>Logout</button>
         </div>
       </nav>
 
       <main style={{ padding: '32px 48px', maxWidth: '1400px', margin: '0 auto' }}>
-        <button onClick={() => navigate('/dashboard')} style={{ background: 'transparent', border: 'none', color: isDark ? '#60a5fa' : '#2563eb', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', padding: 0 }}>← Back to Dashboard</button>
         <h1 style={{ margin: '0 0 4px 0', fontSize: '32px' }}>Clearance Recommendations</h1>
         <p style={{ margin: '0 0 32px 0', color: muted }}>AI-driven promotional guidance with Smart Distributor Allocation Engine.</p>
 
         {loading ? (
-          <div style={{ display: 'flex', gap: '32px', flexDirection: window.innerWidth < 1024 ? 'column' : 'row' }}>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {[1, 2, 3].map(i => (
-                <div key={i} style={{ backgroundColor: card, borderRadius: '12px', padding: '20px 24px', border: `1px solid ${border}`, animation: 'pulseSkeleton 1.5s infinite ease-in-out' }}>
-                  <div style={{ width: '60%', height: '24px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '12px' }} />
-                  <div style={{ width: '80%', height: '16px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '16px' }} />
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ width: '80px', height: '24px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '6px' }} />
-                    <div style={{ width: '100px', height: '24px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '6px' }} />
-                  </div>
-                </div>
-              ))}
+          <div>
+            <style>{`
+                @keyframes pulseSkeleton { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+                .skeleton-item { animation: pulseSkeleton 1.5s infinite ease-in-out; }
+                .loading-msg {
+                    background: linear-gradient(135deg, #1a3a5c 0%, #295380 100%);
+                    color: #f8fafc; padding: 12px 24px; border-radius: 30px; display: inline-block;
+                    font-weight: 800; font-size: 16px; box-shadow: 0 4px 15px rgba(26, 58, 92, 0.4);
+                    letter-spacing: 0.5px; border: 1px solid rgba(200, 169, 110, 0.3);
+                    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999;
+                }
+            `}</style>
+            <div style={{ textAlign: 'center' }} className="skeleton-item">
+                <div className="loading-msg">💡 Generating Clearance Recommendations...</div>
             </div>
-            <div style={{ flex: 1 }}>
-                <div style={{ backgroundColor: card, borderRadius: '12px', padding: '32px', border: `1px solid ${border}`, animation: 'pulseSkeleton 1.5s infinite ease-in-out' }}>
-                  <div style={{ width: '40%', height: '28px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '24px' }} />
-                  <div style={{ width: '100%', height: '100px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '8px', marginBottom: '24px' }} />
-                  <div style={{ width: '30%', height: '16px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '8px' }} />
-                  <div style={{ width: '50%', height: '24px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '24px' }} />
-                  <div style={{ width: '100%', height: '48px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '8px' }} />
-                </div>
+            <div style={{ display: 'flex', gap: '32px', flexDirection: window.innerWidth < 1024 ? 'column' : 'row' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {[1, 2, 3].map(i => (
+                  <div key={i} style={{ backgroundColor: isDark ? '#1e293b' : '#fdfaf5', borderRadius: '12px', padding: '20px 24px', border: `1px solid ${isDark ? '#334155' : '#e8dfd0'}`, animation: 'pulseSkeleton 1.5s infinite ease-in-out' }}>
+                    <div style={{ width: '60%', height: '24px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '12px' }} />
+                    <div style={{ width: '80%', height: '16px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '16px' }} />
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <div style={{ width: '80px', height: '24px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '6px' }} />
+                      <div style={{ width: '100px', height: '24px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '6px' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ flex: 1 }}>
+                  <div style={{ backgroundColor: isDark ? '#1e293b' : '#fdfaf5', borderRadius: '12px', padding: '32px', border: `1px solid ${isDark ? '#334155' : '#e8dfd0'}`, animation: 'pulseSkeleton 1.5s infinite ease-in-out' }}>
+                    <div style={{ width: '40%', height: '28px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '24px' }} />
+                    <div style={{ width: '100%', height: '100px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '8px', marginBottom: '24px' }} />
+                    <div style={{ width: '30%', height: '16px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '8px' }} />
+                    <div style={{ width: '50%', height: '24px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '4px', marginBottom: '24px' }} />
+                    <div style={{ width: '100%', height: '48px', backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: '8px' }} />
+                  </div>
+              </div>
             </div>
           </div>
         ) : error ? (
@@ -230,7 +307,7 @@ const ClearanceRecommendations = () => {
               {selectedBatch ? (
                 <div style={{ backgroundColor: card, borderRadius: '12px', padding: '32px', border: `1px solid ${border}`, position: 'sticky', top: '32px' }}>
                   <h2 style={{ margin: '0 0 20px 0', borderBottom: `1px solid ${border}`, paddingBottom: '16px' }}>Recommendation Analysis</h2>
-                  <div style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', padding: '20px', borderRadius: '8px', borderLeft: `4px solid ${getPromoColor(selectedBatch.promotion_type)}`, marginBottom: '24px', fontSize: '15px', lineHeight: '1.6', fontWeight: '500' }}>
+                  <div style={{ backgroundColor: isDark ? '#0f172a' : '#faf7f2', padding: '20px', borderRadius: '8px', borderLeft: `4px solid ${getPromoColor(selectedBatch.promotion_type)}`, marginBottom: '24px', fontSize: '15px', lineHeight: '1.6', fontWeight: '500' }}>
                     "{selectedBatch.rationale}"
                   </div>
                   <div style={{ marginBottom: '24px' }}>
@@ -253,14 +330,14 @@ const ClearanceRecommendations = () => {
 
       {/* MODAL */}
       {isModalOpen && selectedBatch && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-          <div style={{ backgroundColor: card, width: '100%', maxWidth: '560px', borderRadius: '14px', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.4)', border: `1px solid ${border}`, maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ backgroundColor: navBg, padding: '20px 24px', color: 'white' }}>
-              <h3 style={{ margin: 0, fontSize: '18px' }}>Approve Clearance — {selectedBatch.product_name}</h3>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', backdropFilter: 'blur(4px)' }}>
+          <div style={{ backgroundColor: card, width: '100%', maxWidth: '600px', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', border: `1px solid ${border}`, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2', padding: '24px', borderBottom: `1px solid ${border}` }}>
+              <h3 style={{ margin: 0, fontSize: '20px', color: '#ef4444', fontWeight: '900' }}>Approve Clearance — {selectedBatch.product_name}</h3>
             </div>
-            <div style={{ padding: '24px' }}>
+            <div style={{ padding: '32px', overflowY: 'auto' }}>
               {/* Batch summary */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', backgroundColor: isDark ? '#0f172a' : '#f8fafc', padding: '14px 16px', borderRadius: '8px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', backgroundColor: isDark ? '#0f172a' : '#faf7f2', padding: '14px 16px', borderRadius: '8px', marginBottom: '20px' }}>
                 <div><div style={{ fontSize: '11px', color: muted, fontWeight: 'bold' }}>BATCH ID</div><div style={{ fontWeight: 'bold' }}>{selectedBatch.batch_id}</div></div>
                 <div><div style={{ fontSize: '11px', color: muted, fontWeight: 'bold' }}>FRS SCORE</div><div style={{ fontWeight: 'bold', color: '#ef4444' }}>{Number(selectedBatch.frs_score).toFixed(1)}</div></div>
                 <div style={{ textAlign: 'right' }}><div style={{ fontSize: '11px', color: muted, fontWeight: 'bold' }}>PROMO DISCOUNT</div><div style={{ fontWeight: 'bold', color: getPromoColor(selectedBatch.promotion_type) }}>{selectedBatch.discount_percent}% OFF</div></div>
@@ -365,7 +442,9 @@ const ClearanceRecommendations = () => {
       )}
 
       <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .fluid-transition { animation: fadeSlideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes pulseSkeleton { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
       `}</style>
     </div>

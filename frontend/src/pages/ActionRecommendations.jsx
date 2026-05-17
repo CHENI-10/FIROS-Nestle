@@ -102,11 +102,17 @@ const ActionRecommendations = () => {
         }
     }, [loading, recommendations, location.state, selectedBatch]);
 
+    useEffect(() => {
+        const syncTheme = () => setTheme(sessionStorage.getItem('theme') || 'light');
+        window.addEventListener('theme-changed', syncTheme);
+        return () => window.removeEventListener('theme-changed', syncTheme);
+    }, []);
+
     const toggleTheme = () => {
-        const newTheme = theme === 'light' ? 'dark' : 'light';
-        setTheme(newTheme);
-        sessionStorage.setItem('theme', newTheme);
-        document.documentElement.classList.toggle('dark', newTheme === 'dark');
+        const nt = theme === 'dark' ? 'light' : 'dark';
+        setTheme(nt);
+        sessionStorage.setItem('theme', nt);
+        window.dispatchEvent(new Event('theme-changed'));
     };
 
     const handleLogout = () => {
@@ -116,7 +122,7 @@ const ActionRecommendations = () => {
     };
 
     const isDark = theme === 'dark';
-    const bgColor = isDark ? '#0f172a' : '#f8fafc';
+    const bgColor = isDark ? '#0f172a' : '#faf7f2';
     const textColor = isDark ? '#f1f5f9' : '#1e293b';
     const cardBgColor = isDark ? '#1e293b' : 'white';
     const textMuted = isDark ? '#94a3b8' : '#64748b';
@@ -141,8 +147,25 @@ const ActionRecommendations = () => {
 
     if (loading && recommendations.total_in_queue === 0 && recommendations.total_clearance === 0) {
         return (
-            <div style={{ minHeight: '100vh', backgroundColor: bgColor, color: textColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' }}>
-                <p style={{ fontWeight: 'bold' }}>Loading Recommendations...</p>
+            <div style={{ minHeight: '100vh', backgroundColor: bgColor, padding: '40px' }}>
+                <style>{`
+                    @keyframes pulseSkeleton { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+                    .skeleton-item { animation: pulseSkeleton 1.5s infinite ease-in-out; }
+                    .loading-msg {
+                        background: linear-gradient(135deg, #1a3a5c 0%, #295380 100%);
+                        color: #f8fafc; padding: 12px 24px; border-radius: 30px; display: inline-block;
+                        font-weight: 800; font-size: 16px; box-shadow: 0 4px 15px rgba(26, 58, 92, 0.4);
+                        letter-spacing: 0.5px; border: 1px solid rgba(200, 169, 110, 0.3);
+                        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999;
+                    }
+                `}</style>
+                <div style={{ textAlign: 'center' }} className="skeleton-item">
+                    <div className="loading-msg">🧠 Generating Action Recommendations...</div>
+                </div>
+                <div style={{ display: 'flex', maxWidth: '1400px', margin: '0 auto', gap: '30px' }}>
+                    <div className="skeleton-item" style={{ width: '380px', flexShrink: 0, height: '80vh', backgroundColor: isDark ? '#1e293b' : '#fdfaf5', borderRadius: '24px', border: `1px solid ${isDark ? '#334155' : '#e8dfd0'}` }} />
+                    <div className="skeleton-item" style={{ flex: 1, height: '80vh', backgroundColor: isDark ? '#1e293b' : '#fdfaf5', borderRadius: '24px', border: `1px solid ${isDark ? '#334155' : '#e8dfd0'}` }} />
+                </div>
             </div>
         );
     }
@@ -202,7 +225,7 @@ const ActionRecommendations = () => {
     const btnStyle = { padding: '12px 24px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' };
 
     return (
-        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: bgColor, color: textColor, fontFamily: 'inherit', overflow: 'hidden' }}>
+        <div style={{ minHeight: '100vh', backgroundColor: bgColor, color: textColor, fontFamily: "'Outfit', sans-serif" }}>
             <style>{`
                 @media (max-width: 768px) {
                     .panel-left { width: 100% !important; display: ${selectedBatch ? 'none' : 'flex'} !important; border-right: none !important; }
@@ -212,31 +235,66 @@ const ActionRecommendations = () => {
                 .batch-item:hover { background-color: ${isDark ? '#334155' : '#f1f5f9'}; }
             `}</style>
             
-            <nav style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', backgroundColor: navBg, color: 'white' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '20px', letterSpacing: '1px' }}>
-                    FIROS <span style={{ color: '#C8A96E', fontSize: '14px', marginLeft: '8px' }}>NESTLÉ LANKA</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                    <button onClick={toggleTheme} style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>
+            <nav style={{
+                flexShrink: 0,
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                padding: '20px 40px',
+                background: 'transparent',
+                position: 'sticky',
+                top: 0,
+                zIndex: 100
+            }}>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '15px',
+                    background: isDark ? 'rgba(30, 41, 59, 0.4)' : 'rgba(255, 255, 255, 0.4)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    padding: '8px 15px',
+                    borderRadius: '20px',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
+                }}>
+                    <button onClick={toggleTheme} style={{
+                        background: 'rgba(255, 255, 255, 0.2)',
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        fontSize: '16px',
+                        cursor: 'pointer',
+                        borderRadius: '50%',
+                        width: '34px',
+                        height: '34px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: isDark ? '#f8fafc' : '#1e293b'
+                    }}>
                         {isDark ? <span>☀️</span> : <span>🌙</span>}
                     </button>
-                    <button onClick={handleLogout} style={{ background: 'rgba(0,0,0,0.2)', border: 'none', color: 'white', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-                        Logout
-                    </button>
+                    <button onClick={handleLogout} style={{
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        color: '#ef4444',
+                        fontWeight: '700',
+                        padding: '6px 14px',
+                        fontSize: '13px',
+                        borderRadius: '12px',
+                        cursor: 'pointer'
+                    }}>Logout</button>
                 </div>
             </nav>
 
-            <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-                <div className="panel-left" style={{ width: '380px', flexShrink: 0, display: 'flex', flexDirection: 'column', backgroundColor: cardBgColor, borderRight: `1px solid ${isDark ? '#334155' : '#e2e8f0'}` }}>
+            <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '0 40px 40px 40px' }}>
+                <div style={{ marginBottom: '24px' }}>
+                    <h1 style={{ margin: 0, fontSize: '32px', fontWeight: '900', color: isDark ? '#f8fafc' : '#3D1C02' }}>Dispatch Control Centre</h1>
+                    <p style={{ margin: '8px 0 0 0', color: textMuted, fontSize: '15px' }}>Strategic inventory movement & clearance optimization</p>
+                </div>
+                <div style={{ display: 'flex', gap: '30px', minHeight: '85vh', backgroundColor: isDark ? 'rgba(30, 41, 59, 0.5)' : 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)', borderRadius: '30px', border: `1px solid ${isDark ? '#334155' : 'rgba(200, 169, 110, 0.2)'}`, boxShadow: '0 10px 30px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
+                    <div className="panel-left" style={{ width: '400px', flexShrink: 0, display: 'flex', flexDirection: 'column', backgroundColor: isDark ? '#1e293b' : 'rgba(255, 255, 255, 0.6)', borderRight: `1px solid ${isDark ? '#334155' : 'rgba(200, 169, 110, 0.2)'}` }}>
                     
-                    <div style={{ padding: '24px', borderBottom: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`, flexShrink: 0 }}>
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            style={{ background: 'transparent', border: 'none', color: isDark ? '#60a5fa' : '#2563eb', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', padding: 0 }}
-                        >
-                            <span>←</span> Dashboard
-                        </button>
-                        <h1 style={{ margin: '0 0 16px 0', fontSize: '24px' }}>Dispatch Control Centre</h1>
+                    <div style={{ padding: '24px', borderBottom: `1px solid ${isDark ? '#334155' : 'rgba(200, 169, 110, 0.2)'}`, flexShrink: 0 }}>
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                             <div style={{ padding: '4px 8px', borderRadius: '16px', backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : '#eff6ff', color: '#3b82f6', fontSize: '12px', fontWeight: 'bold' }}>
                                 Queue: {recommendations.total_in_queue}
@@ -309,7 +367,7 @@ const ActionRecommendations = () => {
                     </div>
                 </div>
 
-                <div className="panel-right" style={{ flex: 1, backgroundColor: bgColor, overflowY: 'auto' }}>
+                <div className="panel-right" style={{ flex: 1, padding: '48px', backgroundColor: isDark ? 'transparent' : 'rgba(255, 255, 255, 0.2)' }}>
                     {!selectedBatch ? (
                         <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: textMuted, fontWeight: 'bold' }}>
                             Select a batch to view details and take action
@@ -374,11 +432,14 @@ const ActionRecommendations = () => {
                                     fontStyle: 'italic',
                                     backgroundColor: isHigh ? (isDark ? 'rgba(239, 68, 68, 0.1)' : '#fef2f2') : (isMedium ? (isDark ? 'rgba(245, 158, 11, 0.1)' : '#fffbeb') : (isDark ? 'rgba(34, 197, 94, 0.1)' : '#f0fdf4')),
                                     color: (isDark ? textColor : '#334155'),
-                                    borderLeft: `3px solid ${badgeColor}`,
-                                    padding: '24px',
-                                    borderRadius: '12px',
+                                    borderLeft: `5px solid ${badgeColor}`,
+                                    padding: '28px',
+                                    borderRadius: '24px',
                                     marginBottom: '32px',
-                                    lineHeight: '1.6'
+                                    lineHeight: '1.7',
+                                    fontSize: '16px',
+                                    boxShadow: '0 4px 15px rgba(0,0,0,0.02)',
+                                    border: `1px solid ${isDark ? 'transparent' : 'rgba(200, 169, 110, 0.1)'}`
                                 }}>
                                     "{batch.recommendation}"
                                 </div>
@@ -566,7 +627,8 @@ const ActionRecommendations = () => {
                 </div>
             )}
         </div>
-    );
+    </div>
+  );
 };
 
 export default ActionRecommendations;

@@ -1,6 +1,6 @@
 html {
   background-color: #2A1301; /* Themes background color */
-  height: 100%;
+  min-height: 100%;
 }
 
 body {
@@ -11,8 +11,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: transparent; /* Allows html background to fill gaps under zoom */
-  zoom: 0.9; /* Simulates panoramic view */
-  min-height: calc(100vh / 0.9); /* Compensates for zoom to fill physical screen */
+  zoom: 0.8; /* Simulates panoramic view */
+  min-height: calc(100vh / 0.8); /* Compensates for zoom to fill physical screen */
   display: flex;
   flex-direction: column;
   cursor: default; /* Prevents text cursor on background */
