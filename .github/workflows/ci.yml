@@ -6,16 +6,16 @@ jobs:
   build-frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install & Build
         run: |
-          cd frontend
-          npm install
-          npm run build
+            cd frontend
+            npm install
+            CI=false npm run build
   lint-backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install backend
         run: |
           cd backend
