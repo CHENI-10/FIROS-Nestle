@@ -1,0 +1,22 @@
+name: FIROS CI
+on:
+  push:
+    branches: [main]
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install & Build
+        run: |
+          cd frontend
+          npm install
+          npm run build
+  lint-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install backend
+        run: |
+          cd backend
+          npm install
