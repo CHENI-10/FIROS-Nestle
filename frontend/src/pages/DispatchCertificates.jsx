@@ -3,6 +3,40 @@ import { useNavigate } from 'react-router-dom';
 import Pagination from '../components/Pagination';
 import './DispatchCertificates.css';
 
+const CopyBadge = ({ batchId }) => {
+    const [copied, setCopied] = useState(false);
+    return (
+        <span 
+            onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(batchId);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            }}
+            style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '4px 10px', borderRadius: '8px', 
+                background: copied ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.08)',
+                color: copied ? '#10b981' : 'inherit',
+                border: `1px solid ${copied ? 'rgba(16, 185, 129, 0.3)' : 'transparent'}`,
+                fontFamily: 'monospace', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: copied ? '0 4px 12px rgba(16, 185, 129, 0.15)' : 'none'
+            }}
+            title={copied ? "Copied!" : "Copy Batch ID"}
+            onMouseEnter={e => !copied && (e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)', e.currentTarget.style.color = '#3b82f6')}
+            onMouseLeave={e => !copied && (e.currentTarget.style.background = 'rgba(100, 116, 139, 0.08)', e.currentTarget.style.color = 'inherit')}
+        >
+            {batchId}
+            {copied ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            ) : (
+                <svg style={{ opacity: 0.6 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            )}
+        </span>
+    );
+};
+
 const DispatchCertificates = () => {
     const navigate = useNavigate();
     const [theme, setTheme] = useState(sessionStorage.getItem('theme') || 'light');
@@ -107,13 +141,10 @@ const DispatchCertificates = () => {
     };
 
     useEffect(() => {
-        if (activeTab === 'dispatches') {
-            fetchDispatches(dispatchPage);
-        } else {
-            fetchClearances(clearancePage);
-        }
+        fetchDispatches(dispatchPage);
+        fetchClearances(clearancePage);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeTab, dispatchPage, clearancePage]);
+    }, [dispatchPage, clearancePage]);
 
     const handleDispatchPageChange = (newPage) => {
         setDispatchPage(newPage);
@@ -175,6 +206,53 @@ const DispatchCertificates = () => {
             setSuccessMsg('Clearance Pickup Verified Successfully.');
             await fetchClearances(clearancePage);
         } catch (err) {
+            setCollectError(err.message);
+        } finally {
+            setIsCollecting(false);
+        }
+    };
+
+    const processBulkCollection = async (distributorName) => {
+        setIsCollecting(true);
+        setCollectError('');
+        const token = sessionStorage.getItem('token');
+        try {
+            const dispatchIds = dispatches
+                .filter(d => d.distributor_name === distributorName && !d.collected_timestamp && d.status !== 'returned')
+                .map(d => d.dispatch_id);
+                
+            const clearanceIds = clearances
+                .filter(c => c.distributor_name === distributorName && !c.collected_timestamp)
+                .map(c => c.clearance_id);
+
+            const promises = [];
+            
+            dispatchIds.forEach(id => {
+                promises.push(
+                    fetch(`/api/dashboard/dispatches/${id}/collect`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` }})
+                    .then(async r => { if (!r.ok) { const err = await r.json().catch(()=>({})); throw new Error(err.error || `Failed standard dispatch ${id}`); } })
+                );
+            });
+
+            clearanceIds.forEach(id => {
+                promises.push(
+                    fetch(`/api/dashboard/clearance/${id}/collect`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` }})
+                    .then(async r => { if (!r.ok) { const err = await r.json().catch(()=>({})); throw new Error(err.error || `Failed clearance ${id}`); } })
+                );
+            });
+
+            await Promise.all(promises);
+
+            setConfirmCollectId(null);
+            setConfirmClearanceId(null);
+            setSuccessMsg(`Successfully verified physical handover for all ${dispatchIds.length + clearanceIds.length} batches across ledgers!`);
+            if (selectedCert) setSelectedCert(null);
+            
+            await fetchDispatches(dispatchPage);
+            await fetchClearances(clearancePage);
+
+        } catch (err) {
+            console.error(err);
             setCollectError(err.message);
         } finally {
             setIsCollecting(false);
@@ -323,7 +401,7 @@ const DispatchCertificates = () => {
                                                         <td className="dc-cell-bold">#{record.dispatch_id}</td>
                                                         <td>
                                                             <div className="dc-cell-product-name">{record.product_name}</div>
-                                                            <div className="dc-cell-sub" style={{ color: textMuted }}>Batch: {record.batch_id}</div>
+                                                            <div className="dc-cell-sub" style={{ color: textMuted, display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>Batch: <CopyBadge batchId={record.batch_id} /></div>
                                                         </td>
                                                         <td>
                                                             <div className="dc-cell-bold">{record.distributor_name}</div>
@@ -408,7 +486,7 @@ const DispatchCertificates = () => {
                                                     <td className="dc-cell-bold">#{record.clearance_id}</td>
                                                     <td>
                                                         <div className="dc-cell-product-name">{record.product_name}</div>
-                                                        <div className="dc-cell-sub" style={{ color: textMuted }}>Batch: {record.batch_id}</div>
+                                                        <div className="dc-cell-sub" style={{ color: textMuted, display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>Batch: <CopyBadge batchId={record.batch_id} /></div>
                                                     </td>
                                                     <td>
                                                         <div className="dc-cell-bold">{record.distributor_name || (record.reason === 'long in warehouse' ? 'Expired Salvage' : 'Direct Clearance')}</div>
@@ -684,71 +762,239 @@ const DispatchCertificates = () => {
             })()}
 
             {/* Native Alert Overlays */}
-            {confirmCollectId && (
-                <div className="dc-confirm-backdrop">
-                    <div className="dc-confirm-box" style={{ backgroundColor: cardBgColor, border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}` }}>
-                        <h3 className="dc-confirm-title">Authorize Handover</h3>
-                        <p className="dc-confirm-body" style={{ color: textMuted }}>
-                            You are verifying that the distributor has physically picked up this batch. This action will be permanently recorded in the immutable ledger and cannot be undone.
-                        </p>
-                        {collectError && <div className="dc-confirm-error">{collectError}</div>}
-                        <div className="dc-confirm-actions">
-                            <button
-                                onClick={() => { setConfirmCollectId(null); setCollectError(''); }}
-                                className="dc-btn-cancel"
-                                style={{ border: `1px solid ${isDark ? '#475569' : '#cbd5e1'}`, color: textColor }}
-                            >Cancel</button>
-                            <button
-                                onClick={processCollection}
-                                disabled={isCollecting}
-                                className="dc-btn-confirm-green"
-                                style={{ cursor: isCollecting ? 'wait' : 'pointer', opacity: isCollecting ? 0.7 : 1 }}
-                            >{isCollecting ? 'Verifying...' : 'Confirm Registration'}</button>
+            {confirmCollectId && (() => {
+                const currentRecord = dispatches.find(d => d.dispatch_id === confirmCollectId);
+                const distributorName = currentRecord ? currentRecord.distributor_name : '';
+                
+                const otherPendingDispatches = distributorName ? dispatches.filter(d => 
+                    d.distributor_name === distributorName && 
+                    !d.collected_timestamp && 
+                    d.dispatch_id !== confirmCollectId &&
+                    d.status !== 'returned'
+                ) : [];
+
+                const pendingClearances = distributorName ? clearances.filter(c =>
+                    c.distributor_name === distributorName &&
+                    !c.collected_timestamp
+                ) : [];
+
+                const totalOther = otherPendingDispatches.length + pendingClearances.length;
+                const otherBatchIds = [
+                    ...otherPendingDispatches.map(p => p.batch_id),
+                    ...pendingClearances.map(p => p.batch_id)
+                ].join(', ');
+
+                return (
+                    <div className="dc-confirm-backdrop">
+                        <div className="dc-confirm-box" style={{ backgroundColor: cardBgColor, border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}` }}>
+                            <h3 className="dc-confirm-title">Authorize Handover</h3>
+                            <p className="dc-confirm-body" style={{ color: textMuted }}>
+                                You are verifying that the distributor has physically picked up this batch. This action will be permanently recorded in the immutable ledger and cannot be undone.
+                            </p>
+                            {totalOther > 0 && (
+                                <div style={{
+                                    marginTop: '15px',
+                                    marginBottom: '15px',
+                                    padding: '12px',
+                                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                                    border: '1px solid #f59e0b',
+                                    borderRadius: '8px',
+                                    color: isDark ? '#fcd34d' : '#b45309',
+                                    fontSize: '13px',
+                                    lineHeight: '1.4'
+                                }}>
+                                    <div style={{ marginBottom: '10px' }}>
+                                        <strong>⚠️ Wait!</strong> <b>{distributorName}</b> has <strong>{totalOther}</strong> other pending batch(es) ({otherBatchIds}) across ledgers. Make sure they pick up all assigned batches during this visit!
+                                    </div>
+                                    <button 
+                                        onClick={() => processBulkCollection(distributorName)}
+                                        disabled={isCollecting}
+                                        style={{
+                                            background: '#f59e0b',
+                                            color: '#fff',
+                                            border: 'none',
+                                            padding: '8px 14px',
+                                            borderRadius: '6px',
+                                            cursor: isCollecting ? 'wait' : 'pointer',
+                                            fontWeight: 'bold',
+                                            fontSize: '12px'
+                                        }}
+                                    >
+                                        {isCollecting ? 'Verifying...' : `Collect All ${totalOther + 1} Batches Now`}
+                                    </button>
+                                </div>
+                            )}
+                            {collectError && <div className="dc-confirm-error">{collectError}</div>}
+                            <div className="dc-confirm-actions">
+                                <button
+                                    onClick={() => { setConfirmCollectId(null); setCollectError(''); }}
+                                    className="dc-btn-cancel"
+                                    style={{ border: `1px solid ${isDark ? '#475569' : '#cbd5e1'}`, color: textColor }}
+                                >Cancel</button>
+                                <button
+                                    onClick={processCollection}
+                                    disabled={isCollecting}
+                                    className="dc-btn-confirm-green"
+                                    style={{ cursor: isCollecting ? 'wait' : 'pointer', opacity: isCollecting ? 0.7 : 1 }}
+                                >{isCollecting ? 'Verifying...' : (totalOther > 0 ? 'Collect ONLY This Batch' : 'Confirm Registration')}</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-            {confirmClearanceId && (
-                <div className="dc-clr-confirm-backdrop">
-                    <div className="dc-clr-confirm-box" style={{ backgroundColor: cardBgColor }}>
-                        <h3 className="dc-confirm-title" style={{ color: textColor }}>Verify Clearance Handover</h3>
-                        <p className="dc-confirm-body" style={{ color: textMuted }}>
-                            You are confirming the physical exit of this clearance batch from the facility. This action is immutable and will finalize the audit trail.
-                        </p>
-                        {collectError && <div className="dc-confirm-error">{collectError}</div>}
-                        <div className="dc-confirm-actions">
-                            <button
-                                onClick={() => { setConfirmClearanceId(null); setCollectError(''); }}
-                                className="dc-btn-cancel"
-                                style={{ border: `1px solid ${isDark ? '#475569' : '#cbd5e1'}`, color: textColor }}
-                            >Cancel</button>
-                            <button
-                                onClick={processClearancePickup}
-                                disabled={isCollecting}
-                                className="dc-btn-confirm-blue"
-                                style={{ cursor: isCollecting ? 'wait' : 'pointer', opacity: isCollecting ? 0.7 : 1 }}
-                            >{isCollecting ? 'Verifying...' : 'Verify Physical Exit'}</button>
+                );
+            })()}
+            {confirmClearanceId && (() => {
+                const currentRecord = clearances.find(d => d.clearance_id === confirmClearanceId);
+                const distributorName = currentRecord ? currentRecord.distributor_name : '';
+
+                const pendingDispatches = distributorName ? dispatches.filter(d => 
+                    d.distributor_name === distributorName && 
+                    !d.collected_timestamp && 
+                    d.status !== 'returned'
+                ) : [];
+
+                const otherPendingClearances = distributorName ? clearances.filter(c => 
+                    c.distributor_name === distributorName && 
+                    !c.collected_timestamp && 
+                    c.clearance_id !== confirmClearanceId
+                ) : [];
+
+                const totalOther = pendingDispatches.length + otherPendingClearances.length;
+                const otherBatchIds = [
+                    ...pendingDispatches.map(p => p.batch_id),
+                    ...otherPendingClearances.map(p => p.batch_id)
+                ].join(', ');
+
+                return (
+                    <div className="dc-clr-confirm-backdrop">
+                        <div className="dc-clr-confirm-box" style={{ backgroundColor: cardBgColor }}>
+                            <h3 className="dc-confirm-title" style={{ color: textColor }}>Verify Clearance Handover</h3>
+                            <p className="dc-confirm-body" style={{ color: textMuted }}>
+                                You are confirming the physical exit of this clearance batch from the facility. This action is immutable and will finalize the audit trail.
+                            </p>
+                            {totalOther > 0 && (
+                                <div style={{
+                                    marginTop: '15px',
+                                    marginBottom: '15px',
+                                    padding: '12px',
+                                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                                    border: '1px solid #f59e0b',
+                                    borderRadius: '8px',
+                                    color: isDark ? '#fcd34d' : '#b45309',
+                                    fontSize: '13px',
+                                    lineHeight: '1.4'
+                                }}>
+                                    <div style={{ marginBottom: '10px' }}>
+                                        <strong>⚠️ Wait!</strong> <b>{distributorName}</b> has <strong>{totalOther}</strong> other pending batch(es) ({otherBatchIds}) across ledgers. Make sure they pick up all assigned batches during this visit!
+                                    </div>
+                                    <button 
+                                        onClick={() => processBulkCollection(distributorName)}
+                                        disabled={isCollecting}
+                                        style={{
+                                            background: '#f59e0b',
+                                            color: '#fff',
+                                            border: 'none',
+                                            padding: '8px 14px',
+                                            borderRadius: '6px',
+                                            cursor: isCollecting ? 'wait' : 'pointer',
+                                            fontWeight: 'bold',
+                                            fontSize: '12px'
+                                        }}
+                                    >
+                                        {isCollecting ? 'Verifying...' : `Collect All ${totalOther + 1} Batches Now`}
+                                    </button>
+                                </div>
+                            )}
+                            {collectError && <div className="dc-confirm-error">{collectError}</div>}
+                            <div className="dc-confirm-actions">
+                                <button
+                                    onClick={() => { setConfirmClearanceId(null); setCollectError(''); }}
+                                    className="dc-btn-cancel"
+                                    style={{ border: `1px solid ${isDark ? '#475569' : '#cbd5e1'}`, color: textColor }}
+                                >Cancel</button>
+                                <button
+                                    onClick={processClearancePickup}
+                                    disabled={isCollecting}
+                                    className="dc-btn-confirm-blue"
+                                    style={{ cursor: isCollecting ? 'wait' : 'pointer', opacity: isCollecting ? 0.7 : 1 }}
+                                >{isCollecting ? 'Verifying...' : (totalOther > 0 ? 'Collect ONLY This Batch' : 'Verify Physical Exit')}</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {successMsg && (
-                <div className="dc-success-backdrop">
-                    <div className="dc-success-box" style={{ backgroundColor: cardBgColor, border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}` }}>
-                        <div className="dc-success-icon-ring">
-                            <div className="dc-success-checkmark" />
-                        </div>
-                        <h3 className="dc-success-title">Log Updated</h3>
-                        <p className="dc-success-msg" style={{ color: textMuted }}>{successMsg}</p>
-                        <button
-                            onClick={() => setSuccessMsg('')}
-                            className="dc-btn-success-close"
-                            style={{ backgroundColor: isDark ? '#334155' : '#e2e8f0', color: textColor }}
-                        >Close</button>
+                <div className="modern-toast">
+                    <div className="modern-toast-content">
+                        <div className="modern-toast-icon">✓</div>
+                        <div className="modern-toast-text">{successMsg}</div>
                     </div>
+                    <div className="modern-toast-progress-bar"></div>
                 </div>
             )}
+            
+            <style>{`
+                @keyframes slideInRight {
+                    0% { transform: translateX(100%) scale(0.95); opacity: 0; }
+                    100% { transform: translateX(0) scale(1); opacity: 1; }
+                }
+                @keyframes progressShrink {
+                    0% { width: 100%; }
+                    100% { width: 0%; }
+                }
+                .modern-toast {
+                    position: fixed;
+                    bottom: 30px;
+                    right: 30px;
+                    background: rgba(15, 23, 42, 0.85);
+                    backdrop-filter: blur(12px);
+                    -webkit-backdrop-filter: blur(12px);
+                    border: 1px solid rgba(255,255,255,0.1);
+                    color: white;
+                    padding: 16px 20px;
+                    border-radius: 12px;
+                    box-shadow: 0 20px 40px -10px rgba(0,0,0,0.3);
+                    z-index: 9999;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    min-width: 300px;
+                    animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                    overflow: hidden;
+                }
+                .modern-toast-content {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+                .modern-toast-icon {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 28px;
+                    height: 28px;
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                    border-radius: 50%;
+                    color: white;
+                    font-size: 14px;
+                    font-weight: bold;
+                    flex-shrink: 0;
+                    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
+                }
+                .modern-toast-text {
+                    font-size: 14px;
+                    font-weight: 600;
+                    line-height: 1.4;
+                    letter-spacing: 0.2px;
+                }
+                .modern-toast-progress-bar {
+                    height: 3px;
+                    background: rgba(16, 185, 129, 0.8);
+                    border-radius: 3px;
+                    animation: progressShrink 3.5s linear forwards;
+                    margin: 0 -20px -16px -20px;
+                }
+            `}</style>
         </div>
     );
 };

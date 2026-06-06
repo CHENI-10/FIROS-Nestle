@@ -8,6 +8,40 @@ const Spinner = () => (
   </div>
 );
 
+const CopyBadge = ({ batchId }) => {
+    const [copied, setCopied] = useState(false);
+    return (
+        <span 
+            onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(batchId);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            }}
+            style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '4px 10px', borderRadius: '8px', 
+                background: copied ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.08)',
+                color: copied ? '#10b981' : 'inherit',
+                border: `1px solid ${copied ? 'rgba(16, 185, 129, 0.3)' : 'transparent'}`,
+                fontFamily: 'monospace', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: copied ? '0 4px 12px rgba(16, 185, 129, 0.15)' : 'none'
+            }}
+            title={copied ? "Copied!" : "Copy Batch ID"}
+            onMouseEnter={e => !copied && (e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)', e.currentTarget.style.color = '#3b82f6')}
+            onMouseLeave={e => !copied && (e.currentTarget.style.background = 'rgba(100, 116, 139, 0.08)', e.currentTarget.style.color = 'inherit')}
+        >
+            {batchId}
+            {copied ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            ) : (
+                <svg style={{ opacity: 0.6 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            )}
+        </span>
+    );
+};
+
 const ClearanceRecommendations = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -278,8 +312,8 @@ const ClearanceRecommendations = () => {
                           <h3 style={{ margin: 0, fontSize: '17px' }}>{batch.product_name}</h3>
                           <span style={{ backgroundColor: isDark ? '#334155' : '#f1f5f9', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', color: muted }}>Zone {batch.zone_id}</span>
                         </div>
-                        <div style={{ color: muted, fontSize: '13px', marginBottom: '12px' }}>
-                          Batch: {batch.batch_id} | Days in WH: {batch.days_in_warehouse} | Expiry: {new Date(batch.expiry_date).toLocaleDateString()}
+                        <div style={{ color: muted, fontSize: '13px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          Batch: <CopyBadge batchId={batch.batch_id} /> | Days in WH: {batch.days_in_warehouse} | Expiry: {new Date(batch.expiry_date).toLocaleDateString()}
                         </div>
                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                           <span style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#ef4444', padding: '5px 10px', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px' }}>FRS: {Number(batch.frs_score).toFixed(1)}</span>
@@ -338,7 +372,7 @@ const ClearanceRecommendations = () => {
             <div style={{ padding: '32px', overflowY: 'auto' }}>
               {/* Batch summary */}
               <div style={{ display: 'flex', justifyContent: 'space-between', backgroundColor: isDark ? '#0f172a' : '#faf7f2', padding: '14px 16px', borderRadius: '8px', marginBottom: '20px' }}>
-                <div><div style={{ fontSize: '11px', color: muted, fontWeight: 'bold' }}>BATCH ID</div><div style={{ fontWeight: 'bold' }}>{selectedBatch.batch_id}</div></div>
+                <div><div style={{ fontSize: '11px', color: muted, fontWeight: 'bold', marginBottom: '4px' }}>BATCH ID</div><CopyBadge batchId={selectedBatch.batch_id} /></div>
                 <div><div style={{ fontSize: '11px', color: muted, fontWeight: 'bold' }}>FRS SCORE</div><div style={{ fontWeight: 'bold', color: '#ef4444' }}>{Number(selectedBatch.frs_score).toFixed(1)}</div></div>
                 <div style={{ textAlign: 'right' }}><div style={{ fontSize: '11px', color: muted, fontWeight: 'bold' }}>PROMO DISCOUNT</div><div style={{ fontWeight: 'bold', color: getPromoColor(selectedBatch.promotion_type) }}>{selectedBatch.discount_percent}% OFF</div></div>
               </div>
@@ -436,9 +470,13 @@ const ClearanceRecommendations = () => {
       )}
 
       {successMsg && (
-        <div style={{ position: 'fixed', bottom: '24px', right: '24px', backgroundColor: '#10b981', color: 'white', padding: '16px 24px', borderRadius: '8px', fontWeight: 'bold', boxShadow: '0 10px 20px rgba(0,0,0,0.15)', zIndex: 2000, display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span>✓</span> {successMsg}
-        </div>
+          <div className="modern-toast">
+              <div className="modern-toast-content">
+                  <div className="modern-toast-icon">✓</div>
+                  <div className="modern-toast-text">{successMsg}</div>
+              </div>
+              <div className="modern-toast-progress-bar"></div>
+          </div>
       )}
 
       <style>{`
@@ -446,6 +484,67 @@ const ClearanceRecommendations = () => {
         @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .fluid-transition { animation: fadeSlideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes pulseSkeleton { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        @keyframes slideInRight {
+            0% { transform: translateX(100%) scale(0.95); opacity: 0; }
+            100% { transform: translateX(0) scale(1); opacity: 1; }
+        }
+        @keyframes progressShrink {
+            0% { width: 100%; }
+            100% { width: 0%; }
+        }
+        .modern-toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.3);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-width: 300px;
+            animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            overflow: hidden;
+        }
+        .modern-toast-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .modern-toast-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 50%;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
+        }
+        .modern-toast-text {
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.4;
+            letter-spacing: 0.2px;
+        }
+        .modern-toast-progress-bar {
+            height: 3px;
+            background: rgba(16, 185, 129, 0.8);
+            border-radius: 3px;
+            animation: progressShrink 3.5s linear forwards;
+            margin: 0 -20px -16px -20px;
+        }
       `}</style>
     </div>
   );

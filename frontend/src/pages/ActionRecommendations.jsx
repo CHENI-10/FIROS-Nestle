@@ -1,6 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
+const CopyBadge = ({ batchId }) => {
+    const [copied, setCopied] = useState(false);
+    return (
+        <span 
+            onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(batchId);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            }}
+            style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '4px 10px', borderRadius: '8px', 
+                background: copied ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.08)',
+                color: copied ? '#10b981' : 'inherit',
+                border: `1px solid ${copied ? 'rgba(16, 185, 129, 0.3)' : 'transparent'}`,
+                fontFamily: 'monospace', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: copied ? '0 4px 12px rgba(16, 185, 129, 0.15)' : 'none'
+            }}
+            title={copied ? "Copied!" : "Copy Batch ID"}
+            onMouseEnter={e => !copied && (e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)', e.currentTarget.style.color = '#3b82f6')}
+            onMouseLeave={e => !copied && (e.currentTarget.style.background = 'rgba(100, 116, 139, 0.08)', e.currentTarget.style.color = 'inherit')}
+        >
+            {batchId}
+            {copied ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            ) : (
+                <svg style={{ opacity: 0.6 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            )}
+        </span>
+    );
+};
+
 const ActionRecommendations = () => {
     const [theme, setTheme] = useState(sessionStorage.getItem('theme') || 'light');
     const [recommendations, setRecommendations] = useState({
@@ -24,8 +58,7 @@ const ActionRecommendations = () => {
     // New states for real API flow
     const [isProcessing, setIsProcessing] = useState(false);
     const [clearanceReason, setClearanceReason] = useState('');
-    const [showSuccessModal, setShowSuccessModal] = useState(false);
-    const [completedActionType, setCompletedActionType] = useState(null);
+    const [successMsg, setSuccessMsg] = useState('');
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -211,8 +244,8 @@ const ActionRecommendations = () => {
             // Re-fetch to clear this batch organically from the UI queue
             await fetchRecommendations();
 
-            setCompletedActionType(actionType);
-            setShowSuccessModal(true);
+            setSuccessMsg(`Action confirmed! Ledger updated for batch ${payload.batch_id}.`);
+            setTimeout(() => setSuccessMsg(''), 4000);
 
         } catch (err) {
             console.error('Error confirming action:', err);
@@ -355,8 +388,8 @@ const ActionRecommendations = () => {
                                                     {isHigh ? 'CLEARANCE' : (isMedium ? 'PRIORITY' : 'NORMAL')}
                                                 </div>
                                             </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: textMuted }}>
-                                                <span>{batch.batch_id}</span>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: textMuted, alignItems: 'center' }}>
+                                                <CopyBadge batchId={batch.batch_id} />
                                                 <span>FRS: {Number(batch.frs_score).toFixed(0)} | {batch.days_in_warehouse}d</span>
                                             </div>
                                         </div>
@@ -387,8 +420,8 @@ const ActionRecommendations = () => {
 
                                 <div style={{ marginBottom: '32px' }}>
                                     <h2 style={{ fontSize: '32px', margin: '0 0 16px 0' }}>{batch.product_name}</h2>
-                                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                                        <span style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: isDark ? '#1e293b' : '#e2e8f0', fontSize: '14px', fontWeight: 'bold' }}>{batch.batch_id}</span>
+                                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                        <CopyBadge batchId={batch.batch_id} />
                                         <span style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#e0e7ff', color: isDark ? '#818cf8' : '#4338ca', fontSize: '14px', fontWeight: 'bold' }}>Zone {batch.zone_id}</span>
                                         <span style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: isHigh ? '#fef2f2' : (isMedium ? '#fffbeb' : '#f0fdf4'), color: badgeColor, fontSize: '14px', fontWeight: 'bold' }}>
                                             {isHigh ? 'CLEARANCE' : (isMedium ? 'PRIORITY DISPATCH' : 'NORMAL DISPATCH')}
@@ -497,8 +530,8 @@ const ActionRecommendations = () => {
                         <div style={{ padding: '24px' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
                                 <div>
-                                    <div style={{ fontSize: '13px', color: textMuted, marginBottom: '4px' }}>Batch ID</div>
-                                    <div style={{ fontWeight: 'bold', fontSize: '15px' }}>{selectedBatch.batch_id}</div>
+                                    <div style={{ fontSize: '13px', color: textMuted, marginBottom: '8px' }}>Batch ID</div>
+                                    <CopyBadge batchId={selectedBatch.batch_id} />
                                 </div>
                                 <div>
                                     <div style={{ fontSize: '13px', color: textMuted, marginBottom: '4px' }}>FRS Score</div>
@@ -590,42 +623,78 @@ const ActionRecommendations = () => {
                 </div>
             )}
             
-            {/* Success Modal */}
-            {showSuccessModal && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ backgroundColor: cardBgColor, padding: '40px', borderRadius: '16px', width: '100%', maxWidth: '440px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
-                        <div style={{ width: '64px', height: '64px', margin: '0 auto 24px', borderRadius: '50%', border: '4px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <div style={{ width: '18px', height: '32px', borderBottom: '4px solid #10b981', borderRight: '4px solid #10b981', transform: 'rotate(45deg)', marginTop: '-8px' }} />
-                        </div>
-                        <h2 style={{ margin: '0 0 16px 0', fontSize: '28px' }}>Action Confirmed</h2>
-                        <p style={{ color: textMuted, marginBottom: '32px', fontSize: '15px' }}>The batch has been successfully removed from the active queue and officially logged in the system ledger.</p>
-                        
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            <button 
-                                onClick={() => { 
-                                    setShowSuccessModal(false); 
-                                    if (completedActionType === 'clearance') {
-                                        navigate('/dashboard');
-                                    } else {
-                                        navigate('/certificates'); 
-                                    }
-                                }}
-                                style={{ background: isDark ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : '#ffffff', color: isDark ? '#C8A96E' : '#3D1C02', border: isDark ? '2px solid #C8A96E' : '2px solid #3D1C02', padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}
-                                onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
-                                onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
-                            >
-                                <span style={{ marginRight: '8px', fontSize: '14px' }}>[ LEDGER ]</span> {completedActionType === 'clearance' ? 'View Dashboard Inventory' : 'View Certificate Vault'}
-                            </button>
-                            <button 
-                                onClick={() => setShowSuccessModal(false)}
-                                style={{ background: 'transparent', border: `1px solid ${isDark ? '#475569' : '#cbd5e1'}`, color: textColor, padding: '16px', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}
-                            >
-                                Continue Recommending
-                            </button>
-                        </div>
+            {successMsg && (
+                <div className="modern-toast">
+                    <div className="modern-toast-content">
+                        <div className="modern-toast-icon">✓</div>
+                        <div className="modern-toast-text">{successMsg}</div>
                     </div>
+                    <div className="modern-toast-progress-bar"></div>
                 </div>
             )}
+            
+            <style>{`
+                @keyframes slideInRight {
+                    0% { transform: translateX(100%) scale(0.95); opacity: 0; }
+                    100% { transform: translateX(0) scale(1); opacity: 1; }
+                }
+                @keyframes progressShrink {
+                    0% { width: 100%; }
+                    100% { width: 0%; }
+                }
+                .modern-toast {
+                    position: fixed;
+                    bottom: 30px;
+                    right: 30px;
+                    background: rgba(15, 23, 42, 0.85);
+                    backdrop-filter: blur(12px);
+                    -webkit-backdrop-filter: blur(12px);
+                    border: 1px solid rgba(255,255,255,0.1);
+                    color: white;
+                    padding: 16px 20px;
+                    border-radius: 12px;
+                    box-shadow: 0 20px 40px -10px rgba(0,0,0,0.3);
+                    z-index: 9999;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    min-width: 300px;
+                    animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                    overflow: hidden;
+                }
+                .modern-toast-content {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+                .modern-toast-icon {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 28px;
+                    height: 28px;
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                    border-radius: 50%;
+                    color: white;
+                    font-size: 14px;
+                    font-weight: bold;
+                    flex-shrink: 0;
+                    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
+                }
+                .modern-toast-text {
+                    font-size: 14px;
+                    font-weight: 600;
+                    line-height: 1.4;
+                    letter-spacing: 0.2px;
+                }
+                .modern-toast-progress-bar {
+                    height: 3px;
+                    background: rgba(16, 185, 129, 0.8);
+                    border-radius: 3px;
+                    animation: progressShrink 3.5s linear forwards;
+                    margin: 0 -20px -16px -20px;
+                }
+            `}</style>
         </div>
     </div>
   );
