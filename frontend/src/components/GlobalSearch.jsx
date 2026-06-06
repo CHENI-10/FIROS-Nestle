@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import './GlobalSearch.css';
 
@@ -129,7 +130,7 @@ const GlobalSearch = () => {
                 </div>
             )}
 
-            {selectedBatch && (
+            {selectedBatch && createPortal(
                 <div className="batch-modal-overlay" onClick={handleCloseModal}>
                     <div className="batch-modal-content" onClick={e => e.stopPropagation()}>
                         <div className="batch-modal-header">
@@ -238,7 +239,8 @@ const GlobalSearch = () => {
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
