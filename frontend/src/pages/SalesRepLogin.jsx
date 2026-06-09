@@ -57,7 +57,7 @@ const SalesRepLogin = ({ onLoginSuccess }) => {
     <div className="login-wrapper" style={{ overflow: 'hidden' }}>
       <div className="gold-accent-bar"></div>
 
-      <div className="login-split-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 60px)', padding: '20px' }}>
+      <div className="login-split-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(calc(100vh / 0.8) - 60px)', padding: '20px' }}>
 
         {/* Form Panel centered and compact */}
         <div className="login-form-panel" style={{ flex: 'none', width: '100%', maxWidth: '400px', borderRadius: '20px', boxShadow: '0 25px 60px rgba(0,0,0,0.4)', overflow: 'hidden' }}>

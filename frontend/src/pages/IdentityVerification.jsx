@@ -193,7 +193,7 @@ const IdentityVerification = ({ token, onVerified, onLogout }) => {
 
 const styles = {
   container: {
-    minHeight: '100vh',
+    height: 'calc(100vh / 0.8)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',

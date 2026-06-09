@@ -131,7 +131,10 @@ const BatchDetail = () => {
                 justifyContent: 'flex-end',
                 alignItems: 'center',
                 padding: '20px 40px',
-                background: 'transparent',
+                background: theme === 'dark' ? 'rgba(15, 23, 42, 0.85)' : 'rgba(250, 247, 242, 0.85)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                borderBottom: `1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
                 position: 'sticky',
                 top: 0,
                 zIndex: 100
@@ -139,14 +142,7 @@ const BatchDetail = () => {
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '15px',
-                    background: theme === 'dark' ? 'rgba(30, 41, 59, 0.4)' : 'rgba(255, 255, 255, 0.4)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    padding: '8px 15px',
-                    borderRadius: '20px',
-                    border: '1px solid rgba(255, 255, 255, 0.3)',
-                    boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
+                    gap: '15px'
                 }}>
                     <button onClick={() => navigate('/dashboard')} style={{
                         background: 'rgba(200, 169, 110, 0.1)',

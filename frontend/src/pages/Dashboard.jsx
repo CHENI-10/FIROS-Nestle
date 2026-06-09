@@ -91,6 +91,7 @@ const Dashboard = () => {
     const [statusFilter, setStatusFilter] = useState('in_storage');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+    const [copiedBatchId, setCopiedBatchId] = useState(null);
 
     useEffect(() => {
         setCurrentPage(1);
@@ -540,7 +541,31 @@ const Dashboard = () => {
                                 <tbody>
                                     {paginatedBatches.map(b => (
                                         <tr key={b.batch_id} className={`row-${b.risk_band || 'unknown'}-risk`}>
-                                            <td>{b.batch_id}</td>
+                                            <td>
+                                                <span 
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(b.batch_id);
+                                                        setCopiedBatchId(b.batch_id);
+                                                        setTimeout(() => setCopiedBatchId(null), 2000);
+                                                    }}
+                                                    style={{ 
+                                                        fontWeight: 'bold', 
+                                                        cursor: 'pointer',
+                                                        color: copiedBatchId === b.batch_id ? 'var(--green)' : 'inherit',
+                                                        transition: 'color 0.2s',
+                                                        textDecoration: 'none'
+                                                    }}
+                                                    title="Click to copy ID"
+                                                    onMouseOver={(e) => {
+                                                        if (copiedBatchId !== b.batch_id) e.target.style.color = 'var(--nestle-gold-main)';
+                                                    }}
+                                                    onMouseOut={(e) => {
+                                                        if (copiedBatchId !== b.batch_id) e.target.style.color = 'inherit';
+                                                    }}
+                                                >
+                                                    {copiedBatchId === b.batch_id ? 'Copied!' : b.batch_id}
+                                                </span>
+                                            </td>
                                             <td>{b.product_name}</td>
                                             <td>{getZoneName(b.zone_id)}</td>
                                             <td>{b.days_in_warehouse}</td>

@@ -188,8 +188,8 @@ const MarketIntelligence = ({ token, user, verifiedRep, onLogout }) => {
   };
 
   // Styles
-  const containerStyle = { backgroundColor: '#2A1301', minHeight: '100vh', display: 'flex', justifyContent: 'center', padding: '20px 0', fontFamily: 'sans-serif' };
-  const appStyle = { width: '100%', maxWidth: '375px', backgroundColor: '#FAFAF9', borderRadius: '16px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 12px 32px rgba(0,0,0,0.6)', minHeight: '600px' };
+  const containerStyle = { backgroundColor: '#2A1301', height: 'calc(100vh / 0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px 0', fontFamily: 'sans-serif' };
+  const appStyle = { width: '100%', maxWidth: '375px', backgroundColor: '#FAFAF9', borderRadius: '16px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 12px 32px rgba(0,0,0,0.6)', height: 'calc(100vh / 0.8)' };
   const headerStyle = { backgroundColor: '#E8DDD0', padding: '16px 20px', borderBottom: '2px solid #C8A96E', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
   const titleStyle = { color: '#8B5E3C', margin: 0, fontSize: '20px', fontWeight: '900', letterSpacing: '0.5px' };
   const contentStyle = { padding: '20px', flex: 1, overflowY: 'auto' };

@@ -260,9 +260,14 @@ const BatchRegistration = () => {
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '12px 40px',
-          backgroundColor: '#1a0a00',
-          borderBottom: '2px solid #C8A96E',
-          marginBottom: '0'
+          backgroundColor: 'rgba(26, 10, 0, 0.85)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          borderBottom: '2px solid rgba(200, 169, 110, 0.4)',
+          marginBottom: '0',
+          position: 'sticky',
+          top: 0,
+          zIndex: 10
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontSize: '22px', fontWeight: '800', color: '#C8A96E', letterSpacing: '2px' }}>FIROS</span>
@@ -322,7 +327,7 @@ const BatchRegistration = () => {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', backgroundColor: '#fff', padding: '8px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', backgroundColor: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)', padding: '8px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
         <button 
           onClick={() => { setActiveTab('inbound'); setMessage({type:'', text:''}); setShowScanner(false); setFormData(f => ({...f, ean13: ''})); }}
           style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', backgroundColor: activeTab === 'inbound' ? '#5c3a21' : 'transparent', color: activeTab === 'inbound' ? '#fff' : '#64748b', transition: 'all 0.2s' }}

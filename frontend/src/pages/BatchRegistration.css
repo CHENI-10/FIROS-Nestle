@@ -27,9 +27,17 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background-color: var(--bg-color);
+  background: linear-gradient(-45deg, #fcfbfa, #f5eedc, #e6dace, #fcfbfa);
+  background-size: 400% 400%;
+  animation: liquidBg 15s ease infinite;
   font-family: 'Inter', sans-serif;
   padding: 2rem 1rem;
+}
+
+@keyframes liquidBg {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 .registration-header {
@@ -54,11 +62,14 @@
 .registration-card {
   width: 100%;
   max-width: 600px;
-  background: var(--card-bg);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
   padding: 2.5rem;
-  box-shadow: 0 10px 30px rgba(92, 58, 33, 0.08),
-    0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 40px rgba(92, 58, 33, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5);
   animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -146,9 +157,11 @@
 
 /* Scanner Section */
 .scanner-section {
-  background-color: #f8f6f4;
-  border: 1px dashed var(--nestle-brown-light);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px dashed rgba(196, 154, 108, 0.6);
+  border-radius: 16px;
   padding: 1.5rem;
   margin-bottom: 2rem;
 }
@@ -281,13 +294,14 @@
   padding: 0.75rem 1rem;
   font-size: 0.95rem;
   font-family: inherit;
-  border: 1.5px solid var(--border-color);
-  border-radius: 8px;
+  border: 1.5px solid rgba(230, 218, 206, 0.6);
+  border-radius: 12px;
   color: var(--text-dark);
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   box-sizing: border-box;
   outline: none;
-  background-color: white;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(5px);
 }
 
 .form-group input:focus,
@@ -334,23 +348,23 @@
   pointer-events: none;
 }
 
-/* Submit Button */
 .submit-btn {
   margin-top: 1rem;
   padding: 1rem;
   border: none;
-  border-radius: 8px;
-  background-color: var(--nestle-brown-primary);
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--nestle-brown-primary), var(--nestle-brown-medium));
   color: white;
   font-size: 1.05rem;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 54px;
+  box-shadow: 0 4px 15px rgba(92, 58, 33, 0.2);
 }
 
 .submit-btn:hover:not(:disabled) {

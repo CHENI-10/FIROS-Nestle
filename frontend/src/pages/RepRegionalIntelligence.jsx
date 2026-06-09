@@ -249,7 +249,7 @@ const RepRegionalIntelligence = ({ token, verifiedRep, onProceed, onLogout }) =>
 const s = {
   outerWrap: {
     backgroundColor: '#e2e8f0',
-    minHeight: '100vh',
+    height: 'calc(100vh / 0.8)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'flex-start',
@@ -259,7 +259,7 @@ const s = {
     width: '100%',
     maxWidth: '430px',
     backgroundColor: '#f8fafc',
-    minHeight: '100vh',
+    height: 'calc(100vh / 0.8)',
     display: 'flex',
     flexDirection: 'column',
     position: 'relative',
