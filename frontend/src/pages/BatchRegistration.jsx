@@ -141,7 +141,8 @@ const BatchRegistration = () => {
       setFormData(prev => ({
         ...prev,
         productName: response.data.product_name,
-        packSize: response.data.pack_size
+        packSize: response.data.pack_size,
+        zone: response.data.zone_id || prev.zone
       }));
     } catch (error) {
       console.error('Error fetching product:', error);

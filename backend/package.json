@@ -5,7 +5,9 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "build": "cd ../frontend && npm install && npm run build"
+    "build": "cd ../frontend && npm install && npm run build",
+    "seed": "node seed.js",
+    "safe-seed": "node safe_seed.js"
   },
   "keywords": [],
   "author": "",

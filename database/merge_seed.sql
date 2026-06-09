@@ -22,22 +22,22 @@
 -- SAFETY — clean re-run during development
 -- WARNING: deletes ALL data. Comment out before going live.
 -- ============================================================
-DROP TABLE IF EXISTS report_line_items         CASCADE;
-DROP TABLE IF EXISTS sales_rep_reports        CASCADE;
-DROP TABLE IF EXISTS sales_reps               CASCADE;
-DROP TABLE IF EXISTS distributor_scorecards   CASCADE;
-DROP TABLE IF EXISTS return_records           CASCADE;
-DROP TABLE IF EXISTS clearance_records        CASCADE;
-DROP TABLE IF EXISTS dispatch_records         CASCADE;
-DROP TABLE IF EXISTS distributor_records      CASCADE;
-DROP TABLE IF EXISTS alert_records            CASCADE;
-DROP TABLE IF EXISTS freshness_scores         CASCADE;
-DROP TABLE IF EXISTS environmental_logs       CASCADE;
-DROP TABLE IF EXISTS batch_zone_history       CASCADE;
-DROP TABLE IF EXISTS batches                  CASCADE;
-DROP TABLE IF EXISTS products                 CASCADE;
-DROP TABLE IF EXISTS warehouse_zones          CASCADE;
-DROP TABLE IF EXISTS users                    CASCADE;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 -- ============================================================
@@ -52,15 +52,7 @@ DROP TABLE IF EXISTS users                    CASCADE;
 -- Introduced: Prerequisites | Seeded: Sprint 1
 -- Roles: admin, manager, staff, sales_rep
 -- ============================================================
-CREATE TABLE users (
-    user_id        SERIAL        PRIMARY KEY,
-    full_name      VARCHAR(100)  NOT NULL,
-    email          VARCHAR(100)  UNIQUE NOT NULL,
-    password_hash  VARCHAR(255)  NOT NULL,
-    role           VARCHAR(20)   NOT NULL
-                   CHECK (role IN ('staff', 'manager', 'sales_rep', 'admin')),
-    created_at     TIMESTAMP     NOT NULL DEFAULT NOW()
-);
+
 
 
 -- ============================================================
@@ -70,15 +62,7 @@ CREATE TABLE users (
 -- Dashboard shows staleness warning per zone if > 60 min old
 -- Introduced: Prerequisites | Seeded: Sprint 1
 -- ============================================================
-CREATE TABLE warehouse_zones (
-    zone_id          CHAR(1)       PRIMARY KEY,
-    zone_name        VARCHAR(80)   NOT NULL,
-    target_temp_min  NUMERIC(4,1)  NOT NULL,
-    target_temp_max  NUMERIC(4,1)  NOT NULL,
-    humidity_min     NUMERIC(4,1),                      -- NULL for Zone D
-    humidity_max     NUMERIC(4,1),                      -- NULL for Zone D
-    last_reading_at  TIMESTAMP
-);
+
 
 
 -- ============================================================
@@ -88,24 +72,7 @@ CREATE TABLE warehouse_zones (
 -- Zone D: humidity_weight=0, SA=temp_weight only.
 -- Introduced: Prerequisites | Seeded: Sprint 1
 -- ============================================================
-CREATE TABLE products (
-    product_id                  SERIAL        PRIMARY KEY,
-    product_name                VARCHAR(150)  NOT NULL,
-    pack_size                   VARCHAR(30)   NOT NULL,
-    shelf_life_months           INTEGER       NOT NULL CHECK (shelf_life_months > 0),
-    temp_sensitivity_label      VARCHAR(10)   NOT NULL
-                                CHECK (temp_sensitivity_label IN ('low', 'medium', 'high')),
-    humidity_sensitivity_label  VARCHAR(10)   NOT NULL
-                                CHECK (humidity_sensitivity_label IN ('low', 'medium', 'high', 'none')),
-    temp_sensitivity_weight     INTEGER       NOT NULL
-                                CHECK (temp_sensitivity_weight IN (-1, -2, -3)),
-    humidity_sensitivity_weight INTEGER       NOT NULL
-                                CHECK (humidity_sensitivity_weight IN (-3, -2, -1, 0)),
-    max_safe_temp               NUMERIC(4,1)  NOT NULL,
-    max_safe_humidity           NUMERIC(4,1),
-    zone_id                     CHAR(1)       NOT NULL REFERENCES warehouse_zones(zone_id),
-    ean13_barcode               VARCHAR(13)   UNIQUE NOT NULL
-);
+
 
 
 -- ============================================================
@@ -115,20 +82,7 @@ CREATE TABLE products (
 -- FRS engine runs only for status = 'in_storage'.
 -- Introduced: Sprint 1 PB-01 | Seeded: Sprint 1 (demo batches)
 -- ============================================================
-CREATE TABLE batches (
-    batch_id           VARCHAR(50)   PRIMARY KEY,
-    product_id         INTEGER       NOT NULL REFERENCES products(product_id),
-    zone_id            CHAR(1)       NOT NULL REFERENCES warehouse_zones(zone_id),
-    quantity           INTEGER       NOT NULL CHECK (quantity > 0),
-    manufacturing_date DATE          NOT NULL,
-    expiry_date        DATE          NOT NULL,
-    arrival_timestamp  TIMESTAMP     NOT NULL DEFAULT NOW(),
-    status             VARCHAR(20)   NOT NULL DEFAULT 'in_storage'
-                       CHECK (status IN ('in_storage', 'dispatched', 'returned', 'cleared')),
-    registered_by      INTEGER       REFERENCES users(user_id),
-    unit_value         NUMERIC       DEFAULT 0,
-    created_at         TIMESTAMP     NOT NULL DEFAULT NOW()
-);
+
 
 
 -- ============================================================
@@ -136,13 +90,7 @@ CREATE TABLE batches (
 -- exit_timestamp = NULL means batch is still in this zone.
 -- Introduced: Sprint 1 PB-01 | Seeded: Sprint 1
 -- ============================================================
-CREATE TABLE batch_zone_history (
-    history_id       SERIAL        PRIMARY KEY,
-    batch_id         VARCHAR(50)   NOT NULL REFERENCES batches(batch_id),
-    zone_id          CHAR(1)       NOT NULL REFERENCES warehouse_zones(zone_id),
-    entry_timestamp  TIMESTAMP     NOT NULL DEFAULT NOW(),
-    exit_timestamp   TIMESTAMP
-);
+
 
 
 -- ============================================================
@@ -150,16 +98,9 @@ CREATE TABLE batch_zone_history (
 -- Simulator writes here every 30 min. Zone D humidity = NULL.
 -- Introduced: Sprint 1 PB-02 | Seeded: Sprint 1 (sample readings)
 -- ============================================================
-CREATE TABLE environmental_logs (
-    log_id       SERIAL        PRIMARY KEY,
-    zone_id      CHAR(1)       NOT NULL REFERENCES warehouse_zones(zone_id),
-    temperature  NUMERIC(4,1)  NOT NULL,
-    humidity     NUMERIC(4,1),
-    logged_at    TIMESTAMP     NOT NULL DEFAULT NOW()
-);
 
-CREATE INDEX idx_env_logs_zone_time
-    ON environmental_logs(zone_id, logged_at DESC);
+
+
 
 
 -- ============================================================
@@ -170,19 +111,7 @@ CREATE INDEX idx_env_logs_zone_time
 -- SA read fresh from products table, not stored here.
 -- Introduced: Sprint 1 PB-03 | Seeded: Sprint 1 (pre-calculated)
 -- ============================================================
-CREATE TABLE freshness_scores (
-    score_id                      SERIAL        PRIMARY KEY,
-    batch_id                      VARCHAR(50)   UNIQUE NOT NULL REFERENCES batches(batch_id),
-    frs_score                     INTEGER       NOT NULL
-                                  CHECK (frs_score >= 0 AND frs_score <= 100),
-    risk_band                     VARCHAR(10)   NOT NULL
-                                  CHECK (risk_band IN ('low', 'medium', 'high')),
-    slr_percent_raw               NUMERIC(6,3)  NOT NULL,
-    days_in_warehouse             INTEGER       NOT NULL,
-    total_temp_breach_windows     INTEGER       NOT NULL DEFAULT 0,
-    total_humidity_breach_windows INTEGER       NOT NULL DEFAULT 0,
-    last_calculated_at            TIMESTAMP     NOT NULL DEFAULT NOW()
-);
+
 
 
 -- ============================================================
@@ -191,42 +120,16 @@ CREATE TABLE freshness_scores (
 -- Zone C exception: zone_c_breach always inserts.
 -- Introduced: Sprint 1 PB-06 | Seeded: Sprint 1 (6 demo alerts)
 -- ============================================================
-CREATE TABLE alert_records (
-    alert_id    SERIAL        PRIMARY KEY,
-    batch_id    VARCHAR(50)   NOT NULL REFERENCES batches(batch_id),
-    alert_type  VARCHAR(25)   NOT NULL
-                CHECK (alert_type IN (
-                    'medium_risk_crossing',
-                    'high_risk_crossing',
-                    'expiry_proximity',
-                    'zone_c_breach'
-                )),
-    risk_band   VARCHAR(10)
-                CHECK (risk_band IN ('low', 'medium', 'high')),
-    message     TEXT          NOT NULL,
-    is_read     BOOLEAN       NOT NULL DEFAULT FALSE,
-    created_at  TIMESTAMP     NOT NULL DEFAULT NOW()
-);
 
-CREATE INDEX idx_alerts_batch_type
-    ON alert_records(batch_id, alert_type, created_at DESC);
+
+
 
 
 -- ============================================================
 -- TABLE 9: distributor_records
 -- Introduced: Sprint 3 PB-12/PB-13 | Seeded: Sprint 3 (below)
 -- ============================================================
-CREATE TABLE distributor_records (
-    distributor_id    SERIAL        PRIMARY KEY,
-    distributor_name  VARCHAR(150)  NOT NULL,
-    region            VARCHAR(30)   NOT NULL
-                      CHECK (region IN ('Colombo', 'Kandy', 'Galle', 'Jaffna', 'Kurunegala')),
-    contact_person    VARCHAR(100),
-    phone             VARCHAR(20),
-    next_visit_date   DATE,
-    visit_frequency_days INTEGER    DEFAULT 30,
-    created_at        TIMESTAMP     NOT NULL DEFAULT NOW()
-);
+
 
 -- ============================================================
 -- TABLE 10: dispatch_records
@@ -234,26 +137,7 @@ CREATE TABLE distributor_records (
 -- until staff confirms pickup (feeds collection delay calc).
 -- Introduced: Sprint 2 PB-08 | Seeded: Runtime Sprint 2
 -- ============================================================
-CREATE TABLE dispatch_records (
-    dispatch_id           SERIAL        PRIMARY KEY,
-    batch_id              VARCHAR(50)   NOT NULL REFERENCES batches(batch_id),
-    distributor_id        INTEGER       NOT NULL REFERENCES distributor_records(distributor_id),
-    frs_at_dispatch       INTEGER       NOT NULL,
-    risk_band_at_dispatch VARCHAR(10)   NOT NULL
-                          CHECK (risk_band_at_dispatch IN ('low', 'medium', 'high')),
-    zone_at_dispatch      CHAR(1)       NOT NULL REFERENCES warehouse_zones(zone_id),
-    breaches_summary      TEXT,
-    dispatch_timestamp    TIMESTAMP     NOT NULL DEFAULT NOW(),
-    collected_timestamp   TIMESTAMP,
-    approved_by           INTEGER       NOT NULL REFERENCES users(user_id),
-    
-    -- Smart Allocation additions
-    recommended_distributor_id INTEGER REFERENCES distributor_records(distributor_id),
-    allocation_score      NUMERIC,
-    allocation_breakdown  JSONB,
-    manager_overrode      BOOLEAN       DEFAULT false,
-    override_reason       TEXT
-);
+
 
 
 -- ============================================================
@@ -261,17 +145,7 @@ CREATE TABLE dispatch_records (
 -- Cleared = final status. Both clearance and write-off land here.
 -- Introduced: Sprint 2 PB-10 | Seeded: Runtime Sprint 2
 -- ============================================================
-CREATE TABLE clearance_records (
-    clearance_id  SERIAL        PRIMARY KEY,
-    batch_id      VARCHAR(50)   NOT NULL REFERENCES batches(batch_id),
-    reason        VARCHAR(100)  NOT NULL,
-    notes         TEXT,
-    distributor_id INTEGER      REFERENCES distributor_records(distributor_id),
-    discount_applied NUMERIC(5,2),
-    collected_timestamp TIMESTAMP,
-    approved_by   INTEGER       NOT NULL REFERENCES users(user_id),
-    cleared_at    TIMESTAMP     NOT NULL DEFAULT NOW()
-);
+
 
 
 -- ============================================================
@@ -280,19 +154,7 @@ CREATE TABLE clearance_records (
 -- decision: accept / review / reject
 -- Introduced: Sprint 2 PB-09 | Seeded: Runtime Sprint 2
 -- ============================================================
-CREATE TABLE return_records (
-    return_id       SERIAL        PRIMARY KEY,
-    batch_id        VARCHAR(50)   NOT NULL REFERENCES batches(batch_id),
-    distributor_id  INTEGER       NOT NULL REFERENCES distributor_records(distributor_id),
-    return_reason   TEXT          NOT NULL,
-    frs_at_dispatch INTEGER       NOT NULL,
-    system_recommendation VARCHAR(10) CHECK (system_recommendation IN ('accept', 'review', 'reject')),
-    decision        VARCHAR(10)   CHECK (decision IN ('accept', 'review', 'reject')),
-    override_reason TEXT,
-    decided_by      INTEGER       REFERENCES users(user_id),
-    created_at      TIMESTAMP     NOT NULL DEFAULT NOW(),
-    decided_at      TIMESTAMP
-);
+
 
 
 -- ============================================================
@@ -301,22 +163,7 @@ CREATE TABLE return_records (
 -- Pre-seeded with historical data before Sprint 3 demo.
 -- Introduced: Sprint 3 PB-13 | Seeded: Sprint 3 (below)
 -- ============================================================
-CREATE TABLE distributor_scorecards (
-    scorecard_id               SERIAL        PRIMARY KEY,
-    distributor_id             INTEGER       UNIQUE NOT NULL
-                               REFERENCES distributor_records(distributor_id),
-    performance_score          NUMERIC(5,2)  NOT NULL DEFAULT 50.00,
-    total_dispatches           INTEGER       NOT NULL DEFAULT 0,
-    total_returns              INTEGER       NOT NULL DEFAULT 0,
-    rejected_returns           INTEGER       NOT NULL DEFAULT 0,
-    expired_batches            INTEGER       NOT NULL DEFAULT 0,
-    avg_collection_delay_days  NUMERIC(5,2)  NOT NULL DEFAULT 0.00,
-    avg_frs_at_dispatch        NUMERIC(5,2)  NOT NULL DEFAULT 0.00,
-    loss_contribution          NUMERIC(10,2) DEFAULT 0.00,
-    period_start_date          DATE,
-    period_end_date            DATE,
-    last_updated_at            TIMESTAMP     NOT NULL DEFAULT NOW()
-);
+
 
 
 -- ============================================================
@@ -324,13 +171,7 @@ CREATE TABLE distributor_scorecards (
 -- Pre-seeded identities for shared sales rep login verification
 -- Introduced: Identity Verification Update
 -- ============================================================
-CREATE TABLE sales_reps (
-    rep_id      SERIAL PRIMARY KEY,
-    work_id     VARCHAR UNIQUE NOT NULL,
-    name        VARCHAR NOT NULL,
-    region      VARCHAR,
-    created_at  TIMESTAMP DEFAULT NOW()
-);
+
 
 
 -- ============================================================
@@ -339,28 +180,7 @@ CREATE TABLE sales_reps (
 -- Now includes individual identity (rep_work_id, rep_name).
 -- Introduced: Sprint 3 PB-11 (Refactored)
 -- ============================================================
-CREATE TABLE sales_rep_reports (
-    report_id        SERIAL        PRIMARY KEY,
-    sales_rep_id     INTEGER       NOT NULL REFERENCES users(user_id),
-    rep_work_id      VARCHAR,
-    rep_name         VARCHAR,
-    retailer_name    VARCHAR(255),
-    distributor_id   INTEGER       REFERENCES distributor_records(distributor_id),
-    distributor_name VARCHAR,
-    region           VARCHAR(50)   NOT NULL,
-    audit_date       DATE,
-    raw_notes        TEXT,
-    notes            TEXT,
-    status           VARCHAR(20)   DEFAULT 'new',
-    product_id       INTEGER       NOT NULL REFERENCES products(product_id), -- Satisfies legacy FK
-    movement_speed   INTEGER       CHECK (movement_speed >= 1),             -- Satisfies legacy check
-    movement_score   INTEGER       NOT NULL CHECK (movement_score >= 1),    -- Satisfies legacy check
-    shelf_availability VARCHAR,
-    urgency_bonus    INTEGER       DEFAULT 0,
-    reviewed_at      TIMESTAMP,
-    reviewed_by      INTEGER,
-    submitted_at     TIMESTAMP     DEFAULT NOW()
-);
+
 
 
 -- ============================================================
@@ -368,21 +188,7 @@ CREATE TABLE sales_rep_reports (
 -- Detail line items for sales rep reports.
 -- Introduced: Sprint 3 PB-11 | Seeded: Runtime Sprint 3
 -- ============================================================
-CREATE TABLE report_line_items (
-    id SERIAL PRIMARY KEY,
-    report_id INTEGER NOT NULL REFERENCES sales_rep_reports(report_id) ON DELETE CASCADE,
-    sku VARCHAR(50) NOT NULL,
-    product_name VARCHAR(150) NOT NULL,
-    movement_speed_raw INTEGER NOT NULL CHECK (movement_speed_raw IN (1,2,3)),
-    movement_score_final INTEGER NOT NULL,
-    shelf_availability VARCHAR(20) NOT NULL
-        CHECK (shelf_availability IN ('in_stock','low','out_of_stock')),
-    is_empty_shelf BOOLEAN NOT NULL DEFAULT FALSE,
-    urgency_bonus_applied BOOLEAN NOT NULL DEFAULT FALSE,
-    empty_shelf_reason VARCHAR,
-    distributor_miss_flagged BOOLEAN DEFAULT false,
-    estimated_units_on_shelf VARCHAR
-);
+
 
 
 -- ============================================================
@@ -401,7 +207,7 @@ VALUES
     ('A', 'Powdered Beverages, Noodles & Seasonings', 25.0, 28.0, 60.0, 65.0),
     ('B', 'Dairy & Condensed',                        22.0, 26.0, 55.0, 60.0),
     ('C', 'Infant & Nutrition (Strictest Zone)',       20.0, 25.0, 50.0, 55.0),
-    ('D', 'Cold Storage',                               2.0,  8.0, NULL, NULL);
+    ('D', 'Cold Storage',                               2.0,  8.0, NULL, NULL) ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
@@ -430,7 +236,7 @@ VALUES
     ('Maggi Chicken Seasoning Cubes',   '80g box',    24, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361129032'),
     ('Maggi Vegetable Seasoning Cubes', '80g box',    24, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361129049'),
     ('Maggi Seasoning Soup Cubes',      '80g box',    24, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361129056'),
-    ('Maggi Rasamusu Seasoning',        '85g pack',   24, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361129063');
+    ('Maggi Rasamusu Seasoning',        '85g pack',   24, 'low',    'medium', -1, -2, 35.0, 75.0, 'A', '4790361129063') ON CONFLICT DO NOTHING;
 
 -- Zone B — 5 SKUs
 INSERT INTO products
@@ -443,7 +249,7 @@ VALUES
     ('Nespray Full Cream Milk Powder',  '800g pack',  24, 'high',   'high',   -3, -3, 27.0, 60.0, 'B', '4790361129087'),
     ('Nespray Instant Full Cream',      '180g pack',  24, 'high',   'high',   -3, -3, 27.0, 60.0, 'B', '4790361129094'),
     ('Milkmaid Condensed Milk',         '400g can',   24, 'medium', 'low',    -2, -1, 32.0, 80.0, 'B', '4792024011792'),
-    ('Milkmaid Condensed Milk',         '200g can',   24, 'medium', 'low',    -2, -1, 32.0, 80.0, 'B', '4790361129117');
+    ('Milkmaid Condensed Milk',         '200g can',   24, 'medium', 'low',    -2, -1, 32.0, 80.0, 'B', '4790361129117') ON CONFLICT DO NOTHING;
 
 -- Zone C — 4 SKUs
 INSERT INTO products
@@ -455,7 +261,7 @@ VALUES
     ('Cerelac Wheat',                    '400g tin',  18, 'high', 'high', -3, -3, 25.0, 55.0, 'C', '4790361129124'),
     ('Cerelac Multi-Grain',              '400g tin',  18, 'high', 'high', -3, -3, 25.0, 55.0, 'C', '4790361129131'),
     ('Nangrow Growing Up Milk 1-3yrs',   '400g tin',  24, 'high', 'high', -3, -3, 25.0, 55.0, 'C', '4790361129148'),
-    ('Lactogrow Growing Up Milk 3-5yrs', '400g tin',  24, 'high', 'high', -3, -3, 25.0, 55.0, 'C', '4790361129155');
+    ('Lactogrow Growing Up Milk 3-5yrs', '400g tin',  24, 'high', 'high', -3, -3, 25.0, 55.0, 'C', '4790361129155') ON CONFLICT DO NOTHING;
 
 -- Zone D — 1 SKU
 INSERT INTO products
@@ -464,7 +270,7 @@ INSERT INTO products
      temp_sensitivity_weight, humidity_sensitivity_weight,
      max_safe_temp, max_safe_humidity, zone_id, ean13_barcode)
 VALUES
-    ('Nescafe Iced Coffee RTD', '180ml bottle', 6, 'high', 'none', -3, 0, 10.0, NULL, 'D', '4792024014601');
+    ('Nescafe Iced Coffee RTD', '180ml bottle', 6, 'high', 'none', -3, 0, 10.0, NULL, 'D', '4792024014601') ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
@@ -474,7 +280,7 @@ INSERT INTO users (full_name, email, password_hash, role) VALUES
 ('Admin',             'admin@nestle.lk',   '$2a$12$y8PnbdahHUCQtlmSEwUweewwZZq3DZoZVRaAki5PUdMtXi2dq2pwi', 'admin'),     
 ('Warehouse Manager', 'manager@nestle.lk', '$2a$12$rMrURR.VipYAT8iCdSekk.bKW0z.P5/xIDcIZTDxonDawvxML/54u', 'manager'),
 ('Warehouse Staff',   'staff@nestle.lk',   '$2a$12$4Qyk4QW5LCigkmSK5ei2beRk9VfTyN/TG8ZoNK8YQNz.DNu4RWFH.', 'staff'),
-('Sales Rep',         'rep@nestle.lk',     '$2a$12$.Nog/05unLF5MIM6KAZ8M.VuOf.xlrEG12rG5CqfstC60nHAGvx52', 'sales_rep');
+('Sales Rep',         'rep@nestle.lk',     '$2a$12$.Nog/05unLF5MIM6KAZ8M.VuOf.xlrEG12rG5CqfstC60nHAGvx52', 'sales_rep') ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
@@ -494,7 +300,7 @@ VALUES
 ('CERL-WHT-2026-0022', 23, 'C', 144, '2026-02-01', '2027-08-01', NOW() - INTERVAL '10 days', 'in_storage', 3),
 ('NANG-400-2026-0011', 25, 'C', 72, '2025-12-01', '2027-12-01', NOW() - INTERVAL '50 days', 'in_storage', 3),
 ('LACT-400-2025-0002', 26, 'C', 60, '2025-01-01', '2027-01-01', NOW() - INTERVAL '280 days', 'in_storage', 2),
-('NICD-180-2026-0005', 27, 'D', 432, '2025-11-15', '2026-05-15', NOW() - INTERVAL '20 days', 'in_storage', 3);
+('NICD-180-2026-0005', 27, 'D', 432, '2025-11-15', '2026-05-15', NOW() - INTERVAL '20 days', 'in_storage', 3) ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
@@ -512,7 +318,7 @@ INSERT INTO batch_zone_history (batch_id, zone_id, entry_timestamp) VALUES
     ('CERL-WHT-2026-0022',  'C', NOW() - INTERVAL '10 days'),
     ('NANG-400-2026-0011',  'C', NOW() - INTERVAL '50 days'),
     ('LACT-400-2025-0002',  'C', NOW() - INTERVAL '280 days'),
-    ('NICD-180-2026-0005',  'D', NOW() - INTERVAL '20 days');
+    ('NICD-180-2026-0005',  'D', NOW() - INTERVAL '20 days') ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
@@ -534,7 +340,7 @@ VALUES
 ('CERL-WHT-2026-0022',  88, 'low',    93.590, 10,  0, 0, NOW()),
 ('NANG-400-2026-0011',  68, 'medium', 86.712, 50,  1, 0, NOW()),
 ('LACT-400-2025-0002',   0, 'high',   40.959, 280, 4, 3, NOW()),
-('NICD-180-2026-0005',  27, 'high',   37.569, 20,  1, 0, NOW());
+('NICD-180-2026-0005',  27, 'high',   37.569, 20,  1, 0, NOW()) ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
@@ -549,7 +355,7 @@ VALUES
     ('C', 23.8, 53.0, NOW() - INTERVAL '60 minutes'),
     ('C', 24.1, 52.5, NOW() - INTERVAL '30 minutes'),
     ('D',  7.4, NULL, NOW() - INTERVAL '60 minutes'),
-    ('D',  7.8, NULL, NOW() - INTERVAL '30 minutes');
+    ('D',  7.8, NULL, NOW() - INTERVAL '30 minutes') ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
@@ -562,7 +368,7 @@ VALUES
     ('NESP-800-2026-0001', 'high_risk_crossing', 'high', 'Nespray Full Cream 800g — NESP-800-2026-0001 (Zone B): FRS 39. HIGH RISK. 3 temperature breaches. Immediate action required.', FALSE, NOW() - INTERVAL '45 days'),
     ('NANG-400-2026-0011', 'zone_c_breach', 'medium', 'Nangrow Growing Up Milk — NANG-400-2026-0011 (Zone C): Temperature breach 26.1 degrees. Infant product. Immediate review required.', FALSE, NOW() - INTERVAL '25 days'),
     ('LACT-400-2025-0002', 'high_risk_crossing', 'high', 'Lactogrow Growing Up Milk — LACT-400-2025-0002 (Zone C): FRS 0. HIGH RISK. 280 days in warehouse. Urgent clearance required.', FALSE, NOW() - INTERVAL '100 days'),
-    ('NICD-180-2026-0005', 'expiry_proximity', 'high', 'Nescafe Iced Coffee RTD — NICD-180-2026-0005 (Zone D): Expiry 2026-05-15. FRS 27. Most urgent SKU in warehouse.', FALSE, NOW() - INTERVAL '5 days');
+    ('NICD-180-2026-0005', 'expiry_proximity', 'high', 'Nescafe Iced Coffee RTD — NICD-180-2026-0005 (Zone D): Expiry 2026-05-15. FRS 27. Most urgent SKU in warehouse.', FALSE, NOW() - INTERVAL '5 days') ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
@@ -580,7 +386,7 @@ VALUES
     ('Advantis Logistics',           'Kandy',      'Chaminda Rathnayake','0819876543', '2026-05-13', 21),
     ('Aitken Spence Logistics',      'Colombo',    'Ravi Wijesekara',    '0115432100', '2026-04-15', 7),
     ('Galle Wholesale Traders',      'Galle',      'Sanjeewa Perera',    '0914321098', '2026-04-25', 30),
-    ('Kurunegala Agencies Ltd',      'Kurunegala', 'Thilak Bandara',     '0372109876', '2026-05-07', 21);
+    ('Kurunegala Agencies Ltd',      'Kurunegala', 'Thilak Bandara',     '0372109876', '2026-05-07', 21) ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
@@ -595,7 +401,7 @@ VALUES
     (2, 83.00,  98,  7,  2, 1,  3.4, 71.2, 350.00),
     (3, 74.00,  76,  9,  3, 2,  5.8, 68.9, 1200.00),
     (4, 61.00,  54, 14,  8, 4, 11.2, 62.3, 4500.00),
-    (5, 69.00,  43,  6,  2, 1,  7.3, 67.1, 800.00);
+    (5, 69.00,  43,  6,  2, 1,  7.3, 67.1, 800.00) ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
@@ -606,21 +412,21 @@ INSERT INTO sales_reps (work_id, name, region) VALUES
     ('REP002', 'Priya Fernando', 'Kandy'),
     ('REP003', 'Kamal Perera', 'Galle'),
     ('REP004', 'Saman Kumara', 'Jaffna'),
-    ('REP005', 'Ruwanthi de Silva', 'Kurunegala');
+    ('REP005', 'Ruwanthi de Silva', 'Kurunegala') ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
 -- SECTION 3 — PERFORMANCE INDEXES
 -- ============================================================
-CREATE INDEX IF NOT EXISTS idx_batches_product_id ON batches(product_id);
-CREATE INDEX IF NOT EXISTS idx_batches_zone_id ON batches(zone_id);
-CREATE INDEX IF NOT EXISTS idx_batches_status ON batches(status);
-CREATE INDEX IF NOT EXISTS idx_batch_zone_history_batch_id ON batch_zone_history(batch_id);
-CREATE INDEX IF NOT EXISTS idx_batch_zone_history_zone_id ON batch_zone_history(zone_id);
-CREATE INDEX IF NOT EXISTS idx_dispatch_records_batch_id ON dispatch_records(batch_id);
-CREATE INDEX IF NOT EXISTS idx_dispatch_records_distributor_id ON dispatch_records(distributor_id);
-CREATE INDEX IF NOT EXISTS idx_clearance_records_batch_id ON clearance_records(batch_id);
-CREATE INDEX IF NOT EXISTS idx_return_records_batch_id ON return_records(batch_id);
-CREATE INDEX IF NOT EXISTS idx_sales_rep_reports_rep_id ON sales_rep_reports(sales_rep_id);
-CREATE INDEX IF NOT EXISTS idx_report_line_items_report_id ON report_line_items(report_id);
-CREATE INDEX IF NOT EXISTS idx_products_zone_id ON products(zone_id);
+
+
+
+
+
+
+
+
+
+
+
+

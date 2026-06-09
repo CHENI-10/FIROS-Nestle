@@ -22,7 +22,7 @@ import RootCauseAnalytics from './pages/RootCauseAnalytics';
 import MyDistributors from './pages/MyDistributors';
 
 // A simple Protected Route component wrapper
-const ProtectedRoute = ({ children, allowedRoles }) => {
+const ProtectedRoute = ({ children, allowedRoles, hideSidebar = false }) => {
   const token = sessionStorage.getItem('token');
   const role = sessionStorage.getItem('role');
   const [theme, setTheme] = useState(sessionStorage.getItem('theme') || 'light');
@@ -54,8 +54,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         zIndex: -1,
         transition: 'background-color 0.3s ease'
       }} />
-      <Sidebar />
-      <div style={{ marginLeft: '300px', minHeight: '100vh', position: 'relative' }}>
+      {!hideSidebar && <Sidebar />}
+      <div style={{ marginLeft: hideSidebar ? '0' : '300px', minHeight: '100vh', position: 'relative' }}>
         {children}
       </div>
     </>
@@ -152,7 +152,7 @@ const App = () => {
         <Route 
           path="/batch-registration" 
           element={
-            <ProtectedRoute>
+            <ProtectedRoute hideSidebar={true}>
               <BatchRegistration />
             </ProtectedRoute>
           } 
